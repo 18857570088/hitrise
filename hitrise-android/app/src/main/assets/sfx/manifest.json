@@ -1,0 +1,62 @@
+{
+  "version": 2,
+  "updated_at": "2026-05-20T15:45:00+08:00",
+  "license": "original_hitrise_generated",
+  "items": [
+    {
+      "id": "htr_punch_arena_thunder",
+      "name_zh": "赛场雷击",
+      "name_en": "Arena Thunder",
+      "description_zh": "赛场雷击 · 适合 100 BPM 左右的燃脂训练。",
+      "description_en": "Arena Thunder punch impact for around 100 BPM training.",
+      "style": "heavy",
+      "bpm": 100,
+      "file": "01_htr_punch_arena_thunder.wav",
+      "duration_ms": 460
+    },
+    {
+      "id": "htr_punch_street_spark",
+      "name_zh": "街头火花",
+      "name_en": "Street Spark",
+      "description_zh": "街头火花 · 适合 110 BPM 左右的燃脂训练。",
+      "description_en": "Street Spark punch impact for around 110 BPM training.",
+      "style": "street",
+      "bpm": 110,
+      "file": "02_htr_punch_street_spark.wav",
+      "duration_ms": 460
+    },
+    {
+      "id": "htr_punch_iron_hook",
+      "name_zh": "铁拳冲击",
+      "name_en": "Iron Hook",
+      "description_zh": "铁拳冲击 · 适合 95 BPM 左右的燃脂训练。",
+      "description_en": "Iron Hook punch impact for around 95 BPM training.",
+      "style": "metal",
+      "bpm": 95,
+      "file": "03_htr_punch_iron_hook.wav",
+      "duration_ms": 460
+    },
+    {
+      "id": "htr_punch_neon_jab",
+      "name_zh": "霓虹快拳",
+      "name_en": "Neon Jab",
+      "description_zh": "霓虹快拳 · 适合 120 BPM 左右的燃脂训练。",
+      "description_en": "Neon Jab punch impact for around 120 BPM training.",
+      "style": "fast",
+      "bpm": 120,
+      "file": "04_htr_punch_neon_jab.wav",
+      "duration_ms": 460
+    },
+    {
+      "id": "htr_punch_bass_smash",
+      "name_zh": "低频重锤",
+      "name_en": "Bass Smash",
+      "description_zh": "低频重锤 · 适合 90 BPM 左右的燃脂训练。",
+      "description_en": "Bass Smash punch impact for around 90 BPM training.",
+      "style": "bass",
+      "bpm": 90,
+      "file": "05_htr_punch_bass_smash.wav",
+      "duration_ms": 460
+    }
+  ]
+}

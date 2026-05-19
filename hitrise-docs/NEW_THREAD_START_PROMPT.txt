@@ -1,0 +1,61 @@
+新线程名称：Hitrise
+
+请在确保 Smart sensor ball 原项目不受影响的前提下，继续开发 Hitrise 新项目。本线程只作为历史参考，新线程应以 Hitrise 目录和部署参数为准。
+
+项目身份：
+- 新项目名称：Hitrise
+- APP 显示名称：HitRise
+- 内部代号：hitrise
+- Android applicationId：com.zclei.hitrise
+- 产品码：HTR01
+- 蓝牙设备名称前缀：SENBALL#
+- 蓝牙协议：沿用当前稳定项目协议，拳击计数使用蓝牙协议“数据2”增加逻辑
+- 功能体系：沿用当前认证、榜单、训练记录、成就与训练体系
+- 当前版本不使用声音识别计数
+
+本地目录：
+- 本地根目录：D:\2026\202605\hitrise
+- Android 源码目录：D:\2026\202605\hitrise\hitrise-android
+- 服务端源码目录：D:\2026\202605\hitrise\hitrise-server
+- 部署文件目录：D:\2026\202605\hitrise\hitrise-deploy
+- 文档目录：D:\2026\202605\hitrise\hitrise-docs
+- APK 输出文件：D:\2026\202605\hitrise\hitrise-deploy\apk\HitRise.apk
+
+云端部署参数：
+- 服务器 IP：152.136.62.157
+- 数据库类型：MySQL
+- 新数据库名：hitrise
+- 数据库账号：wm
+- 云端服务目录：/opt/hitrise-auth
+- 上传目录：/opt/hitrise-auth/uploads
+- 日志目录：/var/log/hitrise-auth
+- 运行配置文件：/etc/hitrise-auth.env
+- systemd 服务名：hitrise-auth.service
+- 服务端口：127.0.0.1:8014
+- Nginx 配置片段：/etc/nginx/snippets/hitrise-auth-location.conf
+- Nginx 入口：/hitrise/
+- APP API Base URL：http://152.136.62.157/hitrise/api/v1/
+- 健康检查：http://152.136.62.157/hitrise/health
+- OpenAPI：http://152.136.62.157/hitrise/openapi.json
+
+当前状态：
+- 已从 Smart sensor ball 稳定源码派生 Hitrise。
+- Android 已改为 HitRise，包名为 com.zclei.hitrise。
+- 服务端已独立部署到 /opt/hitrise-auth。
+- 数据库 hitrise 已创建，当前表结构包含 app_users、training_sessions、user_achievements。
+- hitrise-auth.service 已启动并可通过 /hitrise/ 访问。
+- Android APK 已构建成功。
+
+重要文件：
+- 项目规划：D:\2026\202605\hitrise\hitrise-docs\HITRISE_PROJECT_PLAN.md
+- 部署校验：D:\2026\202605\hitrise\hitrise-deploy\HITRISE_LATEST_VERIFY.md
+- 部署报告：D:\2026\202605\hitrise\hitrise-deploy\HITRISE_SERVER_DEPLOY_REPORT.txt
+- 服务器运行参数快照：D:\2026\202605\hitrise\hitrise-deploy\runtime
+
+注意事项：
+- 不要修改 D:\2026\202605\smartsensorball 原项目，除非用户明确要求。
+- 平时修改不上传 GitHub；只有用户明确发布“上传 GitHub”指令时才上传。
+- runtime\hitrise-auth.env 包含数据库密码、token 等敏感参数，不要公开展示、上传或分享。
+- 如需重新部署服务端，优先使用 D:\2026\202605\hitrise\hitrise-server\deploy 下的 Hitrise 部署脚本。
+
+请新线程开始后先检查本地目录结构与上述关键文件，再继续进行 Hitrise 的 Android、服务端、数据库、Nginx 或 APK 相关开发。

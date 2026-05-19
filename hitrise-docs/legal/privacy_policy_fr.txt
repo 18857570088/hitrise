@@ -1,0 +1,68 @@
+Politique de confidentialité HitRise
+Version : V1.1
+Date d'effet : 2026-05-20
+
+1. Introduction
+Bienvenue dans HitRise. HitRise est une application d'entraînement avec balle de vitesse connectée, fournie par Shaoxing Weimai Technology Co., Ltd. Elle se connecte aux appareils Bluetooth SENBALL#, enregistre les données d'entraînement, génère des rapports, et propose résultats, classements, profil, effets sonores et musique de fond.
+
+La présente politique explique comment nous collectons, utilisons, stockons, protégeons et traitons les informations lorsque vous utilisez HitRise. Veuillez la lire attentivement avant d'utiliser l'application.
+
+2. Informations collectées et utilisées
+Profil local et identifiant. L'application peut générer un identifiant local, un code de synchronisation, un résumé d'appareil et un état d'activation local afin de fournir la synchronisation cloud, le profil, les succès et les classements. Vous pouvez définir un pseudo, un avatar, une région et une langue.
+
+Informations Bluetooth. Pour connecter l'appareil de boxe, l'application utilise le scan, la connexion et la communication Bluetooth. Nous traitons le nom de l'appareil, l'adresse, l'état de connexion, la batterie, l'état de charge, le nombre de coups, la force et les messages d'état Bluetooth. Le scan filtre les appareils SENBALL#.
+
+Données d'entraînement. Pendant l'entraînement, l'application enregistre les rounds, la durée, les coups cumulés, les coups par round, la force maximale, la force moyenne, le BPM, les estimations de calories, les estimations de graisse brûlée, les combos, le mode, les réglages de tempo, l'effet sonore et la musique de fond sélectionnés.
+
+Succès, classements et profil. Pour fournir les badges, rangs, historique, classements et statistiques personnelles, nous traitons les résumés d'entraînement, les meilleurs résultats, les totaux cumulés, les jours actifs, les indicateurs de classement et les séances récentes. Les classements peuvent afficher votre pseudo, avatar, région, rang et score.
+
+Audio et préférences. L'application stocke l'effet sonore cloud choisi, la musique de fond, l'option sans musique, la langue, les réglages d'entraînement, le dernier appareil connecté et d'autres préférences. La version actuelle n'utilise pas la reconnaissance sonore pour compter les coups.
+
+Informations techniques. Pour maintenir la stabilité et résoudre les problèmes, nous pouvons traiter la version de l'application, la version du système, le modèle de l'appareil, l'état des requêtes réseau, les journaux d'erreur, l'état des réponses API et les informations liées aux plantages.
+
+3. Autorisations
+Les autorisations Bluetooth servent à scanner, connecter et recevoir les données des appareils SENBALL#.
+Certaines versions d'Android peuvent exiger une autorisation liée à la localisation pour le scan Bluetooth. HitRise ne l'utilise pas pour collecter activement votre position en temps réel.
+L'autorisation Internet sert à synchroniser les entraînements, profils, succès, classements, effets sonores et musiques.
+Les autorisations photo ou fichier ne sont utilisées que lorsque vous choisissez un avatar, sauvegardez ou partagez une affiche.
+La vibration et l'audio servent au retour d'entraînement, au tempo, aux effets sonores et à la musique de fond.
+
+4. Utilisation des informations
+Nous utilisons les informations pour :
+1. connecter le Bluetooth, compter les coups, afficher la force et la batterie ;
+2. générer les rapports, statistiques de rounds, calories et graisse brûlée ;
+3. fournir les succès, rangs, classements et profils ;
+4. synchroniser les données cloud et conserver l'historique ;
+5. fournir les réglages de langue, sons, musique et entraînement ;
+6. résoudre les problèmes, améliorer la stabilité et protéger le service.
+
+5. Partage, transfert et divulgation
+Nous ne vendons pas vos informations personnelles à des tiers non liés. Les données nécessaires peuvent être traitées dans nos systèmes afin d'assurer la synchronisation cloud, les classements, les succès, le téléchargement de ressources et l'exploitation du service.
+
+Sauf obligation légale, nécessité de protéger les utilisateurs ou la plateforme, résolution de litige ou autorisation de votre part, nous ne divulguerons pas publiquement vos informations personnelles. Le pseudo, l'avatar, le rang et les scores affichés dans les classements ou affiches partagées font partie des fonctions du produit.
+
+6. Stockage
+Certaines données sont stockées localement sur votre téléphone : langue, réglages, dernier appareil Bluetooth, choix sonores, choix de musique et cache local. Les entraînements, succès, classements et résumés de profil peuvent être stockés dans le cloud.
+
+Nous conservons les informations pendant la durée nécessaire au service, sauf obligation légale différente. Si vous désinstallez l'application, les données locales peuvent être supprimées par le système, tandis que les données cloud synchronisées peuvent être conservées selon les règles du service.
+
+7. Sécurité
+Nous appliquons des mesures raisonnables de sécurité, notamment le contrôle d'accès, la gestion des autorisations, la minimisation des données, l'isolement des services et la gestion des journaux. Toutefois, Internet, les systèmes mobiles et les communications Bluetooth ne peuvent pas être garantis comme absolument sûrs.
+
+8. Vos droits
+Vous pouvez consulter les entraînements, succès, classements et informations de profil dans l'application, et modifier votre pseudo, avatar, région et langue. Pour demander conseil, correction ou suppression de données, contactez-nous ci-dessous. Nous traiterons les demandes selon la loi applicable, la vérification d'identité et la sécurité du service.
+
+9. Mineurs
+Les mineurs doivent utiliser HitRise sous la supervision d'un parent ou tuteur. Les tuteurs doivent aider les mineurs à comprendre la sécurité d'entraînement, la protection des informations personnelles et l'intensité appropriée.
+
+10. Avis santé et exercice
+Les valeurs de coups, force, calories et graisse brûlée fournies par HitRise sont des retours et estimations d'exercice. Elles ne constituent pas un diagnostic médical, un conseil nutritionnel, une rééducation ou une décision de compétition. En cas de maladie, blessure ou malaise, consultez un professionnel qualifié.
+
+11. Mises à jour
+Nous pouvons mettre à jour cette politique en raison de changements de produit, d'exigences légales ou de besoins opérationnels. Les changements importants peuvent être signalés dans l'application, les notes de version ou par tout autre moyen raisonnable. La poursuite de l'utilisation de HitRise signifie que vous comprenez la politique mise à jour.
+
+12. Nous contacter
+Opérateur : Shaoxing Weimai Technology Co., Ltd.
+E-mail : zclei@vip.sina.com
+
+Pour toute question, remarque ou réclamation concernant cette politique ou le traitement des informations personnelles, veuillez nous contacter.

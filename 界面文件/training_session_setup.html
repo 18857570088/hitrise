@@ -1,0 +1,391 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{display:flex;gap:20px;align-items:flex-start;padding:1rem 0;flex-wrap:wrap}
+.phone-shell{width:320px;flex-shrink:0;background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:16px;display:flex;justify-content:center}
+.phone{width:288px;background:var(--color-background-primary);border-radius:22px;border:0.5px solid var(--color-border-tertiary);overflow:hidden;font-family:var(--font-sans)}
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px 6px;font-size:11px;color:var(--color-text-secondary)}
+.nav-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.nav-title{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.nav-btn{width:32px;height:32px;border-radius:50%;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:var(--color-text-secondary)}
+.nav-btn:hover{background:var(--color-background-secondary)}
+.screen{padding:14px 14px 20px;display:flex;flex-direction:column;gap:14px}
+.section-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.card-block{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px}
+.pill-row{display:flex;gap:6px;flex-wrap:wrap}
+.pill{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap}
+.pill:hover{border-color:var(--color-border-secondary);color:var(--color-text-primary)}
+.pill.active{background:#1F4E79;color:#fff;border-color:transparent}
+.round-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.round-card{border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);padding:8px 4px;text-align:center;cursor:pointer;transition:all .15s}
+.round-card:hover{border-color:var(--color-border-secondary)}
+.round-card.active{border:1.5px solid #1F4E79;background:#E6F1FB}
+.rc-val{font-size:16px;font-weight:500;color:var(--color-text-primary)}
+.rc-lbl{font-size:10px;color:var(--color-text-secondary);margin-top:2px}
+.round-card.active .rc-val{color:#1F4E79}
+.round-card.active .rc-lbl{color:#185FA5}
+.bpm-row{display:flex;align-items:center;gap:10px}
+.bpm-num{font-size:26px;font-weight:500;color:var(--color-text-primary);min-width:52px;text-align:center}
+.bpm-unit{font-size:11px;color:var(--color-text-secondary)}
+.bpm-slider{flex:1;accent-color:#1F4E79}
+.bpm-presets{display:flex;gap:5px;margin-top:8px}
+.bpm-preset{flex:1;padding:4px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);font-size:10px;font-weight:500;text-align:center;cursor:pointer;color:var(--color-text-secondary);transition:all .15s}
+.bpm-preset:hover{border-color:var(--color-border-secondary);color:var(--color-text-primary)}
+.bpm-preset.active{background:#1F4E79;color:#fff;border-color:transparent}
+.bpm-preset small{display:block;font-size:9px;font-weight:400;margin-top:1px;opacity:.8}
+.mode-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mode-card{border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);padding:10px;cursor:pointer;transition:all .15s}
+.mode-card:hover{border-color:var(--color-border-secondary)}
+.mode-card.active{border:1.5px solid #1F4E79;background:#E6F1FB}
+.mode-icon{font-size:20px;color:var(--color-text-secondary);margin-bottom:5px}
+.mode-card.active .mode-icon{color:#1F4E79}
+.mode-name{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.mode-desc{font-size:10px;color:var(--color-text-secondary);margin-top:2px;line-height:1.4}
+.mode-card.active .mode-name{color:#1F4E79}
+.summary-box{background:#E6F1FB;border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid #B5D4F4}
+.sum-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0}
+.sum-label{font-size:11px;color:#185FA5}
+.sum-val{font-size:12px;font-weight:500;color:#0C447C}
+.start-btn{width:100%;padding:13px;background:#1F4E79;color:#fff;border:none;border-radius:var(--border-radius-md);font-size:14px;font-weight:500;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.start-btn:hover{opacity:.88}
+.custom-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.custom-field{background:var(--color-background-primary);border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);padding:8px 10px}
+.cf-label{font-size:10px;color:var(--color-text-secondary);margin-bottom:4px}
+.cf-stepper{display:flex;align-items:center;justify-content:space-between}
+.cf-val{font-size:16px;font-weight:500;color:var(--color-text-primary)}
+.cf-unit{font-size:10px;color:var(--color-text-secondary)}
+.cf-btn{width:24px;height:24px;border-radius:50%;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);font-size:14px;color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.cf-btn:hover{background:var(--color-border-tertiary)}
+.bpm-locked{opacity:.45;pointer-events:none}
+.lock-note{font-size:10px;color:var(--color-text-tertiary);text-align:center;margin-top:4px;font-style:italic}
+
+.spec-panel{flex:1;min-width:260px}
+.spec-section{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px;margin-bottom:12px}
+.ss-title{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.ss-title i{font-size:15px;color:var(--color-text-secondary)}
+.spec-table{width:100%;border-collapse:collapse;font-size:12px}
+.spec-table tr{border-bottom:0.5px solid var(--color-border-tertiary)}
+.spec-table tr:last-child{border-bottom:none}
+.spec-table td{padding:6px 0;vertical-align:top}
+.spec-table td:first-child{color:var(--color-text-secondary);width:40%;padding-right:8px}
+.spec-table td:last-child{color:var(--color-text-primary);font-weight:500}
+.state-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 7px;border-radius:20px}
+.sb-blue{background:#E6F1FB;color:#0C447C}
+.sb-green{background:#EAF3DE;color:#27500A}
+.sb-amber{background:#FAEEDA;color:#633806}
+.flow-steps{display:flex;flex-direction:column;gap:6px}
+.flow-step{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md)}
+.step-num{width:20px;height:20px;border-radius:50%;background:#1F4E79;color:#fff;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-body{flex:1}
+.step-title{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.step-sub{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+</style>
+
+<h2 class="sr-only">回合设置页面设计原型与规格说明，包含可交互的手机界面模拟和详细设计规格</h2>
+
+<div class="wrap">
+
+<div class="phone-shell">
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="display:flex;gap:3px;align-items:center"><i class="ti ti-bluetooth" style="font-size:12px" aria-hidden="true"></i><i class="ti ti-wifi" style="font-size:12px" aria-hidden="true"></i></span>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn" aria-label="返回"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <span class="nav-title">训练设置</span>
+    <button class="nav-btn" aria-label="重置" onclick="resetAll()" title="重置默认"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="screen">
+
+    <div>
+      <div class="section-label">回合预设</div>
+      <div class="round-grid" id="preset-grid">
+        <div class="round-card active" onclick="selectPreset(this,2,1,3)" data-w="2" data-r="1" data-n="3">
+          <div class="rc-val">2/1</div>
+          <div class="rc-lbl">初学者</div>
+        </div>
+        <div class="round-card" onclick="selectPreset(this,3,1,3)" data-w="3" data-r="1" data-n="3">
+          <div class="rc-val">3/1</div>
+          <div class="rc-lbl">经典</div>
+        </div>
+        <div class="round-card" onclick="selectPreset(this,5,1,3)" data-w="5" data-r="1" data-n="3">
+          <div class="rc-val">5/1</div>
+          <div class="rc-lbl">高强度</div>
+        </div>
+        <div class="round-card" onclick="selectPreset(this,1,1,6)" data-w="1" data-r="1" data-n="6">
+          <div class="rc-val">1/1</div>
+          <div class="rc-lbl">HIIT</div>
+        </div>
+      </div>
+
+      <div class="custom-row">
+        <div class="custom-field">
+          <div class="cf-label">训练时长（分钟）</div>
+          <div class="cf-stepper">
+            <button class="cf-btn" onclick="adjWork(-1)" aria-label="减少">−</button>
+            <div><span class="cf-val" id="work-val">2</span> <span class="cf-unit">min</span></div>
+            <button class="cf-btn" onclick="adjWork(1)" aria-label="增加">+</button>
+          </div>
+        </div>
+        <div class="custom-field">
+          <div class="cf-label">休息时长（分钟）</div>
+          <div class="cf-stepper">
+            <button class="cf-btn" onclick="adjRest(-1)" aria-label="减少">−</button>
+            <div><span class="cf-val" id="rest-val">1</span> <span class="cf-unit">min</span></div>
+            <button class="cf-btn" onclick="adjRest(1)" aria-label="增加">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="custom-row">
+        <div class="custom-field">
+          <div class="cf-label">回合数</div>
+          <div class="cf-stepper">
+            <button class="cf-btn" onclick="adjRounds(-1)" aria-label="减少">−</button>
+            <div><span class="cf-val" id="rounds-val">3</span> <span class="cf-unit">局</span></div>
+            <button class="cf-btn" onclick="adjRounds(1)" aria-label="增加">+</button>
+          </div>
+        </div>
+        <div class="custom-field">
+          <div class="cf-label">预计时长</div>
+          <div class="cf-stepper" style="justify-content:center">
+            <div style="text-align:center"><span class="cf-val" id="total-val">9</span> <span class="cf-unit">min</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">训练方式</div>
+      <div class="mode-row">
+        <div class="mode-card" id="mode-free" onclick="selectMode('free')">
+          <div class="mode-icon"><i class="ti ti-run" aria-hidden="true"></i></div>
+          <div class="mode-name">自由模式</div>
+          <div class="mode-desc">不限制节拍，自由出拳，记录力度和拳数</div>
+        </div>
+        <div class="mode-card active" id="mode-beat" onclick="selectMode('beat')">
+          <div class="mode-icon"><i class="ti ti-music" aria-hidden="true"></i></div>
+          <div class="mode-name">跟拍模式</div>
+          <div class="mode-desc">跟随音乐节拍出拳，实时踩点评分</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="bpm-section">
+      <div class="section-label">BPM 节拍速度</div>
+      <div class="card-block">
+        <div class="bpm-row">
+          <button class="cf-btn" onclick="adjBpm(-5)" aria-label="降低BPM">−</button>
+          <input type="range" class="bpm-slider" id="bpm-slider" min="40" max="140" step="5" value="80" oninput="setBpm(+this.value)" style="flex:1">
+          <button class="cf-btn" onclick="adjBpm(5)" aria-label="提高BPM">+</button>
+          <div style="text-align:center;min-width:52px">
+            <div class="bpm-num" id="bpm-display">80</div>
+            <div class="bpm-unit">BPM</div>
+          </div>
+        </div>
+        <div class="bpm-presets">
+          <div class="bpm-preset" onclick="quickBpm(52,this)">52<small>热身</small></div>
+          <div class="bpm-preset active" onclick="quickBpm(80,this)">80<small>标准</small></div>
+          <div class="bpm-preset" onclick="quickBpm(96,this)">96<small>进阶</small></div>
+          <div class="bpm-preset" onclick="quickBpm(110,this)">110<small>冲刺</small></div>
+          <div class="bpm-preset" onclick="quickBpm(128,this)">128<small>极速</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">训练摘要</div>
+      <div class="summary-box">
+        <div class="sum-row"><span class="sum-label">回合设置</span><span class="sum-val" id="sum-round">2 分打 · 1 分休 · 3 局</span></div>
+        <div class="sum-row"><span class="sum-label">训练方式</span><span class="sum-val" id="sum-mode">跟拍模式</span></div>
+        <div class="sum-row"><span class="sum-label">节拍速度</span><span class="sum-val" id="sum-bpm">80 BPM</span></div>
+        <div class="sum-row"><span class="sum-label">预计总时长</span><span class="sum-val" id="sum-total">9 分钟</span></div>
+      </div>
+    </div>
+
+    <button class="start-btn" onclick="sendPrompt('用户点击开始训练，设置为：'+document.getElementById(\'sum-round\').textContent+\'，\'+document.getElementById(\'sum-mode\').textContent+\'，BPM \'+document.getElementById(\'bpm-display\').textContent+\'，请设计训练开始的倒计时动画和首屏仪表盘展示方案 ↗')">
+      <i class="ti ti-player-play" aria-hidden="true"></i>
+      开始训练
+    </button>
+
+  </div>
+</div>
+</div>
+
+<div class="spec-panel">
+
+  <div class="spec-section">
+    <div class="ss-title"><i class="ti ti-layers-intersect" aria-hidden="true"></i>入口与触发</div>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">训练首页 → 「开始训练」</div>
+          <div class="step-sub">点击后展示本页（设置页），而非直接进入训练</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">训练中 → 「设置」图标</div>
+          <div class="step-sub">仅在暂停状态下可访问，训练中置灰不可点</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">记忆上次配置</div>
+          <div class="step-sub">每次打开默认加载上次使用的设置，首次使用加载推荐默认值</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="spec-section">
+    <div class="ss-title"><i class="ti ti-settings" aria-hidden="true"></i>回合参数规格</div>
+    <table class="spec-table">
+      <tr><td>训练时长范围</td><td>1 – 10 分钟，步进 1 分钟</td></tr>
+      <tr><td>休息时长范围</td><td>0 – 5 分钟，步进 0.5 分钟<br><span style="font-size:10px;color:var(--color-text-secondary)">0 = 无休息，连续训练</span></td></tr>
+      <tr><td>回合数范围</td><td>1 – 10 局，步进 1</td></tr>
+      <tr><td>预设选项</td><td>2/1·3/1·5/1·1/1 分钟</td></tr>
+      <tr><td>自定义联动</td><td>调整步进器时自动取消预设高亮</td></tr>
+      <tr><td>预计总时长</td><td>(训练+休息)×回合数，实时计算</td></tr>
+      <tr><td>最大总时长</td><td>软限制 60 分钟，超出黄色提醒</td></tr>
+    </table>
+  </div>
+
+  <div class="spec-section">
+    <div class="ss-title"><i class="ti ti-run" aria-hidden="true"></i>训练方式规格</div>
+    <table class="spec-table">
+      <tr><td>自由模式</td><td>不评分节拍，仅记录力度/拳数/BPM</td></tr>
+      <tr><td>跟拍模式</td><td>实时踩点评分：Perfect/Good/Miss</td></tr>
+      <tr><td>跟拍条件</td><td>必须同时选择 BPM 或绑定曲目</td></tr>
+      <tr><td>BPM 区域</td><td>自由模式时 BPM 区域灰化隐藏（仍可展开作为节拍器参考）</td></tr>
+      <tr><td>切换动画</td><td>BPM 区域 fade 200ms，无跳动</td></tr>
+    </table>
+  </div>
+
+  <div class="spec-section">
+    <div class="ss-title"><i class="ti ti-music" aria-hidden="true"></i>BPM 设置规格</div>
+    <table class="spec-table">
+      <tr><td>范围</td><td>40 – 140 BPM，步进 5</td></tr>
+      <tr><td>手动调节</td><td>±5 按钮 / 滑块拖拽，实时同步</td></tr>
+      <tr><td>快捷预设</td><td>52（热身）/ 80（标准）/ 96（进阶）/ 110（冲刺）/ 128（极速）</td></tr>
+      <tr><td>节拍器预览</td><td>调节时屏幕下方闪烁预览节拍格（可听见节拍器 tick 音）</td></tr>
+      <tr><td>自由模式状态</td><td>BPM 区域收起，点击可展开作为「参考节拍器」</td></tr>
+      <tr><td>与歌单联动</td><td>选择曲目后 BPM 自动填入，可手动微调 ±10</td></tr>
+      <tr><td>段位限制</td><td>BPM > 110 时显示「建议黄金段位以上使用」提示</td></tr>
+    </table>
+  </div>
+
+  <div class="spec-section">
+    <div class="ss-title"><i class="ti ti-device-mobile" aria-hidden="true"></i>交互与动效规格</div>
+    <table class="spec-table">
+      <tr><td>预设选中</td><td>border 1→1.5px + 背景变蓝，scale 1→1.04 弹跳 150ms</td></tr>
+      <tr><td>步进器按钮</td><td>长按 400ms 开始连续步进，200ms/次</td></tr>
+      <tr><td>摘要实时更新</td><td>任意参数变化后 100ms 内摘要区同步刷新</td></tr>
+      <tr><td>开始按钮</td><td>按下 scale 0.97，释放恢复，transition 100ms</td></tr>
+      <tr><td>「开始训练」</td><td>→ 全屏 3-2-1 倒计时 → 进入实时仪表盘</td></tr>
+      <tr><td>重置按钮</td><td>右上角图标，弹出确认，恢复推荐默认值</td></tr>
+      <tr><td>下拉关闭</td><td>下滑手势 > 80dp 触发关闭（底部弹窗形态）</td></tr>
+    </table>
+  </div>
+
+  <div class="spec-section">
+    <div class="ss-title"><i class="ti ti-volume" aria-hidden="true"></i>音效规格</div>
+    <table class="spec-table">
+      <tr><td>预设切换</td><td>轻微「咔」切换音，0.1s</td></tr>
+      <tr><td>步进器±</td><td>轻柔「滴」计数音，0.08s，长按连击时音量渐弱</td></tr>
+      <tr><td>BPM 预览</td><td>调节时低音量「哒」节拍器音，停止调节后 2s 停止</td></tr>
+      <tr><td>模式切换</td><td>自由模式：静音；跟拍模式：短促上扬提示音</td></tr>
+      <tr><td>开始训练</td><td>按下：无声；3-2-1 倒计时：人声或钟声，回合开始铃声</td></tr>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<script>
+let work=2,rest=1,rounds=3,mode='beat',bpm=80;
+
+function updateSummary(){
+  const total=(work+rest)*rounds;
+  document.getElementById('work-val').textContent=work;
+  document.getElementById('rest-val').textContent=rest;
+  document.getElementById('rounds-val').textContent=rounds;
+  document.getElementById('total-val').textContent=total;
+  document.getElementById('sum-round').textContent=work+'分打 · '+rest+'分休 · '+rounds+'局';
+  document.getElementById('sum-mode').textContent=mode==='beat'?'跟拍模式':'自由模式';
+  document.getElementById('sum-bpm').textContent=mode==='beat'?bpm+' BPM':'— （自由）';
+  document.getElementById('sum-total').textContent=total+' 分钟';
+  document.getElementById('total-val').textContent=total;
+  const totalWarn=total>60;
+  document.getElementById('total-val').style.color=totalWarn?'var(--color-text-warning)':'var(--color-text-primary)';
+}
+
+function selectPreset(el,w,r,n){
+  work=w;rest=r;rounds=n;
+  document.querySelectorAll('.round-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  updateSummary();
+}
+
+function deselectPresets(){
+  document.querySelectorAll('.round-card').forEach(c=>c.classList.remove('active'));
+}
+
+function adjWork(d){work=Math.max(1,Math.min(10,work+d));deselectPresets();updateSummary();}
+function adjRest(d){rest=Math.max(0,Math.min(5,rest+d));deselectPresets();updateSummary();}
+function adjRounds(d){rounds=Math.max(1,Math.min(10,rounds+d));deselectPresets();updateSummary();}
+
+function selectMode(m){
+  mode=m;
+  document.getElementById('mode-free').classList.toggle('active',m==='free');
+  document.getElementById('mode-beat').classList.toggle('active',m==='beat');
+  const sec=document.getElementById('bpm-section');
+  sec.style.opacity=m==='free'?'0.45':'1';
+  sec.style.pointerEvents=m==='free'?'none':'auto';
+  if(m==='free'){
+    const note=document.getElementById('bpm-lock-note');
+    if(!note){const n=document.createElement('div');n.id='bpm-lock-note';n.className='lock-note';n.textContent='自由模式下 BPM 不参与踩点评分';sec.after(n);}
+  } else {
+    const note=document.getElementById('bpm-lock-note');
+    if(note)note.remove();
+  }
+  updateSummary();
+}
+
+function setBpm(v){
+  bpm=v;
+  document.getElementById('bpm-display').textContent=v;
+  document.getElementById('bpm-slider').value=v;
+  document.querySelectorAll('.bpm-preset').forEach(p=>p.classList.remove('active'));
+  const presets=[52,80,96,110,128];
+  const idx=presets.indexOf(v);
+  if(idx>=0)document.querySelectorAll('.bpm-preset')[idx].classList.add('active');
+  updateSummary();
+}
+function adjBpm(d){setBpm(Math.max(40,Math.min(140,bpm+d)));}
+function quickBpm(v,el){
+  bpm=v;
+  document.getElementById('bpm-display').textContent=v;
+  document.getElementById('bpm-slider').value=v;
+  document.querySelectorAll('.bpm-preset').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  updateSummary();
+}
+
+function resetAll(){
+  work=2;rest=1;rounds=3;mode='beat';bpm=80;
+  selectMode('beat');
+  document.querySelectorAll('.round-card').forEach((c,i)=>c.classList.toggle('active',i===0));
+  document.getElementById('bpm-slider').value=80;
+  document.getElementById('bpm-display').textContent='80';
+  document.querySelectorAll('.bpm-preset').forEach((p,i)=>p.classList.toggle('active',i===1));
+  updateSummary();
+}
+
+updateSummary();
+</script>

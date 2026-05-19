@@ -1,0 +1,68 @@
+Accord utilisateur HitRise
+Version : V1.1
+Date d'effet : 2026-05-20
+
+1. Champ d'application
+Le présent accord s'applique à l'application HitRise, aux fonctions de connexion Bluetooth pour les balles de vitesse connectées, aux entraînements cloud, succès, classements, profils, effets sonores et musiques de fond fournis par Shaoxing Weimai Technology Co., Ltd.
+
+En téléchargeant, installant, ouvrant ou utilisant HitRise, vous confirmez avoir lu, compris et accepté cet accord. Si vous n'acceptez pas cet accord, veuillez cesser d'utiliser l'application.
+
+2. Produit et services
+HitRise fournit notamment :
+1. le scan et la connexion des appareils Bluetooth SENBALL# ;
+2. la lecture du nombre de coups, de la batterie, de l'état de charge et de la force ;
+3. un tableau de bord en temps réel, des rounds, un entraînement au tempo et des réglages ;
+4. des rapports, résumés de rounds, estimations de calories et de graisse brûlée ;
+5. des succès, badges, rangs, classements et profils ;
+6. des effets sonores locaux ou cloud, de la musique de fond et des affiches de partage.
+
+Certaines fonctions dépendent du matériel connecté, du Bluetooth du téléphone, des autorisations système, du réseau et des services cloud. Les téléphones, versions système et environnements Bluetooth différents peuvent influencer la connexion et les données.
+
+3. Conditions d'utilisation
+Utilisez HitRise dans un environnement sûr, ouvert et adapté à l'exercice. Avant l'entraînement, vérifiez que l'appareil est correctement installé, que la corde et l'environnement sont sûrs, et que l'intensité convient à votre condition physique.
+
+En cas de maladie, blessure, fatigue, vertige, gêne thoracique ou autre malaise, arrêtez immédiatement l'entraînement et demandez conseil si nécessaire. Les mineurs doivent utiliser l'application sous la supervision d'un parent ou tuteur.
+
+4. Bluetooth et données d'entraînement
+L'application reçoit les données de l'appareil SENBALL# par Bluetooth et affiche le nombre de coups, la force, la batterie et les statistiques de rounds. Les données peuvent varier selon l'état de l'appareil, la tolérance du capteur, le signal Bluetooth, la posture et l'environnement.
+
+Les données HitRise servent au retour d'exercice, aux statistiques, aux succès et aux classements. Elles ne doivent pas être utilisées comme diagnostic médical, évaluation de rééducation, conseil nutritionnel ou jugement officiel de compétition.
+
+5. Profil, classements et partage
+Vous pouvez définir un pseudo, un avatar, une région et une langue. Si vous utilisez les classements, succès ou fonctions de partage, votre pseudo, avatar, rang, scores et résumé d'entraînement peuvent être affichés à d'autres utilisateurs ou partagés par vous dans d'autres applications.
+
+Vous ne devez pas utiliser de contenus illégaux, contrefaisants, usurpant une identité ou inappropriés. Vous êtes responsable des informations que vous choisissez de partager.
+
+6. Comportements interdits
+Vous ne devez pas :
+1. falsifier, modifier ou produire massivement des données d'entraînement ;
+2. nuire à l'équité des classements ou gêner d'autres utilisateurs ;
+3. attaquer, scanner, rétroconcevoir, extraire ou perturber les API ;
+4. copier, modifier, distribuer ou exploiter commercialement l'application sans autorisation ;
+5. utiliser HitRise pour des activités illégales, contrefaisantes ou dangereuses.
+
+Nous pouvons restreindre, corriger, masquer ou suspendre des fonctions, données, identifiants ou affichages de classement en cas d'utilisation anormale, de contrôle de risque ou de plainte.
+
+7. Sons, musique et contenus
+Les effets sonores, musiques de fond, graphiques, textes, badges, interfaces et contenus d'entraînement fournis dans l'application ou le cloud sont destinés aux fonctions HitRise uniquement. Vous ne pouvez pas les extraire, copier, diffuser ou utiliser commercialement sans autorisation.
+
+8. Modifications, interruptions et maintenance
+Nous continuerons à améliorer le produit, mais des changements, interruptions, retards ou indisponibilités partielles peuvent survenir en raison de mises à jour, maintenance serveur, problèmes réseau, compatibilité matérielle, restrictions système, force majeure ou sécurité.
+
+9. Propriété intellectuelle
+L'application HitRise, son interface, code, algorithmes, icônes, textes, graphiques, ressources audio, système d'entraînement, marque et contenus associés appartiennent à Shaoxing Weimai Technology Co., Ltd. ou aux titulaires légitimes. Vous ne pouvez pas les copier, modifier, louer, vendre, rétroconcevoir ou exploiter commercialement sans autorisation.
+
+10. Limitation de responsabilité
+Dans la mesure permise par la loi, nous ne sommes pas responsables au-delà des exigences légales des pertes causées par une mauvaise utilisation, un environnement dangereux, une installation incorrecte, une condition physique inadaptée, des appareils ou réseaux tiers, des interférences Bluetooth, la force majeure ou les informations partagées par l'utilisateur.
+
+11. Mises à jour
+Nous pouvons mettre à jour cet accord en raison de changements de produit, d'exigences légales ou de besoins opérationnels. Les changements importants peuvent être signalés dans l'application, les notes de version ou par tout autre moyen raisonnable. La poursuite de l'utilisation de HitRise vaut acceptation de l'accord mis à jour.
+
+12. Droit applicable et litiges
+La formation, l'exécution et l'interprétation du présent accord sont régies par les lois de la République populaire de Chine. Les litiges doivent d'abord être résolus à l'amiable ; à défaut, chaque partie peut saisir un tribunal populaire compétent.
+
+13. Nous contacter
+Opérateur : Shaoxing Weimai Technology Co., Ltd.
+E-mail : zclei@vip.sina.com
+
+Pour toute question concernant cet accord ou le service, veuillez nous contacter.

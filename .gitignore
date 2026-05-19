@@ -1,0 +1,41 @@
+# Android build/local machine files
+hitrise-android/.gradle/
+hitrise-android/**/build/
+hitrise-android/local.properties
+*.apk
+*.aab
+
+# Python/server generated files
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+hitrise-server/.venv/
+hitrise-server/.auth-deploy-venv/
+
+# Runtime secrets and deployment snapshots
+hitrise-deploy/runtime/
+hitrise-deploy/apk/
+*.env
+!*.env.example
+*.sql.gz
+*auth.env
+*server-runtime-params/
+
+# Generated verification screenshots and UI dumps
+hitrise-deploy/*.png
+hitrise-deploy/*.xml
+hitrise-deploy/*.log
+hitrise-deploy/icon/
+hitrise-deploy/verify_language/
+hitrise-deploy/verify_language_current/
+
+# Keep Smart sensor ball reference project out of the Hitrise repository
+smartsensorball/
+hitrise-docs/SmartSensorBall_*
+
+# IDE and OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

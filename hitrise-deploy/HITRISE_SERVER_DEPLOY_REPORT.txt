@@ -1,0 +1,17 @@
+HITRISE DEPLOY REPORT
+Generated: 2026-05-19 07:03:30
+Database: hitrise
+Remote service dir: /opt/hitrise-auth
+Upload dir: /opt/hitrise-auth/uploads
+Log dir: /var/log/hitrise-auth
+Env file: /etc/hitrise-auth.env
+Systemd: /etc/systemd/system/hitrise-auth.service
+Nginx snippet: /etc/nginx/snippets/hitrise-auth-location.conf
+Base URL: http://152.136.62.157/hitrise/api/v1/
+Port: 8014
+Product code: HTR01
+Android app name: HitRise
+Android applicationId: com.zclei.hitrise
+Runtime snapshot directory: D:\2026\202605\hitrise\hitrise-deploy\runtime
+
+Sensitive runtime parameters are stored in runtime\hitrise-auth.env and should not be published.

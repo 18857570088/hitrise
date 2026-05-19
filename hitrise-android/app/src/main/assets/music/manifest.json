@@ -1,0 +1,62 @@
+{
+  "version": 3,
+  "updated_at": "2026-05-20T15:45:00+08:00",
+  "license": "original_hitrise_generated",
+  "items": [
+    {
+      "id": "htr_music_champion_rush",
+      "name_zh": "冠军冲刺",
+      "name_en": "Champion Rush",
+      "description_zh": "明亮电子主旋律，适合训练开始后提速。 约 122 BPM。",
+      "description_en": "Bright electro melody for energetic warm-up pushes. Around 122 BPM.",
+      "style": "light_electro",
+      "bpm": 122,
+      "file": "01_htr_music_champion_rush.wav",
+      "duration_ms": 15738
+    },
+    {
+      "id": "htr_music_ring_voltage",
+      "name_zh": "擂台电光",
+      "name_en": "Ring Voltage",
+      "description_zh": "流行运动节奏，轻鼓点带动出拳节奏。 约 118 BPM。",
+      "description_en": "Pop fitness groove with light drums and clean motion. Around 118 BPM.",
+      "style": "pop_fitness",
+      "bpm": 118,
+      "file": "02_htr_music_ring_voltage.wav",
+      "duration_ms": 16271
+    },
+    {
+      "id": "htr_music_street_ignite",
+      "name_zh": "街区开场",
+      "name_en": "Street Ignite",
+      "description_zh": "轻摇滚律动，吉他式分解和轻快鼓组。 约 112 BPM。",
+      "description_en": "Light rock rhythm with guitar-like strums and easy drums. Around 112 BPM.",
+      "style": "light_rock",
+      "bpm": 112,
+      "file": "03_htr_music_street_ignite.wav",
+      "duration_ms": 17143
+    },
+    {
+      "id": "htr_music_iron_drive",
+      "name_zh": "钢铁律动",
+      "name_en": "Iron Drive",
+      "description_zh": "流行摇滚推进感，有力但不刺耳。 约 116 BPM。",
+      "description_en": "Pop-rock drive that feels athletic without heavy impact. Around 116 BPM.",
+      "style": "pop_rock",
+      "bpm": 116,
+      "file": "04_htr_music_iron_drive.wav",
+      "duration_ms": 16552
+    },
+    {
+      "id": "htr_music_neon_combo",
+      "name_zh": "霓虹连击",
+      "name_en": "Neon Combo",
+      "description_zh": "跳动合成器和清亮音色，适合连击练习。 约 124 BPM。",
+      "description_en": "Bouncy synth colors for combo drills. Around 124 BPM.",
+      "style": "light_electro",
+      "bpm": 124,
+      "file": "05_htr_music_neon_combo.wav",
+      "duration_ms": 15484
+    }
+  ]
+}

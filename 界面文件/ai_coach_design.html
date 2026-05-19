@@ -1,0 +1,332 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding:1rem 0}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px}
+.card-full{grid-column:1/-1}
+.card-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.card-hdr i{font-size:18px;color:var(--color-text-secondary)}
+.card-hdr .label{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.card-hdr .badge{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:20px}
+.badge-amber{background:#FAEEDA;color:#854F0B}
+.badge-teal{background:#E1F5EE;color:#0F6E56}
+.badge-blue{background:#E6F1FB;color:#185FA5}
+.badge-purple{background:#EEEDFE;color:#534AB7}
+@media(prefers-color-scheme:dark){
+  .badge-amber{background:#412402;color:#FAC775}
+  .badge-teal{background:#04342C;color:#9FE1CB}
+  .badge-blue{background:#042C53;color:#B5D4F4}
+  .badge-purple{background:#26215C;color:#CECBF6}
+}
+
+.coach-bubble-wrap{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px;margin-bottom:12px;position:relative}
+.coach-avatar{width:32px;height:32px;border-radius:50%;background:var(--color-background-info);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--color-text-info);flex-shrink:0}
+.coach-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.coach-msg{font-size:12px;color:var(--color-text-primary);line-height:1.6;flex:1}
+.coach-meta{font-size:10px;color:var(--color-text-tertiary);margin-top:4px}
+.voice-bar{display:flex;gap:3px;align-items:flex-end;height:20px;margin-top:8px}
+.voice-bar span{width:3px;background:var(--color-border-secondary);border-radius:2px;animation:voice var(--d,.6s) ease-in-out infinite alternate}
+@keyframes voice{from{height:4px}to{height:var(--h,14px)}}
+.voice-bar.muted span{animation:none;height:4px}
+
+.radar-wrap{display:flex;justify-content:center;margin:4px 0 8px}
+
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px}
+.day-col{text-align:center}
+.day-lbl{font-size:9px;color:var(--color-text-tertiary);margin-bottom:4px}
+.day-dot{width:28px;height:28px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500}
+.dot-done{background:#EAF3DE;color:#3B6D11}
+.dot-today{background:#E6F1FB;color:#185FA5;border:1.5px solid #378ADD}
+.dot-rest{background:var(--color-background-secondary);color:var(--color-text-tertiary)}
+.dot-future{background:var(--color-background-secondary);color:var(--color-text-tertiary);opacity:.5}
+@media(prefers-color-scheme:dark){
+  .dot-done{background:#173404;color:#C0DD97}
+  .dot-today{background:#042C53;color:#B5D4F4;border-color:#378ADD}
+}
+
+.plan-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.plan-item:last-child{border-bottom:none}
+.plan-icon{width:30px;height:30px;border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.pi-amber{background:#FAEEDA;color:#854F0B}
+.pi-blue{background:#E6F1FB;color:#185FA5}
+.pi-teal{background:#E1F5EE;color:#0F6E56}
+.pi-purple{background:#EEEDFE;color:#534AB7}
+@media(prefers-color-scheme:dark){
+  .pi-amber{background:#412402;color:#FAC775}
+  .pi-blue{background:#042C53;color:#B5D4F4}
+  .pi-teal{background:#04342C;color:#9FE1CB}
+  .pi-purple{background:#26215C;color:#CECBF6}
+}
+.plan-text{flex:1;min-width:0}
+.plan-title{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.plan-sub{font-size:10px;color:var(--color-text-secondary);margin-top:1px}
+.plan-dur{font-size:10px;color:var(--color-text-tertiary);flex-shrink:0}
+
+.insight-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.insight-row:last-child{border-bottom:none}
+.insight-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.insight-text{font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.insight-text strong{font-weight:500;color:var(--color-text-primary)}
+
+.voice-cue-list{display:flex;flex-direction:column;gap:6px}
+.cue-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);cursor:pointer;transition:background .15s}
+.cue-item:hover{background:var(--color-border-tertiary)}
+.cue-trigger{font-size:10px;padding:2px 7px;border-radius:20px;flex-shrink:0}
+.cue-text{font-size:11px;color:var(--color-text-primary);flex:1}
+.cue-play{font-size:13px;color:var(--color-text-tertiary)}
+
+.prog-row{margin-bottom:10px}
+.prog-label{display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-secondary);margin-bottom:5px}
+.prog-track{height:6px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+.tempo-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.tempo-val{font-size:24px;font-weight:500;color:var(--color-text-primary);min-width:44px}
+.tempo-label{font-size:10px;color:var(--color-text-secondary)}
+.metronome-dot{width:10px;height:10px;border-radius:50%;background:var(--color-border-secondary);transition:background .08s}
+.metronome-dot.beat{background:#378ADD}
+</style>
+
+<h2 class="sr-only">AI教练与训练计划模块原型，包含语音指导、体能雷达图、周计划和个性化洞察四大区域</h2>
+
+<div class="layout">
+
+  <div class="card card-full">
+    <div class="card-hdr">
+      <i class="ti ti-robot" aria-hidden="true"></i>
+      <span class="label">AI 教练实时指导</span>
+      <span class="badge badge-amber" id="coach-status">语音播报中</span>
+    </div>
+    <div class="coach-bubble-wrap">
+      <div class="coach-row">
+        <div class="coach-avatar">AI</div>
+        <div style="flex:1">
+          <div class="coach-msg" id="coach-msg">注意节奏！你的右手力度比左手高出 38%，试着用左手多出几拳，保持平衡。接下来 30 秒加速，目标 BPM 提升到 72。</div>
+          <div class="coach-meta" id="coach-meta">触发原因：左右手力度差异超阈值 · 刚刚</div>
+        </div>
+      </div>
+      <div class="voice-bar" id="voice-bar">
+        <span style="--d:.5s;--h:8px"></span><span style="--d:.7s;--h:16px"></span><span style="--d:.4s;--h:12px"></span><span style="--d:.8s;--h:18px"></span><span style="--d:.6s;--h:10px"></span><span style="--d:.5s;--h:14px"></span><span style="--d:.9s;--h:6px"></span><span style="--d:.4s;--h:20px"></span><span style="--d:.7s;--h:10px"></span><span style="--d:.6s;--h:16px"></span>
+      </div>
+    </div>
+    <div class="voice-cue-list">
+      <div class="cue-item" onclick="showCue(0)">
+        <span class="cue-trigger badge-blue" style="font-size:10px;padding:2px 7px;border-radius:20px">BPM 低于目标</span>
+        <span class="cue-text">「加快节奏！感觉你慢下来了，跟上节拍！」</span>
+        <i class="ti ti-player-play cue-play" aria-hidden="true"></i>
+      </div>
+      <div class="cue-item" onclick="showCue(1)">
+        <span class="cue-trigger badge-teal" style="font-size:10px;padding:2px 7px;border-radius:20px">连续命中 10 拳</span>
+        <span class="cue-text">「漂亮！保持这个状态，再来一组！」</span>
+        <i class="ti ti-player-play cue-play" aria-hidden="true"></i>
+      </div>
+      <div class="cue-item" onclick="showCue(2)">
+        <span class="cue-trigger badge-amber" style="font-size:10px;padding:2px 7px;border-radius:20px">力度骤降 20%</span>
+        <span class="cue-text">「注意力度！打得扎实一点，不是在挠痒痒！」</span>
+        <i class="ti ti-player-play cue-play" aria-hidden="true"></i>
+      </div>
+      <div class="cue-item" onclick="showCue(3)">
+        <span class="cue-trigger badge-purple" style="font-size:10px;padding:2px 7px;border-radius:20px">回合结束 30s</span>
+        <span class="cue-text">「最后 30 秒！全力冲刺，把能量榨干！」</span>
+        <i class="ti ti-player-play cue-play" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <i class="ti ti-chart-radar" aria-hidden="true"></i>
+      <span class="label">体能能力雷达图</span>
+      <span class="badge badge-purple">本周评估</span>
+    </div>
+    <div class="radar-wrap">
+      <svg width="180" height="180" viewBox="0 0 180 180">
+        <defs>
+          <polygon id="hex" points="90,18 152,54 152,126 90,162 28,126 28,54" fill="none" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+        </defs>
+        <use href="#hex" transform="scale(0.333) translate(120,120)"/>
+        <use href="#hex" transform="scale(0.555) translate(40.5,40.5)"/>
+        <use href="#hex" transform="scale(0.778) translate(20.25,20.25)"/>
+        <use href="#hex"/>
+        <line x1="90" y1="18" x2="90" y2="162" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+        <line x1="28" y1="54" x2="152" y2="126" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+        <line x1="28" y1="126" x2="152" y2="54" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+        <polygon id="radar-fill" points="90,38 137,68 128,122 72,134 43,84 74,46" fill="#E6F1FB" stroke="#378ADD" stroke-width="1.5" fill-opacity="0.7"/>
+        <circle cx="90" cy="38" r="3" fill="#378ADD"/>
+        <circle cx="137" cy="68" r="3" fill="#378ADD"/>
+        <circle cx="128" cy="122" r="3" fill="#378ADD"/>
+        <circle cx="72" cy="134" r="3" fill="#378ADD"/>
+        <circle cx="43" cy="84" r="3" fill="#378ADD"/>
+        <circle cx="74" cy="46" r="3" fill="#378ADD"/>
+        <text x="90" y="12" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">爆发力</text>
+        <text x="160" y="62" text-anchor="start" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">右手</text>
+        <text x="158" y="130" text-anchor="start" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">耐力</text>
+        <text x="90" y="175" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">节奏感</text>
+        <text x="20" y="130" text-anchor="end" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">左手</text>
+        <text x="22" y="62" text-anchor="end" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">反应</text>
+      </svg>
+    </div>
+    <div>
+      <div class="prog-row">
+        <div class="prog-label"><span>爆发力</span><span>82</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:82%;background:#378ADD"></div></div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label"><span>右手均力</span><span>76</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:76%;background:#378ADD"></div></div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label"><span style="color:var(--color-text-warning)">左手均力 <i class="ti ti-arrow-up" style="font-size:10px" aria-hidden="true"></i> 待强化</span><span>51</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:51%;background:#BA7517"></div></div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label"><span>节奏感</span><span>68</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:68%;background:#378ADD"></div></div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-label"><span>耐力</span><span>73</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:73%;background:#378ADD"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <i class="ti ti-calendar-week" aria-hidden="true"></i>
+      <span class="label">本周训练计划</span>
+      <span class="badge badge-teal">第 3 周</span>
+    </div>
+    <div class="week-grid">
+      <div class="day-col"><div class="day-lbl">一</div><div class="day-dot dot-done"><i class="ti ti-check" style="font-size:11px" aria-hidden="true"></i></div></div>
+      <div class="day-col"><div class="day-lbl">二</div><div class="day-dot dot-done"><i class="ti ti-check" style="font-size:11px" aria-hidden="true"></i></div></div>
+      <div class="day-col"><div class="day-lbl">三</div><div class="day-dot dot-rest">休</div></div>
+      <div class="day-col"><div class="day-lbl">四</div><div class="day-dot dot-done"><i class="ti ti-check" style="font-size:11px" aria-hidden="true"></i></div></div>
+      <div class="day-col"><div class="day-lbl">五</div><div class="day-dot dot-today">今</div></div>
+      <div class="day-col"><div class="day-lbl">六</div><div class="day-dot dot-future">·</div></div>
+      <div class="day-col"><div class="day-lbl">日</div><div class="day-dot dot-rest">休</div></div>
+    </div>
+    <div>
+      <div class="plan-item">
+        <div class="plan-icon pi-amber"><i class="ti ti-bolt" aria-hidden="true"></i></div>
+        <div class="plan-text">
+          <div class="plan-title">爆发力强化组</div>
+          <div class="plan-sub">左手专项 · 重拳连击 × 4 组</div>
+        </div>
+        <div class="plan-dur">20 min</div>
+      </div>
+      <div class="plan-item">
+        <div class="plan-icon pi-blue"><i class="ti ti-music" aria-hidden="true"></i></div>
+        <div class="plan-text">
+          <div class="plan-title">节拍跟随训练</div>
+          <div class="plan-sub">BPM 65 → 80 渐进</div>
+        </div>
+        <div class="plan-dur">15 min</div>
+      </div>
+      <div class="plan-item">
+        <div class="plan-icon pi-teal"><i class="ti ti-repeat" aria-hidden="true"></i></div>
+        <div class="plan-text">
+          <div class="plan-title">Jab-Cross-Hook 连击</div>
+          <div class="plan-sub">组合流畅度提升</div>
+        </div>
+        <div class="plan-dur">10 min</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-full">
+    <div class="card-hdr">
+      <i class="ti ti-sparkles" aria-hidden="true"></i>
+      <span class="label">AI 数据洞察 · 本周分析</span>
+    </div>
+    <div>
+      <div class="insight-row">
+        <div class="insight-dot" style="background:#E24B4A"></div>
+        <div class="insight-text"><strong>左右手失衡（优先改善）</strong>：右手平均力度 84N，左手仅 51N，差距 39%。AI 建议：接下来 3 次训练以左手专项为主，右手辅助配合。</div>
+      </div>
+      <div class="insight-row">
+        <div class="insight-dot" style="background:#BA7517"></div>
+        <div class="insight-text"><strong>节奏稳定性提升空间</strong>：你的 BPM 在每回合第 2 分钟后平均下跌 18%，体现耐力不足。建议加入 2 分钟持续中速节拍练习。</div>
+      </div>
+      <div class="insight-row">
+        <div class="insight-dot" style="background:#639922"></div>
+        <div class="insight-text"><strong>爆发力进步显著</strong>：本周单拳峰值力度较上周提升 12%，达 143N，你的重拳实力已超过同段位 67% 的用户。</div>
+      </div>
+      <div class="insight-row">
+        <div class="insight-dot" style="background:#378ADD"></div>
+        <div class="insight-text"><strong>连击识别率上升</strong>：Jab-Cross 组合完成率达 84%（上周 71%），AI 推荐下周挑战 Jab-Cross-Hook-Uppercut 四连击。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-full">
+    <div class="card-hdr">
+      <i class="ti ti-metronome" aria-hidden="true"></i>
+      <span class="label">节拍训练模式</span>
+      <span class="badge badge-blue" id="metro-state">运行中</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+      <div>
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:2px">当前节拍</div>
+        <div class="tempo-val" id="bpm-display">65</div>
+        <div style="font-size:10px;color:var(--color-text-secondary)">BPM</div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;gap:6px;margin-bottom:10px" id="metro-dots">
+          <div class="metronome-dot" id="md0"></div>
+          <div class="metronome-dot" id="md1"></div>
+          <div class="metronome-dot" id="md2"></div>
+          <div class="metronome-dot" id="md3"></div>
+        </div>
+        <input type="range" min="40" max="120" value="65" step="1" id="bpm-slider" oninput="setBpm(+this.value)" style="width:100%">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary);margin-top:3px"><span>40 慢速热身</span><span>120 极速冲刺</span></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="sendPrompt('请设计节拍训练的渐进式课程方案，从40BPM到120BPM如何分阶段训练 ↗')" style="font-size:11px;padding:6px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;flex:1">渐进课程设计 ↗</button>
+      <button onclick="sendPrompt('请设计音乐节拍与击打数据的同步方案，如何实现踩点击打的准确率评分 ↗')" style="font-size:11px;padding:6px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;flex:1">踩点评分机制 ↗</button>
+    </div>
+  </div>
+
+</div>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;padding-bottom:4px">
+  <button onclick="sendPrompt('请详细设计训练计划的个性化生成算法，基于用户历史数据如何动态调整每周计划 ↗')" style="font-size:12px;padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer">个性化计划算法 ↗</button>
+  <button onclick="sendPrompt('请设计AI语音教练的多风格人格系统，例如严厉型、鼓励型、专业型的话术差异 ↗')" style="font-size:12px;padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer">教练人格系统 ↗</button>
+  <button onclick="sendPrompt('请设计游戏化挑战系统的详细方案，包括段位、成就和每日任务 ↗')" style="font-size:12px;padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer">游戏化挑战系统 ↗</button>
+</div>
+
+<script>
+const cues=[
+  {msg:'加快节奏！你的BPM已经低于目标值 12 拳，感觉你慢下来了——跟上节拍，保持爆发！',meta:'触发原因：BPM低于目标值 · 刚刚'},
+  {msg:'漂亮！连续命中 10 拳，这组节奏非常稳！保持这个状态，再来一组，我看好你！',meta:'触发原因：连续命中10拳 · 刚刚'},
+  {msg:'注意力度！你的右手力度刚才骤降了 20%，打得扎实一点——不是在挠痒痒！',meta:'触发原因：力度骤降超阈值 · 刚刚'},
+  {msg:'最后 30 秒！全力冲刺，把今天所有能量都榨干，下回合你就可以好好休息！',meta:'触发原因：回合结束倒计时 · 刚刚'},
+];
+
+function showCue(i){
+  document.getElementById('coach-msg').textContent=cues[i].msg;
+  document.getElementById('coach-meta').textContent=cues[i].meta;
+  const bar=document.getElementById('voice-bar');
+  bar.classList.remove('muted');
+  clearTimeout(bar._t);
+  bar._t=setTimeout(()=>bar.classList.add('muted'),4000);
+}
+
+let bpm=65,metroTick=0,metroRef;
+function setBpm(v){
+  bpm=v;
+  document.getElementById('bpm-display').textContent=v;
+  clearInterval(metroRef);
+  startMetro();
+}
+function startMetro(){
+  const interval=Math.round(60000/bpm/4);
+  metroRef=setInterval(()=>{
+    document.querySelectorAll('.metronome-dot').forEach(d=>d.classList.remove('beat'));
+    const d=document.getElementById('md'+metroTick%4);
+    if(d)d.classList.add('beat');
+    metroTick++;
+  },interval);
+}
+startMetro();
+</script>

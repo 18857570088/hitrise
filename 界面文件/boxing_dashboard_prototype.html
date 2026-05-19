@@ -1,0 +1,282 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.phone-wrap{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:20px;display:flex;justify-content:center}
+.phone{width:340px;background:var(--color-background-primary);border-radius:28px;border:0.5px solid var(--color-border-tertiary);overflow:hidden;font-family:var(--font-sans)}
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:10px 18px 6px;font-size:11px;color:var(--color-text-secondary)}
+.screen-body{padding:0 16px 20px}
+.top-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0 12px}
+.top-row .title{font-size:16px;font-weight:500;color:var(--color-text-primary)}
+.top-row .round-badge{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--color-background-danger);color:var(--color-text-danger);font-weight:500}
+
+.timer-ring{display:flex;flex-direction:column;align-items:center;margin:4px 0 14px}
+.timer-svg{position:relative}
+.timer-val{font-size:28px;font-weight:500;color:var(--color-text-primary);text-align:center;margin-top:6px}
+.timer-sub{font-size:11px;color:var(--color-text-secondary);text-align:center}
+
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 8px;text-align:center}
+.metric .val{font-size:18px;font-weight:500;color:var(--color-text-primary)}
+.metric .lbl{font-size:10px;color:var(--color-text-secondary);margin-top:2px}
+.metric .unit{font-size:10px;color:var(--color-text-tertiary)}
+
+.section-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.section-hdr span{font-size:12px;font-weight:500;color:var(--color-text-secondary)}
+.section-hdr .tag{font-size:10px;padding:2px 7px;border-radius:var(--border-radius-md);background:var(--color-background-info);color:var(--color-text-info)}
+
+.wave-wrap{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px;margin-bottom:12px;position:relative;height:72px}
+.wave-canvas{width:100%;height:100%;display:block}
+
+.hand-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.hand-card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px}
+.hand-label{font-size:10px;color:var(--color-text-secondary);margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.hand-label i{font-size:12px}
+.bar-track{height:6px;background:var(--color-border-tertiary);border-radius:3px;margin-bottom:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.bar-l{background:#378ADD}
+.bar-r{background:#D85A30}
+.hand-pct{font-size:16px;font-weight:500;color:var(--color-text-primary)}
+.hand-sub{font-size:10px;color:var(--color-text-secondary)}
+
+.combo-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.combo-pill{font-size:10px;padding:4px 9px;border-radius:20px;border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);background:var(--color-background-primary)}
+.combo-pill.active{background:var(--color-background-success);color:var(--color-text-success);border-color:transparent}
+
+.ctrl-row{display:flex;gap:8px;margin-top:4px}
+.ctrl-btn{flex:1;padding:10px 0;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);font-size:12px;font-weight:500;color:var(--color-text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s}
+.ctrl-btn:hover{background:var(--color-background-secondary)}
+.ctrl-btn.primary{background:var(--color-background-danger);color:var(--color-text-danger);border-color:transparent}
+.ctrl-btn.primary:hover{opacity:.85}
+
+.divider{height:0.5px;background:var(--color-border-tertiary);margin:10px 0}
+</style>
+
+<h2 class="sr-only">实时训练仪表盘 APP 原型，包含计时器、击打力度波形、左右手对比和连击识别功能</h2>
+
+<div class="phone-wrap">
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="display:flex;gap:4px;align-items:center">
+      <i class="ti ti-wifi" style="font-size:12px" aria-hidden="true"></i>
+      <i class="ti ti-battery-2" style="font-size:12px" aria-hidden="true"></i>
+    </span>
+  </div>
+  <div class="screen-body">
+    <div class="top-row">
+      <span class="title">实时训练</span>
+      <span class="round-badge" id="round-badge">第 1 回合</span>
+    </div>
+
+    <div class="timer-ring">
+      <svg width="110" height="110" viewBox="0 0 110 110" class="timer-svg">
+        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--color-border-tertiary)" stroke-width="5"/>
+        <circle id="ring" cx="55" cy="55" r="46" fill="none" stroke="#E24B4A" stroke-width="5"
+          stroke-dasharray="289" stroke-dashoffset="0" stroke-linecap="round"
+          transform="rotate(-90 55 55)" style="transition:stroke-dashoffset .5s linear"/>
+        <text x="55" y="50" text-anchor="middle" font-size="22" font-weight="500" fill="var(--color-text-primary)" font-family="var(--font-sans)" id="timer-display">3:00</text>
+        <text x="55" y="67" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">回合时间</text>
+      </svg>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="val" id="punch-count">0</div>
+        <div class="lbl">总击打数</div>
+      </div>
+      <div class="metric">
+        <div class="val" id="bpm-val">—</div>
+        <div class="lbl">BPM</div>
+      </div>
+      <div class="metric">
+        <div class="val" id="kcal-val">0</div>
+        <div class="lbl">卡路里<span class="unit"> kcal</span></div>
+      </div>
+    </div>
+
+    <div class="section-hdr">
+      <span><i class="ti ti-activity" style="font-size:13px;vertical-align:-1px;margin-right:4px" aria-hidden="true"></i>击打力度</span>
+      <span class="tag" id="peak-tag">峰值 — N</span>
+    </div>
+    <div class="wave-wrap">
+      <canvas class="wave-canvas" id="waveCanvas" height="52"></canvas>
+    </div>
+
+    <div class="section-hdr">
+      <span><i class="ti ti-arrows-left-right" style="font-size:13px;vertical-align:-1px;margin-right:4px" aria-hidden="true"></i>左右手对比</span>
+    </div>
+    <div class="hand-row">
+      <div class="hand-card">
+        <div class="hand-label"><i class="ti ti-hand-finger" aria-hidden="true"></i>左手</div>
+        <div class="bar-track"><div class="bar-fill bar-l" id="bar-l" style="width:0%"></div></div>
+        <div class="hand-pct" id="pct-l">—</div>
+        <div class="hand-sub">平均力度</div>
+      </div>
+      <div class="hand-card">
+        <div class="hand-label"><i class="ti ti-hand-finger" aria-hidden="true"></i>右手</div>
+        <div class="bar-track"><div class="bar-fill bar-r" id="bar-r" style="width:0%"></div></div>
+        <div class="hand-pct" id="pct-r">—</div>
+        <div class="hand-sub">平均力度</div>
+      </div>
+    </div>
+
+    <div class="section-hdr">
+      <span><i class="ti ti-bolt" style="font-size:13px;vertical-align:-1px;margin-right:4px" aria-hidden="true"></i>连击识别</span>
+    </div>
+    <div class="combo-row" id="combo-row">
+      <span class="combo-pill" id="c1">Jab</span>
+      <span class="combo-pill" id="c2">Cross</span>
+      <span class="combo-pill" id="c3">Hook</span>
+      <span class="combo-pill" id="c4">Jab-Cross</span>
+      <span class="combo-pill" id="c5">1-2-3</span>
+    </div>
+
+    <div class="divider"></div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" onclick="togglePause()">
+        <i class="ti ti-player-pause" id="pause-icon" style="font-size:14px" aria-hidden="true"></i>
+        <span id="pause-label">暂停</span>
+      </button>
+      <button class="ctrl-btn primary" onclick="resetSim()">
+        <i class="ti ti-refresh" style="font-size:14px" aria-hidden="true"></i>
+        结束
+      </button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px;display:flex;align-items:center;gap:4px"><i class="ti ti-bluetooth" style="font-size:13px" aria-hidden="true"></i>蓝牙状态</div>
+    <div style="font-size:13px;font-weight:500;color:var(--color-text-success);display:flex;align-items:center;gap:4px"><i class="ti ti-check" style="font-size:13px" aria-hidden="true"></i>已连接</div>
+    <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:2px">OES速度球 · 延迟 12ms</div>
+  </div>
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px;display:flex;align-items:center;gap:4px"><i class="ti ti-clock" style="font-size:13px" aria-hidden="true"></i>回合设置</div>
+    <div style="font-size:13px;font-weight:500;color:var(--color-text-primary)">3 分打 / 1 分休</div>
+    <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:2px">共 5 回合</div>
+  </div>
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px;display:flex;align-items:center;gap:4px"><i class="ti ti-target" style="font-size:13px" aria-hidden="true"></i>今日目标</div>
+    <div style="font-size:13px;font-weight:500;color:var(--color-text-primary)">500 拳</div>
+    <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:2px" id="goal-progress">已完成 0%</div>
+  </div>
+</div>
+
+<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+  <button onclick="sendPrompt('请详细设计训练结束后的成绩总结页面，包括数据卡片布局和分享功能 ↗')" style="font-size:12px;padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer">训练结束页设计 ↗</button>
+  <button onclick="sendPrompt('请设计AI教练的语音指导系统，包括触发条件、指令逻辑和UI反馈 ↗')" style="font-size:12px;padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer">AI语音教练设计 ↗</button>
+  <button onclick="sendPrompt('请设计连击识别算法的逻辑和UI动画效果 ↗')" style="font-size:12px;padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer">连击识别算法 ↗</button>
+</div>
+
+<script>
+const ROUND_SECS = 180;
+let elapsed = 0, paused = false, punches = 0, leftSum = 0, rightSum = 0, leftCount = 0, rightCount = 0, peakForce = 0, timerRef, punchRef;
+const waveData = [];
+const MAX_WAVE = 42;
+const GOAL = 500;
+
+function fmt(s){const m=Math.floor(s/60);return m+':'+(s%60<10?'0':'')+s%60}
+
+function drawWave(){
+  const c=document.getElementById('waveCanvas');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.offsetWidth||280,H=52;
+  c.width=W;c.height=H;
+  ctx.clearRect(0,0,W,H);
+  const bw=Math.max(4,Math.floor((W-MAX_WAVE)/MAX_WAVE));
+  const gap=2;
+  const step=bw+gap;
+  for(let i=0;i<waveData.length;i++){
+    const x=W-(waveData.length-i)*step;
+    const h=Math.max(3,Math.round(waveData[i]/100*H*0.9));
+    const y=H-h;
+    ctx.fillStyle=waveData[i]>70?'#E24B4A':waveData[i]>40?'#BA7517':'#378ADD';
+    ctx.beginPath();
+    ctx.roundRect(x,y,bw,h,2);
+    ctx.fill();
+  }
+}
+
+function addPunch(){
+  if(paused)return;
+  const isLeft=Math.random()>0.5;
+  const force=Math.round(20+Math.random()*80);
+  punches++;
+  if(isLeft){leftSum+=force;leftCount++;}else{rightSum+=force;rightCount++;}
+  if(force>peakForce)peakForce=force;
+  waveData.push(force);
+  if(waveData.length>MAX_WAVE)waveData.shift();
+
+  document.getElementById('punch-count').textContent=punches;
+  document.getElementById('bpm-val').textContent=Math.round(punches/(Math.max(elapsed,1)/60));
+  document.getElementById('kcal-val').textContent=Math.round(punches*0.12);
+  document.getElementById('peak-tag').textContent='峰值 '+peakForce+' N';
+  document.getElementById('goal-progress').textContent='已完成 '+Math.min(100,Math.round(punches/GOAL*100))+'%';
+
+  const la=leftCount?Math.round(leftSum/leftCount):0;
+  const ra=rightCount?Math.round(rightSum/rightCount):0;
+  const mx=Math.max(la,ra,1);
+  document.getElementById('pct-l').textContent=la+' N';
+  document.getElementById('pct-r').textContent=ra+' N';
+  document.getElementById('bar-l').style.width=Math.round(la/mx*100)+'%';
+  document.getElementById('bar-r').style.width=Math.round(ra/mx*100)+'%';
+
+  const combos=['c1','c2','c3','c4','c5'];
+  combos.forEach(id=>document.getElementById(id).classList.remove('active'));
+  if(punches%7===0)document.getElementById('c4').classList.add('active');
+  else if(punches%11===0)document.getElementById('c5').classList.add('active');
+  else{const r=combos[Math.floor(Math.random()*3)];document.getElementById(r).classList.add('active');}
+
+  drawWave();
+}
+
+function tick(){
+  if(paused)return;
+  elapsed++;
+  const rem=ROUND_SECS-elapsed;
+  if(rem<=0){clearInterval(timerRef);clearInterval(punchRef);document.getElementById('timer-display').textContent='0:00';return;}
+  document.getElementById('timer-display').textContent=fmt(rem);
+  const pct=elapsed/ROUND_SECS;
+  const circ=289;
+  document.getElementById('ring').setAttribute('stroke-dashoffset',Math.round(circ*pct));
+  document.getElementById('ring').setAttribute('stroke',rem<30?'#E24B4A':rem<60?'#BA7517':'#E24B4A');
+}
+
+function togglePause(){
+  paused=!paused;
+  document.getElementById('pause-icon').className='ti '+(paused?'ti-player-play':'ti-player-pause');
+  document.getElementById('pause-label').textContent=paused?'继续':'暂停';
+}
+
+function resetSim(){
+  clearInterval(timerRef);clearInterval(punchRef);
+  elapsed=0;punches=0;leftSum=0;rightSum=0;leftCount=0;rightCount=0;peakForce=0;paused=false;
+  waveData.length=0;
+  document.getElementById('timer-display').textContent='3:00';
+  document.getElementById('ring').setAttribute('stroke-dashoffset','0');
+  document.getElementById('punch-count').textContent='0';
+  document.getElementById('bpm-val').textContent='—';
+  document.getElementById('kcal-val').textContent='0';
+  document.getElementById('peak-tag').textContent='峰值 — N';
+  document.getElementById('pct-l').textContent='—';
+  document.getElementById('pct-r').textContent='—';
+  document.getElementById('bar-l').style.width='0%';
+  document.getElementById('bar-r').style.width='0%';
+  document.getElementById('goal-progress').textContent='已完成 0%';
+  document.getElementById('pause-icon').className='ti ti-player-pause';
+  document.getElementById('pause-label').textContent='暂停';
+  ['c1','c2','c3','c4','c5'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  drawWave();
+  startSim();
+}
+
+function startSim(){
+  timerRef=setInterval(tick,1000);
+  punchRef=setInterval(()=>{if(!paused&&Math.random()>0.35)addPunch();},600);
+}
+
+startSim();
+</script>

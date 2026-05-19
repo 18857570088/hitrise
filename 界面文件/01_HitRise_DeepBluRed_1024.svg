@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  HitRise — App Icon
+  深空红蓝版（主推）
+  Master: 1024 × 1024 px · Corner radius rx="221" (~21.5%)
+  产品形态：气球/热气球形速度球（顶部圆弧最宽，下方弧线收至颈口）
+  配色：上蓝 #4878F8→#1840C0 / 下红 #F03030→#880808
+  闪电：白→浅黄→金 贯穿红蓝双区
+  2026 · HitRise / BoxingFitness Design Team
+-->
+<svg
+  width="1024"
+  height="1024"
+  viewBox="0 0 1024 1024"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img">
+
+  <title>HitRise App Icon — 深空红蓝版</title>
+  <desc>
+    深空暗紫背景，气球形速度球（顶宽下收至颈口），
+    上半蓝色渐变、下半红色渐变，中间白色横带印HITRISE，
+    球面中央白→黄→金闪电图案（贯穿红蓝两区），
+    金属立柱（含调节钮）、颈部法兰、红蓝底座，
+    左蓝右红速度线，底部 HitRise 主文字。
+  </desc>
+
+  <defs>
+    <!-- 背景 -->
+    <radialGradient id="bg" cx="42%" cy="36%" r="70%">
+      <stop offset="0%"   stop-color="#1C1248"/>
+      <stop offset="55%"  stop-color="#0E0A28"/>
+      <stop offset="100%" stop-color="#080412"/>
+    </radialGradient>
+
+    <!-- 球上半：蓝色渐变 -->
+    <linearGradient id="ball_top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#4878F8"/>
+      <stop offset="60%"  stop-color="#2858E0"/>
+      <stop offset="100%" stop-color="#1840C0"/>
+    </linearGradient>
+
+    <!-- 球下半：红色渐变 -->
+    <linearGradient id="ball_bot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#F03030"/>
+      <stop offset="55%"  stop-color="#CC1818"/>
+      <stop offset="100%" stop-color="#880808"/>
+    </linearGradient>
+
+    <!-- 球面侧向光泽 -->
+    <linearGradient id="ball_side" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="42%"  stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="58%"  stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.10"/>
+    </linearGradient>
+
+    <!-- 球面高光（左上） -->
+    <radialGradient id="ball_hi" cx="26%" cy="18%" r="50%">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.82"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 立柱金属质感 -->
+    <linearGradient id="pole" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#283848"/>
+      <stop offset="32%"  stop-color="#5878A0"/>
+      <stop offset="58%"  stop-color="#88AAC8"/>
+      <stop offset="100%" stop-color="#384858"/>
+    </linearGradient>
+
+    <!-- 调节钮 -->
+    <linearGradient id="knob" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#CC2020"/>
+      <stop offset="100%" stop-color="#881010"/>
+    </linearGradient>
+
+    <!-- 底座上层蓝 -->
+    <linearGradient id="base_top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#2030CC"/>
+      <stop offset="100%" stop-color="#1020A0"/>
+    </linearGradient>
+
+    <!-- 底座下层红 -->
+    <linearGradient id="base_bot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#CC1414"/>
+      <stop offset="100%" stop-color="#880808"/>
+    </linearGradient>
+
+    <!-- 闪电主体：白→浅黄→金 -->
+    <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF"/>
+      <stop offset="28%"  stop-color="#FFF8C0"/>
+      <stop offset="62%"  stop-color="#FFE840"/>
+      <stop offset="100%" stop-color="#FFCC00"/>
+    </linearGradient>
+
+    <!-- 闪电外发光晕 -->
+    <radialGradient id="bolt_glow" cx="50%" cy="46%" r="50%">
+      <stop offset="0%"   stop-color="#FFFF88" stop-opacity="0.80"/>
+      <stop offset="50%"  stop-color="#FFE840" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFE840" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 环境光晕 -->
+    <radialGradient id="amb" cx="50%" cy="52%" r="55%">
+      <stop offset="0%"   stop-color="#3050DD" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#3050DD" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 圆角裁切 -->
+    <clipPath id="icon_clip">
+      <rect width="1024" height="1024" rx="221"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#icon_clip)">
+
+    <!-- ══ 背景 ══ -->
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <ellipse cx="512" cy="592" rx="448" ry="368" fill="url(#amb)"/>
+    <!-- 地面反光 -->
+    <ellipse cx="512" cy="940" rx="368" ry="51" fill="#3060DD" opacity="0.16"/>
+
+    <!-- ══ 底座 ══ -->
+    <!-- 底座上层蓝色圆台 -->
+    <path d="M291,731 Q291,690 512,690 Q733,690 733,731 Q733,772 512,772 Q291,772 291,731Z"
+          fill="url(#base_top)" opacity="0.95"/>
+    <!-- 底座下层红色主体 -->
+    <path d="M308,772 Q308,855 512,855 Q716,855 716,772 Q733,731 512,731 Q291,731 308,772Z"
+          fill="url(#base_bot)" opacity="0.95"/>
+    <!-- 底座底部蓝色装饰条 -->
+    <path d="M341,855 Q341,872 512,872 Q683,872 683,855"
+          fill="none" stroke="#2848E0" stroke-width="26" stroke-linecap="round"/>
+    <!-- 底座顶面高光 -->
+    <ellipse cx="410" cy="718" rx="112" ry="25" fill="white" opacity="0.14"/>
+    <!-- 底座阴影 -->
+    <ellipse cx="512" cy="940" rx="307" ry="41" fill="#0A0820" opacity="0.40"/>
+
+    <!-- ══ 立柱 ══ -->
+    <!-- 主管 -->
+    <rect x="478" y="409" width="68" height="323" rx="34" fill="url(#pole)"/>
+    <!-- 立柱左侧高光条 -->
+    <rect x="488" y="419" width="15" height="303" rx="7.5" fill="white" opacity="0.24"/>
+
+    <!-- 调节钮（立柱中部） -->
+    <ellipse cx="512" cy="597" rx="66" ry="49" fill="url(#knob)"/>
+    <ellipse cx="512" cy="597" rx="49" ry="35" fill="#E83030"/>
+    <ellipse cx="504" cy="591" rx="16" ry="12" fill="#FF7070" opacity="0.55"/>
+
+    <!-- ══ 颈部（球底→立柱顶）══ -->
+    <!-- 颈部圆柱 -->
+    <rect x="486" y="358" width="52" height="68" rx="26" fill="#1828A8"/>
+    <rect x="494" y="362" width="12" height="60" rx="6" fill="white" opacity="0.18"/>
+    <!-- 颈口法兰盘（上） -->
+    <ellipse cx="512" cy="358" rx="46" ry="18" fill="#2040C0"/>
+    <ellipse cx="512" cy="358" rx="33" ry="11" fill="#3060DD" opacity="0.70"/>
+
+    <!-- ══ 气球形球头 ══
+         路径坐标（1024 坐标系）：
+         顶点   (512, 34)
+         最宽   约 y=128，宽约 468px（x=278 至 x=746）
+         中线   y=188（红蓝分界，白带位置）
+         下收   两侧弧线向内收拢
+         颈口   约 y=392，宽约 102px（x=461 至 x=563）
+
+         贝塞尔路径精确还原气球"顶宽下收"形态：
+         上半蓝色：顶→最宽→中线
+         下半红色：中线→弧线内收→颈口
+    -->
+
+    <!-- 下半球（红色，中线 y=188 → 颈口 y=392） -->
+    <path d="
+      M 278,188
+      C 278,247  286,299  325,341
+      C 354,370  426,392  461,392
+      L 563,392
+      C 598,392  670,370  699,341
+      C 738,299  746,247  746,188
+      Z"
+      fill="url(#ball_bot)"/>
+
+    <!-- 上半球（蓝色，顶点 y=34 → 中线 y=188） -->
+    <path d="
+      M 512,34
+      C 379,34   278,90   278,128
+      C 278,154  278,171  278,188
+      L 746,188
+      C 746,171  746,154  746,128
+      C 746,90   645,34   512,34
+      Z"
+      fill="url(#ball_top)"/>
+
+    <!-- 球面侧向光泽（整体叠加） -->
+    <path d="
+      M 512,34
+      C 379,34   278,90   278,128
+      C 278,171  278,247  325,341
+      C 354,370  426,392  461,392
+      L 563,392
+      C 598,392  670,370  699,341
+      C 746,247  746,171  746,128
+      C 746,90   645,34   512,34 Z"
+      fill="url(#ball_side)"/>
+
+    <!-- 白色品牌横带（覆盖红蓝分界线 y≈188）-->
+    <rect x="278" y="162" width="468" height="61" rx="0" fill="white" opacity="0.94"/>
+    <!-- 横带内品牌文字（左移，中央留给闪电）-->
+    <text x="295" y="206"
+          font-family="'SF Pro Display','Helvetica Neue',Helvetica,Arial,sans-serif"
+          font-size="34" font-weight="700" fill="#0E28A8" letter-spacing="4">HITRISE</text>
+
+    <!-- 球体轮廓描边 -->
+    <path d="
+      M 512,34
+      C 379,34   278,90   278,128
+      C 278,171  278,247  325,341
+      C 354,370  426,392  461,392
+      L 563,392
+      C 598,392  670,370  699,341
+      C 746,247  746,171  746,128
+      C 746,90   645,34   512,34 Z"
+      fill="none" stroke="white" stroke-width="5.6" opacity="0.20"/>
+
+    <!-- 球面水平纹路弧线 -->
+    <path d="M 307,94  Q 512,77  717,94"  fill="none" stroke="white" stroke-width="4.6" opacity="0.14"/>
+    <path d="M 285,247 Q 512,265 739,247" fill="none" stroke="white" stroke-width="4.1" opacity="0.11"/>
+    <path d="M 318,324 Q 512,341 706,324" fill="none" stroke="white" stroke-width="3.6" opacity="0.09"/>
+
+    <!-- 球面高光（左上椭圆） -->
+    <ellipse cx="388" cy="94" rx="102" ry="66" fill="url(#ball_hi)"/>
+    <circle  cx="368" cy="85" r="41"         fill="white" opacity="0.60"/>
+    <circle  cx="450" cy="68" r="15"         fill="white" opacity="0.35"/>
+
+    <!-- ══ 闪电（球体正面中央，贯穿蓝红两区）══
+         球体视觉中心约 (512, 213)
+         闪电顶端 y≈58（蓝区），底端 y≈358（红区）
+         整体偏右约 15px（视觉平衡补偿）
+         经典双折 Z 形，6个顶点，1024坐标系
+    -->
+    <!-- 外发光晕 -->
+    <ellipse cx="530" cy="213" rx="82" ry="154" fill="url(#bolt_glow)"/>
+
+    <!-- 闪电主体多边形 -->
+    <polygon
+      points="567,58   481,196   537,196   491,358   601,214   545,214"
+      fill="url(#bolt)"
+      opacity="0.97"/>
+
+    <!-- 闪电内芯高光（顶部更亮）-->
+    <polygon
+      points="557,78   491,189  536,189  497,333  581,217  546,217"
+      fill="white"
+      opacity="0.28"/>
+
+    <!-- 闪电顶端强光点 -->
+    <ellipse cx="560" cy="68"  rx="41" ry="25" fill="white"   opacity="0.50"/>
+
+    <!-- 闪电底部落地反光 -->
+    <ellipse cx="531" cy="362" rx="51" ry="13" fill="#FFEE44" opacity="0.44"/>
+
+    <!-- ══ 速度线（球体左右两侧）══ -->
+    <!-- 左侧蓝色 3条 -->
+    <line x1="119" y1="111" x2="248" y2="145" stroke="#4488FF" stroke-width="10.2" stroke-linecap="round" opacity="0.52"/>
+    <line x1="93"  y1="179" x2="230" y2="196" stroke="#4488FF" stroke-width="6.9"  stroke-linecap="round" opacity="0.36"/>
+    <line x1="111" y1="247" x2="239" y2="247" stroke="#4488FF" stroke-width="5.3"  stroke-linecap="round" opacity="0.24"/>
+    <!-- 右侧红色 3条 -->
+    <line x1="776" y1="111" x2="905" y2="145" stroke="#FF4444" stroke-width="10.2" stroke-linecap="round" opacity="0.52"/>
+    <line x1="794" y1="179" x2="931" y2="196" stroke="#FF4444" stroke-width="6.9"  stroke-linecap="round" opacity="0.36"/>
+    <line x1="785" y1="247" x2="913" y2="247" stroke="#FF4444" stroke-width="5.3"  stroke-linecap="round" opacity="0.24"/>
+
+    <!-- ══ 文字区 ══ -->
+    <rect x="0" y="806" width="1024" height="218" fill="#060210" opacity="0.84"/>
+
+    <!-- 主标题 HitRise -->
+    <text x="512" y="910"
+          text-anchor="middle"
+          font-family="'SF Pro Display','Helvetica Neue',Helvetica,Arial,sans-serif"
+          font-size="102" font-weight="700"
+          fill="#FF4444"
+          letter-spacing="20.5">HitRise</text>
+
+    <!-- 副标题 智能拳击速度球 -->
+    <text x="512" y="981"
+          text-anchor="middle"
+          font-family="'SF Pro Display','Helvetica Neue',Helvetica,Arial,sans-serif"
+          font-size="51" font-weight="400"
+          fill="#6888CC"
+          letter-spacing="8.2"
+          opacity="0.82">智能拳击速度球</text>
+
+  </g>
+</svg>

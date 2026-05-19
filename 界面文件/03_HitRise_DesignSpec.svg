@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  HitRise — Design Specification
+  深空红蓝版 · Color Tokens · Ball Path · Size Chart · Design Elements
+  960 × 640 px
+  2026 · HitRise / BoxingFitness Design Team
+-->
+<svg
+  width="960"
+  height="640"
+  viewBox="0 0 960 640"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img">
+
+  <title>HitRise — Design Specification</title>
+  <desc>HitRise 深空红蓝版完整设计规范：色彩Token、气球形路径参数、输出尺寸、视觉元素说明。</desc>
+
+  <!-- 背景 -->
+  <rect width="960" height="640" fill="#0C0820"/>
+  <!-- 顶部装饰条 红蓝双色 -->
+  <rect x="0"   y="0" width="480" height="4" fill="#FF4444"/>
+  <rect x="480" y="0" width="480" height="4" fill="#4488FF"/>
+  <!-- 底部装饰条 -->
+  <rect x="0"   y="636" width="480" height="4" fill="#FF4444"/>
+  <rect x="480" y="636" width="480" height="4" fill="#4488FF"/>
+
+  <!-- ── 标题 ── -->
+  <text x="480" y="36" text-anchor="middle"
+        font-family="'Helvetica Neue',Helvetica,Arial,sans-serif"
+        font-size="21" font-weight="700" fill="#FFFFFF">HitRise  ·  Design Specification</text>
+  <text x="480" y="56" text-anchor="middle"
+        font-family="'Helvetica Neue',Helvetica,Arial,sans-serif"
+        font-size="11" fill="#8880AA">深空红蓝版  ·  气球形速度球 + 闪电  ·  Color Tokens  ·  Output Sizes  ·  2026</text>
+
+  <line x1="32" y1="68" x2="928" y2="68" stroke="#2C2040" stroke-width="1"/>
+
+  <!-- ══════════ COL 1: 色彩 Token ══════════ -->
+  <text x="48" y="90" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif"
+        font-size="11" font-weight="700" fill="#FF4444" letter-spacing="1">COLOR TOKENS</text>
+
+  <!-- 背景 -->
+  <rect x="48"  y="98"  width="275" height="22" rx="5" fill="#1C1248" stroke="#2C2040" stroke-width=".8"/>
+  <text x="62"  y="113" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#8880AA">深空背景渐变</text>
+  <text x="315" y="113" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#FF4444">#1C1248 → #080412</text>
+
+  <!-- 球上半蓝 -->
+  <rect x="48"  y="126" width="135" height="22" rx="5" fill="#4878F8"/>
+  <rect x="189" y="126" width="134" height="22" rx="5" fill="#1840C0"/>
+  <text x="62"  y="141" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">球上半蓝色渐变</text>
+  <text x="315" y="141" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#88AAFF">#4878F8 → #1840C0</text>
+
+  <!-- 球下半红 -->
+  <rect x="48"  y="154" width="135" height="22" rx="5" fill="#F03030"/>
+  <rect x="189" y="154" width="134" height="22" rx="5" fill="#880808"/>
+  <text x="62"  y="169" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">球下半红色渐变</text>
+  <text x="315" y="169" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#FF8888">#F03030 → #880808</text>
+
+  <!-- 白带 -->
+  <rect x="48"  y="182" width="275" height="22" rx="5" fill="white"/>
+  <text x="62"  y="197" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#0E28A8">品牌横带 HITRISE 文字底色</text>
+  <text x="315" y="197" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#0E28A8">#FFFFFF · opacity 94%</text>
+
+  <!-- 横带文字 -->
+  <rect x="48"  y="210" width="275" height="22" rx="5" fill="#0E28A8"/>
+  <text x="62"  y="225" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">横带品牌字 HITRISE</text>
+  <text x="315" y="225" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#88AAFF">#0E28A8</text>
+
+  <!-- 底座 -->
+  <rect x="48"  y="238" width="135" height="22" rx="5" fill="#2030CC"/>
+  <rect x="189" y="238" width="134" height="22" rx="5" fill="#CC1414"/>
+  <text x="62"  y="253" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">底座蓝 / 底座红</text>
+  <text x="315" y="253" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#AAAACC">#2030CC · #CC1414</text>
+
+  <!-- 颈部 -->
+  <rect x="48"  y="266" width="135" height="22" rx="5" fill="#1828A8"/>
+  <rect x="189" y="266" width="134" height="22" rx="5" fill="#2040C0"/>
+  <text x="62"  y="281" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">颈部圆柱 / 法兰盘</text>
+  <text x="315" y="281" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#AAAACC">#1828A8 · #2040C0</text>
+
+  <!-- 立柱 -->
+  <rect x="48"  y="294" width="88"  height="22" rx="5" fill="#283848"/>
+  <rect x="142" y="294" width="88"  height="22" rx="5" fill="#5878A0"/>
+  <rect x="236" y="294" width="87"  height="22" rx="5" fill="#88AAC8"/>
+  <text x="62"  y="309" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">立柱金属渐变</text>
+  <text x="315" y="309" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#AAAACC">#283848→#5878A0→#88AAC8</text>
+
+  <!-- 调节钮 -->
+  <rect x="48"  y="322" width="135" height="22" rx="5" fill="#C81818"/>
+  <rect x="189" y="322" width="134" height="22" rx="5" fill="#E83030"/>
+  <text x="62"  y="337" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">调节钮渐变</text>
+  <text x="315" y="337" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#FF8888">#C81818 · #E83030</text>
+
+  <!-- 闪电 -->
+  <rect x="48"  y="350" width="275" height="22" rx="5" fill="white"/>
+  <text x="62"  y="365" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#0A0820">闪电顶端（白色强光）</text>
+  <text x="315" y="365" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#666699">#FFFFFF</text>
+
+  <rect x="48"  y="378" width="135" height="22" rx="5" fill="#FFF8C0"/>
+  <rect x="189" y="378" width="134" height="22" rx="5" fill="#FFE840"/>
+  <text x="62"  y="393" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#0A0820">闪电中段渐变</text>
+  <text x="315" y="393" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#886600">#FFF8C0 → #FFE840</text>
+
+  <rect x="48"  y="406" width="275" height="22" rx="5" fill="#FFCC00"/>
+  <text x="62"  y="421" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#0A0820">闪电底端金黄</text>
+  <text x="315" y="421" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#0A0820">#FFCC00</text>
+
+  <rect x="48"  y="434" width="275" height="22" rx="5" fill="#FFEE44"/>
+  <text x="62"  y="449" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#0A0820">闪电底部落地反光</text>
+  <text x="315" y="449" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#0A0820">#FFEE44  opacity 44%</text>
+
+  <!-- 速度线 -->
+  <rect x="48"  y="462" width="135" height="22" rx="5" fill="#4488FF"/>
+  <rect x="189" y="462" width="134" height="22" rx="5" fill="#FF4444"/>
+  <text x="62"  y="477" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">速度线 左蓝 / 右红</text>
+  <text x="315" y="477" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#AAAACC">#4488FF · #FF4444</text>
+
+  <!-- 主文字 -->
+  <rect x="48"  y="490" width="275" height="22" rx="5" fill="#FF4444"/>
+  <text x="62"  y="505" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">主文字 HitRise</text>
+  <text x="315" y="505" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">#FF4444  Bold  spacing 20.5</text>
+
+  <rect x="48"  y="518" width="275" height="22" rx="5" fill="#6888CC"/>
+  <text x="62"  y="533" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">副文字 智能拳击速度球</text>
+  <text x="315" y="533" text-anchor="end" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="white">#6888CC  Regular  opacity 82%</text>
+
+  <!-- ══════════ 竖分隔 ══════════ -->
+  <line x1="342" y1="68" x2="342" y2="624" stroke="#2C2040" stroke-width="1"/>
+
+  <!-- ══════════ COL 2: 输出规格 ══════════ -->
+  <text x="362" y="90" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif"
+        font-size="11" font-weight="700" fill="#4488FF" letter-spacing="1">OUTPUT  +  BALL PATH</text>
+
+  <!-- 表头 -->
+  <rect x="362" y="98" width="570" height="20" rx="4" fill="#1C1040"/>
+  <text x="374" y="112" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#8880AA">平台 / 用途</text>
+  <text x="590" y="112" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#8880AA">尺寸 (px)</text>
+  <text x="682" y="112" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#8880AA">圆角</text>
+  <text x="755" y="112" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#8880AA">源文件</text>
+
+  <!-- 数据行 -->
+  <rect x="362" y="122" width="570" height="18" rx="3" fill="#140C30"/>
+  <text x="374" y="134" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">App Store 主图标（iOS）</text>
+  <text x="590" y="134" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#4488FF">1024 × 1024</text>
+  <text x="682" y="134" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">系统自动裁切</text>
+  <text x="755" y="134" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#FF4444">01_HitRise_DeepBluRed_1024.svg</text>
+
+  <rect x="362" y="144" width="570" height="18" rx="3" fill="#0E0820"/>
+  <text x="374" y="156" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">iPhone @3x 主屏</text>
+  <text x="590" y="156" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#4488FF">180 × 180</text>
+  <text x="682" y="156" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">~38 px</text>
+  <text x="755" y="156" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#FF4444">02_HitRise_DeepBluRed_180x180.svg</text>
+
+  <rect x="362" y="166" width="570" height="18" rx="3" fill="#140C30"/>
+  <text x="374" y="178" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">iPhone @2x 主屏 / Spotlight</text>
+  <text x="590" y="178" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#4488FF">120 × 120</text>
+  <text x="682" y="178" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">~26 px</text>
+  <text x="755" y="178" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">从 1024 母版导出 PNG</text>
+
+  <rect x="362" y="188" width="570" height="18" rx="3" fill="#0E0820"/>
+  <text x="374" y="200" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">iPhone 通知栏 @3x</text>
+  <text x="590" y="200" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#4488FF">60 × 60</text>
+  <text x="682" y="200" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">~13 px</text>
+  <text x="755" y="200" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">从 1024 母版导出 PNG</text>
+
+  <rect x="362" y="210" width="570" height="18" rx="3" fill="#140C30"/>
+  <text x="374" y="222" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">Android xxxhdpi 启动图标</text>
+  <text x="590" y="222" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#4488FF">192 × 192</text>
+  <text x="682" y="222" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">~41 px</text>
+  <text x="755" y="222" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">从 1024 母版导出 PNG</text>
+
+  <rect x="362" y="232" width="570" height="18" rx="3" fill="#0E0820"/>
+  <text x="374" y="244" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">设计规范文档</text>
+  <text x="590" y="244" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#4488FF">960 × 640</text>
+  <text x="682" y="244" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">—</text>
+  <text x="755" y="244" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#FF4444">03_HitRise_DesignSpec.svg</text>
+
+  <!-- 气球形路径参数 -->
+  <rect x="362" y="264" width="570" height="108" rx="8" fill="#140C30" stroke="#2C2040" stroke-width=".8"/>
+  <text x="374" y="282" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9.5" font-weight="700" fill="#4488FF">气球形球头路径参数（1024 坐标系）</text>
+  <text x="374" y="298" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">顶点         (512, 34)   — 圆弧最高点</text>
+  <text x="374" y="312" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">最宽处       y≈128，宽约 468px（x=278 至 x=746）</text>
+  <text x="374" y="326" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">红蓝分界     y=188（白色横带覆盖 y=162~223）</text>
+  <text x="374" y="340" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">颈口         y=392，宽约 102px（x=461 至 x=563）</text>
+  <text x="374" y="354" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">颈部圆柱     y=358~426，rx=26，连接立柱顶端</text>
+  <text x="374" y="368" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">路径类型     三次贝塞尔 C，精确还原顶宽下收气球曲线</text>
+
+  <!-- 闪电路径参数 -->
+  <rect x="362" y="386" width="570" height="96" rx="8" fill="#140C30" stroke="#2C2040" stroke-width=".8"/>
+  <text x="374" y="404" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9.5" font-weight="700" fill="#FFCC00">闪电路径参数（1024 坐标系，6 顶点 Z 形）</text>
+  <text x="374" y="420" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">顶端    (567, 58)   — 蓝区强光起点</text>
+  <text x="374" y="434" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">折左    (481, 196)  →  折中 (537, 196)  — 腰部折点</text>
+  <text x="374" y="448" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">底端    (491, 358)  — 红区落地点</text>
+  <text x="374" y="462" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">右翼    (601, 214)  →  折右 (545, 214)  — 右侧收束</text>
+  <text x="374" y="476" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" fill="#8880AA">整体偏右约 18px 视觉居中补偿</text>
+
+  <!-- 设计元素卡片 -->
+  <line x1="32" y1="500" x2="928" y2="500" stroke="#2C2040" stroke-width="1"/>
+  <text x="48" y="520" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif"
+        font-size="11" font-weight="700" fill="#FF4444" letter-spacing="1">DESIGN ELEMENTS</text>
+
+  <!-- 6个元素卡片 -->
+  <rect x="48"  y="530" width="134" height="58" rx="6" fill="#140C30" stroke="#2C2040" stroke-width=".8"/>
+  <text x="60"  y="546" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#FF4444">气球形球头</text>
+  <text x="60"  y="559" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">顶宽 468px，颈口 102px</text>
+  <text x="60"  y="572" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">三次贝塞尔气球曲线</text>
+  <text x="60"  y="582" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">上蓝下红分界 y=188</text>
+
+  <rect x="196" y="530" width="134" height="58" rx="6" fill="#140C30" stroke="#2C2040" stroke-width=".8"/>
+  <text x="208" y="546" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#FFCC00">闪电图案</text>
+  <text x="208" y="559" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">6点 Z 形贯穿红蓝</text>
+  <text x="208" y="572" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">白→浅黄→金渐变</text>
+  <text x="208" y="582" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">外发光晕 rx=82 ry=154</text>
+
+  <rect x="344" y="530" width="134" height="58" rx="6" fill="#140C30" stroke="#2C2040" stroke-width=".8"/>
+  <text x="356" y="546" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#4488FF">立柱 + 颈部</text>
+  <text x="356" y="559" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">主管 rx=34，金属渐变</text>
+  <text x="356" y="572" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">调节钮椭圆 rx=66</text>
+  <text x="356" y="582" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">颈柱+法兰盘连接球底</text>
+
+  <rect x="492" y="530" width="134" height="58" rx="6" fill="#140C30" stroke="#2C2040" stroke-width=".8"/>
+  <text x="504" y="546" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#CC2030">红蓝底座</text>
+  <text x="504" y="559" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">上层蓝色圆台</text>
+  <text x="504" y="572" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">下层红色主体</text>
+  <text x="504" y="582" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">底部蓝色装饰条</text>
+
+  <rect x="640" y="530" width="134" height="58" rx="6" fill="#140C30" stroke="#2C2040" stroke-width=".8"/>
+  <text x="652" y="546" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#FF4444">速度线</text>
+  <text x="652" y="559" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">左蓝 #4488FF × 3条</text>
+  <text x="652" y="572" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">右红 #FF4444 × 3条</text>
+  <text x="652" y="582" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">宽度 10.2/6.9/5.3 递减</text>
+
+  <rect x="778" y="530" width="150" height="58" rx="6" fill="#140C30" stroke="#2C2040" stroke-width=".8"/>
+  <text x="790" y="546" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="#FFFFFF">文字规格</text>
+  <text x="790" y="559" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">主：HitRise  Bold 102px</text>
+  <text x="790" y="572" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">副：Regular 51px</text>
+  <text x="790" y="582" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="8.5" fill="#8880AA">横带：HITRISE Bold 34px</text>
+
+  <!-- 底部 -->
+  <line x1="32" y1="602" x2="928" y2="602" stroke="#2C2040" stroke-width=".8"/>
+  <text x="480" y="620" text-anchor="middle"
+        font-family="'Helvetica Neue',Helvetica,Arial,sans-serif"
+        font-size="9" fill="#4A3A70">HitRise  ·  深空红蓝版  ·  Design Spec v1.0  ·  2026  ·  HitRise / BoxingFitness Design Team</text>
+
+</svg>

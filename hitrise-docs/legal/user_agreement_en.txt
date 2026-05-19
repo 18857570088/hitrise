@@ -1,0 +1,68 @@
+HitRise User Agreement
+Version: V1.1
+Effective Date: 2026-05-20
+
+1. Scope
+This Agreement applies to the HitRise app, Bluetooth connection features for smart boxing speed-ball devices, cloud training records, achievements, leaderboards, profile features, sound effects, and background music resources provided by Shaoxing Weimai Technology Co., Ltd.
+
+By downloading, installing, opening, or using HitRise, you confirm that you have read, understood, and agreed to this Agreement. If you do not agree, please stop using the app.
+
+2. Product and Services
+HitRise provides features including:
+1. scanning and connecting SENBALL# Bluetooth devices;
+2. reading punch count, battery, charging status, and force data;
+3. real-time training dashboard, round training, rhythm training, and training settings;
+4. training reports, round summaries, calorie estimates, and fat-burn estimates;
+5. achievements, badges, tiers, leaderboards, and profile features;
+6. local or cloud sound effects, background music, and share posters.
+
+Some features depend on smart hardware, phone Bluetooth, system permissions, network connection, and cloud services. Different phones, system versions, and Bluetooth environments may affect connection and data performance.
+
+3. Usage Requirements
+Use HitRise in a safe, open, and suitable exercise environment. Before training, check that the device is installed securely, the cord and surrounding area are safe, and your training intensity matches your physical condition.
+
+If you experience illness, injury, fatigue, dizziness, chest discomfort, or any other discomfort, stop training immediately and seek professional advice if needed. Minors should use the app under the guidance of a parent or guardian.
+
+4. Bluetooth and Training Data
+The app receives SENBALL# device data through Bluetooth and displays punch count, force, battery, and round statistics. Data may vary due to device status, sensor tolerance, Bluetooth signal, usage posture, and environment.
+
+HitRise training data is used for exercise feedback, statistics, achievements, and leaderboards. It should not be used as medical diagnosis, rehabilitation assessment, nutrition advice, or official competition judging.
+
+5. Profile, Leaderboards, and Sharing
+You may set a nickname, avatar, region, and language. If you use leaderboards, achievements, or sharing features, your nickname, avatar, tier, scores, and training summary may be shown to other users or shared by you to other apps.
+
+Do not upload or use unlawful, infringing, impersonating, or inappropriate content. You are responsible for information you choose to share.
+
+6. Prohibited Conduct
+You must not:
+1. falsify, tamper with, or mass-produce training data;
+2. undermine leaderboard fairness or interfere with other users;
+3. attack, scan, reverse engineer, scrape, or disrupt service APIs;
+4. copy, modify, distribute, or commercially use the app or related content without authorization;
+5. use HitRise for unlawful, infringing, or security-threatening activities.
+
+We may restrict, correct, hide, or suspend related functions, data, identifiers, or leaderboard displays in response to abnormal usage, risk control, or user complaints.
+
+7. Sound Effects, Music, and Content
+Sound effects, background music, graphics, text, badges, interfaces, and training content provided in the app or cloud are for HitRise functionality only. You may not extract, copy, distribute, or use them commercially without authorization.
+
+8. Service Changes, Interruption, and Maintenance
+We will continue improving the product, but service changes, interruption, delay, or partial unavailability may occur due to version updates, server maintenance, network issues, hardware compatibility, system restrictions, force majeure, or security reasons.
+
+9. Intellectual Property
+The HitRise app, interface, code, algorithms, icons, text, graphics, audio resources, training system, brand, and related content are owned by Shaoxing Weimai Technology Co., Ltd. or lawful rights holders. You may not copy, modify, rent, sell, reverse engineer, or commercially exploit them without permission.
+
+10. Limitation of Liability
+To the extent permitted by law, we are not responsible beyond legal requirements for losses caused by improper use, unsafe training environments, failure to install equipment as instructed, unsuitable physical condition, third-party devices or networks, Bluetooth interference, force majeure, or information shared by users themselves.
+
+11. Updates
+We may update this Agreement due to product changes, legal requirements, or operational needs. Important changes may be notified through in-app prompts, release notes, or other reasonable methods. Continued use of HitRise means acceptance of the updated Agreement.
+
+12. Governing Law and Dispute Resolution
+The formation, performance, and interpretation of this Agreement are governed by the laws of the People's Republic of China. Disputes should first be resolved through friendly negotiation; if negotiation fails, either party may bring a claim before a competent people's court.
+
+13. Contact Us
+Operator: Shaoxing Weimai Technology Co., Ltd.
+Email: zclei@vip.sina.com
+
+If you have questions about this Agreement or the service, please contact us.

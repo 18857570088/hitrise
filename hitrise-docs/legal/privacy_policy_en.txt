@@ -1,0 +1,68 @@
+HitRise Privacy Policy
+Version: V1.1
+Effective Date: 2026-05-20
+
+1. Introduction
+Welcome to HitRise. HitRise is a smart boxing speed-ball training app provided by Shaoxing Weimai Technology Co., Ltd. It connects to SENBALL# Bluetooth devices, records training data, generates training reports, and provides achievements, leaderboards, profile features, sound effects, and background music settings.
+
+This Privacy Policy explains how we collect, use, store, protect, and process information when you use HitRise. Please read it carefully before using the app.
+
+2. Information We Collect and Use
+Device profile and local identity. The app may generate a local user identifier, sync code, device summary, and local activation status to support cloud sync, profile features, achievements, and leaderboards. You may set a nickname, avatar, region code, and app language.
+
+Bluetooth device information. To connect the boxing device, the app uses Bluetooth scanning, connection, and communication features. We process Bluetooth device name, device address, connection status, battery level, charging status, punch count, force data, and Bluetooth status messages. The scan filters SENBALL# devices.
+
+Training and exercise data. During training, the app records rounds, duration, total punches, round punches, peak punch force, average punch force, BPM, calorie estimates, fat-burn estimates, combo performance, play mode, beat settings, selected sound effect, and selected background music.
+
+Achievements, leaderboards, and profile data. To provide badges, tiers, training history, leaderboards, and personal statistics, we process training summaries, best results, cumulative totals, active days, ranking metrics, and recent training records. Leaderboards may show your nickname, avatar, region, tier, and scores.
+
+Audio and preference settings. The app stores your selected cloud sound effect, background music, no-background-music option, language, training settings, last connected device, and other preferences. The current version does not use voice or sound recognition to count punches.
+
+Device and operation information. To maintain stability and troubleshoot issues, we may process app version, system version, device model, network request status, error logs, API response status, and crash-related information.
+
+3. Permissions
+Bluetooth permissions are used to scan, connect, and receive data from SENBALL# devices.
+Location-related permissions may be required by some Android versions for Bluetooth scanning. HitRise does not use this permission to actively collect your real-time location trail.
+Internet permission is used to sync training records, profiles, achievements, leaderboards, sound effects, and background music resources.
+Photo or file permissions are used only when you choose an avatar, save, or share training posters.
+Vibration and audio capabilities are used for training feedback, beats, sound effects, and background music playback.
+
+4. How We Use Information
+We use information to:
+1. complete Bluetooth connection, punch counting, force display, and battery display;
+2. generate training reports, round statistics, calories, and fat-burn estimates;
+3. provide achievements, tiers, leaderboards, and profile features;
+4. sync cloud training records and keep history across sessions;
+5. provide language, sound effect, background music, and training settings;
+6. troubleshoot issues, improve stability, and protect service security.
+
+5. Sharing, Transfer, and Disclosure
+We do not sell your personal information to unrelated third parties. Necessary data may be processed within our service systems to enable cloud sync, leaderboards, achievements, resource downloads, and operations.
+
+Unless required by law, necessary to protect users or platform security, needed to resolve disputes, or authorized by you, we will not publicly disclose your personal information. Nickname, avatar, tier, and scores shown in leaderboards or share posters are part of the product features.
+
+6. Storage
+Some data is stored locally on your phone, such as app language, training settings, last connected Bluetooth device, sound choices, background music choices, and local cache. Training records, achievements, leaderboards, and profile summaries may be stored in cloud services.
+
+We retain information for the period necessary to provide the service unless a longer period is required by applicable law. If you uninstall the app, local data may be removed by the system, while synced cloud data may remain under service rules.
+
+7. Security
+We use reasonable administrative and technical measures to protect information, including access controls, permission management, data minimization, service isolation, and log management. However, the internet, mobile systems, and Bluetooth communications cannot be guaranteed to be absolutely secure.
+
+8. Your Rights
+You can view training records, achievements, leaderboards, and profile information in the app, and modify your nickname, avatar, region, and language. To request consultation, correction, or deletion of related information, contact us using the details below. We will handle requests as required by law, identity verification, and service security.
+
+9. Minors
+Minors should use HitRise under the guidance of a parent or guardian. Guardians should help minors understand training safety, personal information protection, and appropriate exercise intensity.
+
+10. Exercise and Health Notice
+Punch count, force, calories, and fat-burn values provided by HitRise are exercise feedback and estimates. They are not medical, nutrition, rehabilitation, or professional competition judgments. If you have a medical condition, injury, or discomfort, consult a qualified professional.
+
+11. Updates
+We may update this Privacy Policy due to product changes, legal requirements, or operational needs. Important changes may be notified through in-app prompts, release notes, or other reasonable methods. Continued use of HitRise means you understand the updated policy.
+
+12. Contact Us
+Operator: Shaoxing Weimai Technology Co., Ltd.
+Email: zclei@vip.sina.com
+
+If you have questions, comments, or complaints about this Privacy Policy or personal information processing, please contact us.

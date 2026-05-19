@@ -1,0 +1,87 @@
+[systemctl_status]
+EXIT=0
+STDOUT:
+● hitrise-auth.service - HitRise Activation API
+     Loaded: loaded (/etc/systemd/system/hitrise-auth.service; enabled; vendor preset: enabled)
+     Active: active (running) since Thu 2026-05-07 10:31:35 CST; 50s ago
+   Main PID: 3187928 (uvicorn)
+      Tasks: 2 (limit: 4321)
+     Memory: 29.6M
+        CPU: 420ms
+     CGroup: /system.slice/hitrise-auth.service
+             └─3187928 /opt/hitrise-auth/.venv/bin/python /opt/hitrise-auth/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8014
+
+May 07 10:31:35 VM-0-4-ubuntu systemd[1]: Started HitRise Activation API.
+May 07 10:31:35 VM-0-4-ubuntu uvicorn[3187928]: INFO:     Started server process [3187928]
+May 07 10:31:35 VM-0-4-ubuntu uvicorn[3187928]: INFO:     Waiting for application startup.
+May 07 10:31:35 VM-0-4-ubuntu uvicorn[3187928]: INFO:     Application startup complete.
+May 07 10:31:35 VM-0-4-ubuntu uvicorn[3187928]: INFO:     Uvicorn running on http://127.0.0.1:8014 (Press CTRL+C to quit)
+May 07 10:31:36 VM-0-4-ubuntu uvicorn[3187928]: INFO:     127.0.0.1:43092 - "GET /health HTTP/1.1" 200 OK
+May 07 10:31:36 VM-0-4-ubuntu uvicorn[3187928]: INFO:     152.136.62.157:0 - "GET /health HTTP/1.1" 200 OK
+May 07 10:31:37 VM-0-4-ubuntu uvicorn[3187928]: INFO:     152.136.62.157:0 - "GET /openapi.json HTTP/1.1" 200 OK
+
+STDERR:
+
+
+[nginx_include_check]
+EXIT=0
+STDOUT:
+18:    include /etc/nginx/snippets/hitrise-auth-location.conf;
+
+STDERR:
+
+
+[env_file]
+EXIT=0
+STDOUT:
+APP_NAME=hitrise-auth
+APP_HOST=127.0.0.1
+APP_PORT=8014
+DB_HOST=152.136.62.157
+DB_PORT=3306
+DB_NAME=hitrise
+DB_USER=wm
+DB_PASSWORD=<redacted; stored only in runtime/hitrise-auth.env>
+CODE_PEPPER=<redacted; stored only in runtime/hitrise-auth.env>
+ADMIN_TOKEN=<redacted; stored only in runtime/hitrise-auth.env>
+DEFAULT_PRODUCT_CODE=HTR01
+
+
+STDERR:
+
+
+[db_tables]
+EXIT=0
+STDOUT:
+Tables_in_hitrise
+activation_logs
+activations
+app_users
+licenses
+training_sessions
+user_achievements
+
+STDERR:
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
+
+[local_health]
+EXIT=0
+STDOUT:
+{"status":"ok","service":"hitrise-auth"}
+STDERR:
+
+
+[public_health]
+EXIT=0
+STDOUT:
+{"status":"ok","service":"hitrise-auth"}
+STDERR:
+
+
+[public_openapi_head]
+EXIT=0
+STDOUT:
+{"openapi":"3.1.0","info":{"title":"HitRise Activation Service","version":"1.2.0"},"paths":{"/health":{"get":{"summary":"Health","operationId":"health_health_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"additionalProperties":true,"type":"object","title":"Response Health Health Get"}}}}}}},"/api/v1/activate":{"post":{"summary":"Activate","operationId":"activate_api_v1_activate_post","requestBody":{"content":{"application/json":{"
+STDERR:
+curl: (23) Failure writing output to destination
