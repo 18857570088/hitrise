@@ -18,6 +18,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import java.io.IOException
 import java.util.UUID
@@ -76,6 +78,7 @@ class SensorBallBluetoothManager(
     private val callback: SensorBallBluetoothCallback,
 ) {
     private val appContext = context.applicationContext
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val bluetoothManager = appContext.getSystemService(BluetoothManager::class.java)
     private val adapter: BluetoothAdapter? = bluetoothManager?.adapter
     private val scanner get() = adapter?.bluetoothLeScanner
@@ -93,6 +96,8 @@ class SensorBallBluetoothManager(
     private val pendingNotificationDescriptors = ArrayDeque<BluetoothGattDescriptor>()
     private val classicTelemetryBuffer = ArrayDeque<Byte>()
     private var bleSetupInProgress = false
+    private var bleWriteInFlight = false
+    private var bleWriteSequence = 0
     private var pendingGyroscopeCommand: Boolean? = null
     private var scanning = false
     private var classicFallbackAllowed = true
@@ -284,6 +289,8 @@ class SensorBallBluetoothManager(
         pendingNotificationDescriptors.clear()
         classicTelemetryBuffer.clear()
         bleSetupInProgress = false
+        bleWriteInFlight = false
+        bleWriteSequence += 1
         pendingGyroscopeCommand = null
         connectedDevice = null
         pendingFallbackDevice = null
@@ -336,7 +343,7 @@ class SensorBallBluetoothManager(
             writeCharacteristic ?: return false.also {
                 if (reportStatus) callback.onStatus("未找到可写入的蓝牙通道")
             }
-        if (bleSetupInProgress) {
+        if (bleSetupInProgress || bleWriteInFlight) {
             pendingGyroscopeCommand = enabled
             if (reportStatus) {
                 callback.onStatus(if (enabled) "开启陀螺仪指令等待蓝牙通道就绪" else "关闭陀螺仪指令等待蓝牙通道就绪")
@@ -354,6 +361,10 @@ class SensorBallBluetoothManager(
         reportStatus: Boolean,
     ): Boolean {
         val payload = gyroscopeCommandPayload(enabled)
+        if (bleWriteInFlight) {
+            pendingGyroscopeCommand = enabled
+            return true
+        }
         val result =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 targetGatt.writeCharacteristic(characteristic, payload, characteristic.writeType) == BluetoothGatt.GATT_SUCCESS
@@ -361,6 +372,21 @@ class SensorBallBluetoothManager(
                 characteristic.value = payload
                 targetGatt.writeCharacteristic(characteristic)
             }
+        if (result) {
+            bleWriteInFlight = true
+            val sequence = ++bleWriteSequence
+            mainHandler.postDelayed(
+                {
+                    if (this@SensorBallBluetoothManager.gatt === targetGatt && bleWriteInFlight && bleWriteSequence == sequence) {
+                        Log.w(TAG, "gyro command write callback timeout; releasing BLE write queue")
+                        bleWriteInFlight = false
+                        flushPendingGyroscopeCommand(targetGatt)
+                    }
+                },
+                BLE_WRITE_CALLBACK_TIMEOUT_MS,
+            )
+        }
+        Log.d(TAG, "gyro command enabled=$enabled result=$result characteristic=${characteristic.uuid}")
         reportGyroscopeCommandStatus(enabled, result, reportStatus)
         return result
     }
@@ -471,23 +497,48 @@ class SensorBallBluetoothManager(
         object : BluetoothGattCallback() {
             @SuppressLint("MissingPermission")
             override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    callback.onStatus("已连接，正在发现服务...")
-                    gatt.discoverServices()
-                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    writeCharacteristic = null
-                    if (suppressNextBleDisconnectCallback) {
-                        suppressNextBleDisconnectCallback = false
-                        return
+                val currentGatt = this@SensorBallBluetoothManager.gatt
+                if (currentGatt == null && newState == BluetoothProfile.STATE_DISCONNECTED && !suppressNextBleDisconnectCallback) {
+                    Log.w(TAG, "ignore disconnected callback after BLE session already closed status=$status")
+                    runCatching { gatt.close() }
+                    return
+                }
+                if (currentGatt != null && currentGatt !== gatt) {
+                    Log.w(TAG, "ignore stale BLE state status=$status newState=$newState")
+                    runCatching { gatt.close() }
+                    return
+                }
+                when (newState) {
+                    BluetoothProfile.STATE_CONNECTED -> {
+                        Log.d(TAG, "BLE connected status=$status")
+                        if (status != BluetoothGatt.GATT_SUCCESS) {
+                            handleBleDisconnected(gatt, status, "BLE connected with non-success status")
+                            return
+                        }
+                        runCatching { gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH) }
+                        callback.onStatus("已连接，正在发现服务...")
+                        mainHandler.postDelayed(
+                            {
+                                if (this@SensorBallBluetoothManager.gatt === gatt) {
+                                    gatt.discoverServices()
+                                }
+                            },
+                            BLE_SERVICE_DISCOVERY_DELAY_MS,
+                        )
                     }
-                    if (!tryPendingClassicFallback("BLE disconnected status=$status")) {
-                        callback.onDisconnected()
+
+                    BluetoothProfile.STATE_DISCONNECTED -> {
+                        handleBleDisconnected(gatt, status, "BLE disconnected")
                     }
                 }
             }
 
             @SuppressLint("MissingPermission")
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+                if (this@SensorBallBluetoothManager.gatt !== gatt) {
+                    Log.w(TAG, "ignore stale BLE services status=$status")
+                    return
+                }
                 if (status != BluetoothGatt.GATT_SUCCESS) {
                     callback.onStatus("服务发现失败：$status")
                     tryPendingClassicFallback("BLE service discovery failed status=$status")
@@ -496,6 +547,8 @@ class SensorBallBluetoothManager(
                 writeCharacteristic = null
                 pendingNotificationDescriptors.clear()
                 bleSetupInProgress = true
+                bleWriteInFlight = false
+                bleWriteSequence += 1
                 var notifyCount = 0
                 val notifyCandidates = mutableListOf<BluetoothGattCharacteristic>()
                 val writeCandidates = mutableListOf<BluetoothGattCharacteristic>()
@@ -540,6 +593,9 @@ class SensorBallBluetoothManager(
             }
 
             override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+                if (this@SensorBallBluetoothManager.gatt !== gatt) {
+                    return
+                }
                 val value = characteristic.value
                 parseTelemetryPackets(value).forEach(callback::onTelemetry)
             }
@@ -549,7 +605,26 @@ class SensorBallBluetoothManager(
                 characteristic: BluetoothGattCharacteristic,
                 value: ByteArray,
             ) {
+                if (this@SensorBallBluetoothManager.gatt !== gatt) {
+                    return
+                }
                 parseTelemetryPackets(value).forEach(callback::onTelemetry)
+            }
+
+            override fun onCharacteristicWrite(
+                gatt: BluetoothGatt,
+                characteristic: BluetoothGattCharacteristic,
+                status: Int,
+            ) {
+                if (this@SensorBallBluetoothManager.gatt !== gatt) {
+                    return
+                }
+                Log.d(TAG, "gyro command write completed status=$status characteristic=${characteristic.uuid}")
+                bleWriteInFlight = false
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    callback.onStatus("蓝牙写入确认异常 status=$status，继续保持连接")
+                }
+                flushPendingGyroscopeCommand(gatt)
             }
 
             override fun onDescriptorWrite(
@@ -557,9 +632,47 @@ class SensorBallBluetoothManager(
                 descriptor: BluetoothGattDescriptor,
                 status: Int,
             ) {
+                if (this@SensorBallBluetoothManager.gatt !== gatt) {
+                    return
+                }
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    Log.w(TAG, "notify descriptor write status=$status descriptor=${descriptor.uuid}")
+                }
                 continueBleSetup(gatt)
             }
         }
+
+    @SuppressLint("MissingPermission")
+    private fun handleBleDisconnected(
+        gatt: BluetoothGatt,
+        status: Int,
+        reason: String,
+    ) {
+        Log.w(TAG, "$reason status=$status")
+        writeCharacteristic = null
+        pendingNotificationDescriptors.clear()
+        bleSetupInProgress = false
+        bleWriteInFlight = false
+        bleWriteSequence += 1
+        pendingGyroscopeCommand = null
+        if (suppressNextBleDisconnectCallback) {
+            suppressNextBleDisconnectCallback = false
+            runCatching { gatt.close() }
+            if (this.gatt === gatt) {
+                this.gatt = null
+            }
+            return
+        }
+        if (this.gatt === gatt) {
+            this.gatt = null
+        }
+        runCatching { gatt.close() }
+        connectedDevice = null
+        if (!tryPendingClassicFallback("BLE disconnected status=$status")) {
+            callback.onStatus("BLE连接断开 status=$status")
+            callback.onDisconnected()
+        }
+    }
 
     private fun writeCharacteristicScore(characteristic: BluetoothGattCharacteristic): Int {
         val uuid = characteristic.uuid.toString()
@@ -599,6 +712,14 @@ class SensorBallBluetoothManager(
             return
         }
         bleSetupInProgress = false
+        flushPendingGyroscopeCommand(gatt)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun flushPendingGyroscopeCommand(gatt: BluetoothGatt) {
+        if (bleSetupInProgress || bleWriteInFlight) {
+            return
+        }
         val command = pendingGyroscopeCommand ?: return
         pendingGyroscopeCommand = null
         writeCharacteristic?.let { characteristic ->
@@ -624,8 +745,13 @@ class SensorBallBluetoothManager(
 
     @SuppressLint("MissingPermission")
     private fun writeNextNotificationDescriptor(gatt: BluetoothGatt): Boolean {
-        val descriptor = pendingNotificationDescriptors.removeFirstOrNull() ?: return false
-        return gatt.writeDescriptor(descriptor)
+        while (true) {
+            val descriptor = pendingNotificationDescriptors.removeFirstOrNull() ?: return false
+            if (gatt.writeDescriptor(descriptor)) {
+                return true
+            }
+            Log.w(TAG, "notify descriptor write request rejected descriptor=${descriptor.uuid}")
+        }
     }
 
     private fun parseTelemetryPackets(value: ByteArray?): List<SensorBallTelemetry> {
@@ -704,6 +830,10 @@ class SensorBallBluetoothManager(
         val fallback = pendingFallbackDevice ?: return false
         val address = fallback.classicAddress ?: return false
         pendingFallbackDevice = null
+        bleSetupInProgress = false
+        bleWriteInFlight = false
+        bleWriteSequence += 1
+        pendingGyroscopeCommand = null
         runCatching { gatt?.close() }
         gatt = null
         val remoteDevice =
@@ -898,6 +1028,8 @@ class SensorBallBluetoothManager(
         const val DEVICE_PREFIX = "SENBALL#"
         const val TELEMETRY_PACKET_SIZE = 11
         const val SENSOR_FORCE_SCALE = 0.6f
+        const val BLE_SERVICE_DISCOVERY_DELAY_MS = 350L
+        const val BLE_WRITE_CALLBACK_TIMEOUT_MS = 900L
         val DEVICE_NAME_REGEX = Regex("SENBALL#[A-Za-z0-9_-]*[A-Za-z]", RegexOption.IGNORE_CASE)
         val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
         val CLIENT_CONFIG_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")

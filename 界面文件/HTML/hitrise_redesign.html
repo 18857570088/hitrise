@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HitRise 实时训练 · 燃脂版</title>
+  <style>
+    :root {
+      --ink: #08050a;
+      --deep: #0e0812;
+      --surface: #140f1c;
+      --surface-2: #1e1728;
+      --surface-3: #271e33;
+      --fire-1: #ff3c00;
+      --fire-2: #ff6b00;
+      --fire-3: #ffaa00;
+      --fire-4: #ffd23f;
+      --volt: #c8ff00;
+      --volt-dim: #9acc00;
+      --pulse: #ff2d78;
+      --pulse-dim: #c4235e;
+      --ice: #00d4ff;
+      --ice-dim: #0099bb;
+      --text: #fff5ee;
+      --text-2: #b8aac4;
+      --border-fire: rgba(255,106,0,.30);
+      --border-dim: rgba(255,255,255,.10);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @keyframes flickerFire {
+      0%,100% { opacity:.85; transform:scaleX(1) skewX(-1deg); }
+      33% { opacity:1; transform:scaleX(1.04) skewX(1.5deg); }
+      66% { opacity:.9; transform:scaleX(.97) skewX(-2deg); }
+    }
+    @keyframes pulseBeat {
+      0%,100% { transform:scale(1); filter:brightness(.95); }
+      50% { transform:scale(1.03); filter:brightness(1.25); }
+    }
+    @keyframes orbitSpin {
+      to { transform:rotate(360deg); }
+    }
+    @keyframes speedLines {
+      from { transform:translateX(-30px); }
+      to   { transform:translateX(30px); }
+    }
+    @keyframes burnBar {
+      0%,100% { width:37%; filter:brightness(.9); }
+      50% { width:45%; filter:brightness(1.3); }
+    }
+    @keyframes goFlash {
+      0%,100% { opacity:.55; letter-spacing:.04em; }
+      50% { opacity:1; letter-spacing:.12em; }
+    }
+    @keyframes impactBar {
+      0%,100% { transform:scaleY(.88) skewX(-2deg); filter:brightness(.85); }
+      50% { transform:scaleY(1.10) skewX(2deg); filter:brightness(1.3); }
+    }
+    @keyframes ringPulse {
+      0%,100% { transform:scale(1) rotate(0deg); }
+      50% { transform:scale(1.018) rotate(1deg); }
+    }
+    @keyframes sweep {
+      0%,42% { transform:translateX(-130%); opacity:.4; }
+      76%,100% { transform:translateX(130%); opacity:0; }
+    }
+    @keyframes voltBlink {
+      0%,100% { color:var(--volt); text-shadow:0 0 12px rgba(200,255,0,.7); }
+      50% { color:var(--volt-dim); text-shadow:none; }
+    }
+    @keyframes comboSlide {
+      0%,100% { transform:translateX(0); }
+      50% { transform:translateX(2px); }
+    }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(ellipse at 30% 10%, rgba(255,60,0,.14), transparent 40%),
+        radial-gradient(ellipse at 80% 70%, rgba(255,45,120,.08), transparent 38%),
+        linear-gradient(160deg, #0a0510, #07040d 55%, #09050f);
+      font-family: "SF Pro Display", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text);
+    }
+
+    .wrap { padding: 24px; }
+
+    .phone {
+      position: relative;
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      border-radius: 46px;
+      background: linear-gradient(155deg, var(--surface), var(--deep));
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow:
+        0 0 0 1px rgba(255,60,0,.12),
+        0 36px 96px rgba(0,0,0,.78),
+        0 0 60px rgba(255,60,0,.08),
+        inset 0 1px 0 rgba(255,255,255,.10);
+    }
+
+    /* ambient glow top */
+    .phone::before {
+      content:"";
+      position:absolute;
+      inset:-60px -40px auto;
+      height:260px;
+      background:
+        radial-gradient(circle at 40% 40%, rgba(255,106,0,.28), transparent 55%),
+        radial-gradient(circle at 68% 55%, rgba(255,45,120,.12), transparent 44%);
+      filter:blur(16px);
+      pointer-events:none;
+    }
+
+    /* speed lines bg */
+    .speed-lines {
+      position:absolute; inset:0; pointer-events:none; opacity:.42;
+      background:
+        repeating-linear-gradient(108deg, transparent 0 26px, rgba(255,106,0,.06) 26px 27px, transparent 27px 54px),
+        repeating-linear-gradient(108deg, transparent 0 52px, rgba(200,255,0,.035) 52px 53px, transparent 53px 104px);
+      animation: speedLines 5s linear infinite;
+    }
+
+    /* diagonal metal sweep */
+    .metal-sweep {
+      position:absolute; inset:0; pointer-events:none;
+      background: linear-gradient(112deg, transparent 6%, rgba(255,255,255,.14) 11%, transparent 17%);
+      transform:translateX(-130%);
+      animation: sweep 4.2s ease-in-out infinite;
+    }
+
+    .content {
+      position:relative; z-index:2;
+      height:100%; padding:12px 14px 16px;
+      display:flex; flex-direction:column; gap:9px;
+    }
+
+    /* ── STATUS BAR ── */
+    .status {
+      height:28px; display:flex;
+      justify-content:space-between; align-items:center;
+      padding:0 6px; font-size:12px; color:#d8cde4;
+    }
+    .battery { font-weight:800; color:var(--volt); }
+
+    /* ── HERO CARD ── */
+    .hero {
+      position:relative; overflow:hidden;
+      border-radius:22px;
+      padding:14px;
+      background: linear-gradient(145deg, rgba(38,26,52,.94), rgba(14,8,18,.97));
+      border: 1px solid rgba(255,106,0,.28);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.08),
+        0 16px 36px rgba(0,0,0,.38),
+        0 0 24px rgba(255,60,0,.06);
+    }
+    .hero::after {
+      content:""; position:absolute; inset:0; border-radius:inherit;
+      background: linear-gradient(118deg, transparent 28%, rgba(255,255,255,.07) 38%, transparent 48%);
+      transform:translateX(-100%);
+      animation: sweep 5s ease-in-out infinite 1.2s;
+      pointer-events:none;
+    }
+
+    .hero-top {
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .title {
+      font-size:20px; font-weight:900; letter-spacing:-.01em;
+      background: linear-gradient(90deg, var(--text), #e8c8ff);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .subtitle {
+      margin-top:4px; font-size:11px; color:var(--text-2); font-weight:600;
+      text-transform:uppercase; letter-spacing:.06em;
+    }
+    .gear {
+      width:66px; height:46px; border-radius:15px;
+      border:1px solid rgba(255,106,0,.38);
+      display:grid; place-items:center;
+      background: linear-gradient(160deg, rgba(255,106,0,.14), rgba(255,106,0,.04));
+      color:var(--fire-3); font-size:11px; font-weight:800;
+    }
+    .gear span { display:block; font-size:18px; line-height:1; }
+
+    /* progress goal strip */
+    .goal {
+      margin-top:13px; border-radius:15px; padding:11px 13px;
+      background: linear-gradient(90deg, rgba(255,60,0,.16), rgba(255,210,63,.08), rgba(200,255,0,.06));
+      border: 1px solid rgba(255,106,0,.30);
+    }
+    .goal strong {
+      font-size:15px; color:var(--fire-4);
+      text-shadow: 0 0 16px rgba(255,200,0,.3);
+      display:block;
+    }
+    .goal small { display:block; margin-top:3px; font-size:11px; color:#c4b8d4; }
+
+    .bar {
+      margin-top:9px; height:8px; border-radius:99px;
+      background:rgba(255,255,255,.08);
+      overflow:hidden;
+    }
+    .bar i {
+      display:block; height:100%; border-radius:inherit;
+      background: linear-gradient(90deg, var(--fire-1), var(--fire-2), var(--fire-3), var(--fire-4), var(--volt));
+      box-shadow: 0 0 18px rgba(255,170,0,.46);
+      animation: burnBar 1.9s ease-in-out infinite;
+    }
+
+    /* ── DASH CARD ── */
+    .dash {
+      flex:1; min-height:0; overflow:hidden;
+      border-radius:24px; padding:13px;
+      background: linear-gradient(150deg, rgba(30,23,40,.96), rgba(10,7,16,.98));
+      border: 1px solid rgba(255,255,255,.09);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 12px 28px rgba(0,0,0,.32);
+      position:relative;
+    }
+    .dash::after {
+      content:""; position:absolute; inset:0; border-radius:inherit;
+      background: linear-gradient(118deg, transparent 28%, rgba(255,255,255,.055) 38%, transparent 48%);
+      transform:translateX(-100%);
+      animation: sweep 5.5s ease-in-out infinite 2.6s;
+      pointer-events:none;
+    }
+
+    /* round row */
+    .round-row {
+      position:relative; z-index:1;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .label { font-size:14px; font-weight:800; color:#cbbfe0; }
+    .round {
+      padding:5px 14px; border-radius:999px;
+      font-size:13px; font-weight:900; color:#100a0a;
+      background: linear-gradient(90deg, var(--fire-4), var(--fire-2), var(--fire-1));
+      box-shadow: 0 0 18px rgba(255,100,0,.32), 0 2px 8px rgba(0,0,0,.3);
+    }
+
+    /* timer ring */
+    .timer-area {
+      position:relative; z-index:1;
+      height:178px; display:grid; place-items:center;
+    }
+    .ring {
+      position:relative; width:156px; height:156px;
+      border-radius:50%; display:grid; place-items:center;
+      background: conic-gradient(
+        from -90deg,
+        var(--fire-1) 0deg,
+        var(--fire-2) 40deg,
+        var(--fire-3) 90deg,
+        var(--fire-4) 130deg,
+        var(--volt) 172deg,
+        rgba(255,255,255,.08) 174deg 360deg
+      );
+      box-shadow:
+        0 0 32px rgba(255,80,0,.22),
+        0 0 64px rgba(255,80,0,.08),
+        inset 0 0 0 1px rgba(255,255,255,.10);
+      animation: ringPulse 1.8s ease-in-out infinite;
+    }
+    .ring::before {
+      content:""; position:absolute; inset:10px;
+      border-radius:50%;
+      background: radial-gradient(circle, #100a18 0 52%, #1c1228 100%);
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .ring::after {
+      content:""; position:absolute; inset:-6px;
+      border-radius:50%;
+      border:1.5px solid rgba(200,255,0,.30);
+      border-right-color:transparent;
+      border-bottom-color:transparent;
+      animation: orbitSpin 2s linear infinite;
+    }
+    .time { position:relative; text-align:center; z-index:1; }
+    .time b {
+      display:block; font-size:40px; line-height:1;
+      font-weight:900; letter-spacing:.01em; color:var(--text);
+      text-shadow: 0 0 20px rgba(255,180,0,.24);
+    }
+    .time span { font-size:11px; color:var(--text-2); font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+
+    .go {
+      position:absolute; inset:auto 0 8px;
+      text-align:center; font-size:16px; font-weight:900;
+      letter-spacing:.08em; color:var(--volt);
+      animation: goFlash 1s ease-in-out infinite;
+    }
+
+    /* metrics */
+    .metrics {
+      position:relative; z-index:1;
+      display:grid; grid-template-columns:repeat(4,1fr); gap:7px;
+    }
+    .metric {
+      min-height:72px; border-radius:14px; padding:8px 4px;
+      text-align:center;
+      background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .metric b { display:block; font-size:20px; line-height:1.2; font-weight:900; }
+    .metric small { display:block; margin-top:4px; color:var(--text-2); font-size:10px; line-height:1.3; }
+    .metric.hot b { color:var(--fire-4); text-shadow:0 0 14px rgba(255,200,0,.38); }
+    .metric.fat b { color:var(--volt); text-shadow:0 0 14px rgba(200,255,0,.38); }
+    .metric.pulse b { color:var(--pulse); text-shadow:0 0 14px rgba(255,45,120,.3); animation:pulseBeat 1s ease-in-out infinite; }
+
+    /* force bars */
+    .force {
+      position:relative; z-index:1;
+      margin-top:10px; border-radius:16px; padding:10px;
+      background:rgba(255,255,255,.032);
+      border:1px solid rgba(255,255,255,.07);
+    }
+    .force-head {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:8px; font-size:12px; font-weight:900; color:#cbbfe0;
+    }
+    .peak {
+      padding:3px 9px; border-radius:999px; font-size:11px;
+      background:rgba(255,45,120,.18); color:#ffbdd6;
+      border:1px solid rgba(255,45,120,.32);
+    }
+    .bars {
+      height:72px; display:flex; align-items:flex-end; gap:5px; padding:4px 2px 0;
+    }
+    .bars i {
+      flex:1; min-width:0; border-radius:6px 6px 2px 2px;
+      background: linear-gradient(180deg,
+        var(--pulse) 0%,
+        var(--fire-1) 25%,
+        var(--fire-2) 50%,
+        var(--fire-3) 72%,
+        var(--fire-4) 88%,
+        var(--volt) 100%
+      );
+      box-shadow:0 0 8px rgba(255,80,0,.18);
+      transform-origin:bottom;
+      animation:impactBar 1.3s ease-in-out infinite;
+    }
+    .bars i:nth-child(2n)  { animation-delay:.09s; }
+    .bars i:nth-child(3n)  { animation-delay:.18s; }
+    .bars i:nth-child(5n)  { animation-delay:.27s; }
+    .bars i:nth-child(7n)  { animation-delay:.36s; }
+
+    .summary {
+      margin-top:8px; display:grid; grid-template-columns:repeat(3,1fr);
+      gap:6px; font-size:10px; color:var(--text-2); text-align:center;
+    }
+    .summary b { display:block; color:var(--text); font-size:12px; margin-top:2px; }
+
+    /* combo tags */
+    .combo {
+      position:relative; z-index:1;
+      margin-top:9px; display:flex; gap:6px; overflow:hidden;
+    }
+    .combo span {
+      flex:1; padding:7px 4px; border-radius:999px;
+      text-align:center; font-size:10px; font-weight:700;
+      color:rgba(200,185,220,.75); border:1px solid rgba(255,255,255,.09);
+      background:rgba(255,255,255,.04);
+    }
+    .combo .on {
+      color:#0b0810; font-weight:900;
+      background: linear-gradient(90deg, var(--fire-4), var(--fire-2), var(--fire-1));
+      border-color:transparent;
+      box-shadow:0 0 16px rgba(255,120,0,.32);
+      animation: comboSlide 1.4s ease-in-out infinite;
+    }
+
+    /* action buttons */
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .btn {
+      height:50px; border:0; border-radius:18px;
+      font-weight:900; font-size:16px; cursor:pointer; letter-spacing:.02em;
+    }
+    .btn.go-btn {
+      color:#0b0810;
+      background: linear-gradient(90deg, var(--fire-4), var(--fire-2), var(--fire-1));
+      box-shadow: 0 8px 24px rgba(255,80,0,.28), 0 0 0 1px rgba(255,150,0,.18);
+    }
+    .btn.stop {
+      color:#fff0f5;
+      background: linear-gradient(90deg, #4a0a20, var(--pulse-dim), var(--pulse));
+      box-shadow: 0 8px 24px rgba(255,45,120,.20), 0 0 0 1px rgba(255,45,120,.14);
+    }
+
+    .caption {
+      text-align:center; font-size:10.5px; color:rgba(180,165,200,.55); line-height:1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="phone" aria-label="HitRise 实时训练燃脂界面">
+      <div class="speed-lines"></div>
+      <div class="metal-sweep"></div>
+
+      <section class="content">
+        <!-- STATUS BAR -->
+        <div class="status">
+          <span>9:41</span>
+          <span class="battery">SENBALL#A · 86%</span>
+        </div>
+
+        <!-- HERO -->
+        <section class="hero">
+          <div class="hero-top">
+            <div>
+              <div class="title">HitRise 实时训练</div>
+              <div class="subtitle">燃脂模式 · 持续运动反馈</div>
+            </div>
+            <div class="gear"><span>⚙</span>设置</div>
+          </div>
+          <div class="goal">
+            <strong>今日目标：500拳 · 已完成 186拳</strong>
+            <small>目标进度 37% · 连续运动 06:18</small>
+            <div class="bar"><i></i></div>
+          </div>
+        </section>
+
+        <!-- DASH -->
+        <section class="dash">
+          <div class="round-row">
+            <div class="label">实时训练</div>
+            <div class="round">第 2 / 3 回合</div>
+          </div>
+
+          <div class="timer-area">
+            <div class="ring">
+              <div class="time">
+                <b>00:42</b>
+                <span>燃脂冲刺</span>
+              </div>
+            </div>
+            <div class="go">3 · 2 · 1 · GO!</div>
+          </div>
+
+          <div class="metrics">
+            <div class="metric"><b>186</b><small>总击打数</small></div>
+            <div class="metric pulse"><b>92</b><small>BPM</small></div>
+            <div class="metric hot"><b>31.8</b><small>卡路里 kcal</small></div>
+            <div class="metric fat"><b>4.1</b><small>燃脂 g</small></div>
+          </div>
+
+          <section class="force">
+            <div class="force-head">
+              <span>击打力度</span>
+              <span class="peak">峰值 1180N</span>
+            </div>
+            <div class="bars">
+              <i style="height:28%"></i>
+              <i style="height:45%"></i>
+              <i style="height:36%"></i>
+              <i style="height:62%"></i>
+              <i style="height:78%"></i>
+              <i style="height:48%"></i>
+              <i style="height:83%"></i>
+              <i style="height:55%"></i>
+              <i style="height:88%"></i>
+              <i style="height:68%"></i>
+              <i style="height:94%"></i>
+              <i style="height:51%"></i>
+              <i style="height:73%"></i>
+              <i style="height:38%"></i>
+            </div>
+            <div class="summary">
+              <span>最小力度<b>420N</b></span>
+              <span>最大力度<b>1180N</b></span>
+              <span>平均力度<b>760N</b></span>
+            </div>
+          </section>
+
+          <div class="combo">
+            <span class="on">Power Burst</span>
+            <span>三连</span>
+            <span>Jab-Cross</span>
+          </div>
+        </section>
+
+        <!-- ACTIONS -->
+        <div class="actions">
+          <button class="btn go-btn">开始</button>
+          <button class="btn stop">结束</button>
+        </div>
+        <div class="caption">确认稿：正式开发会保留现有蓝牙、回合、战报和上传逻辑</div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

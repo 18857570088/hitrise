@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 from typing import Any
@@ -34,7 +35,8 @@ app = FastAPI(title="HitRise Activation Service", version="1.2.0")
 
 SUPPORTED_LANGUAGES = {"zh", "en", "fr", "th"}
 SUPPORTED_WINDOWS = {"all", "day", "week", "month"}
-SUPPORTED_MODE_SECONDS = {10, 15, 30, 60}
+MIN_MODE_SECONDS = 1
+MAX_MODE_SECONDS = 600
 SUPPORTED_LEADERBOARD_KEYS = {
     "total_training_seconds",
     "total_hits",
@@ -47,7 +49,11 @@ SUPPORTED_LEADERBOARD_KEYS = {
     "longest_streak",
 }
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
-CALORIES_PER_HIT = 0.12
+DEFAULT_BODY_WEIGHT_KG = 70.0
+BASE_BOXING_MET = 7.0
+FORCE_REFERENCE_N = 800.0
+MIN_DYNAMIC_MET = 4.0
+MAX_DYNAMIC_MET = 10.5
 KCAL_PER_FAT_GRAM = 7.7
 SFX_MANIFEST_NAME = "manifest.json"
 MUSIC_MANIFEST_NAME = "manifest.json"
@@ -102,8 +108,23 @@ def decimal_to_float(value: Any, digits: int = 3) -> float:
     return round(float(value), digits)
 
 
-def calories_for_hits(total_hits: int) -> float:
-    return round(max(0, int(total_hits)) * CALORIES_PER_HIT, 3)
+def clamp(value: float, low: float, high: float) -> float:
+    return min(high, max(low, value))
+
+
+def calories_for_training(total_hits: int, duration_seconds: int | float, avg_force_n: float = 0.0) -> float:
+    safe_hits = max(0, int(total_hits))
+    safe_duration_seconds = max(0.0, float(duration_seconds or 0.0))
+    if safe_hits <= 0 or safe_duration_seconds <= 0.0:
+        return 0.0
+    minutes = safe_duration_seconds / 60.0
+    punches_per_minute = safe_hits / max(minutes, 1.0 / 60.0)
+    frequency_factor = clamp(punches_per_minute / 60.0, 0.50, 1.60)
+    force_factor = clamp(math.sqrt(max(0.0, float(avg_force_n or 0.0)) / FORCE_REFERENCE_N), 0.70, 1.35)
+    intensity = 0.70 * frequency_factor + 0.30 * force_factor
+    dynamic_met = clamp(BASE_BOXING_MET * intensity, MIN_DYNAMIC_MET, MAX_DYNAMIC_MET)
+    calories = dynamic_met * 3.5 * DEFAULT_BODY_WEIGHT_KG / 200.0 * minutes
+    return round(calories, 3)
 
 
 def fat_grams_for_calories(calories: float) -> float:
@@ -147,9 +168,10 @@ def parse_round_reports_json(raw: str | None, *, total_rounds: int, fallback_end
             continue
         cumulative_hits = _int_from(item, "total_hits", "totalHits", "cumulative_hits", "cumulativeHits")
         cumulative_duration = _int_from(item, "duration_seconds", "durationSeconds", "cumulative_duration_seconds", "cumulativeDurationSeconds")
+        avg_force_n = round(_number_from(item, "avg_force_n", "avgForceN"), 3)
         cumulative_calories = _number_from(item, "calories_burned", "caloriesBurned", "cumulative_calories_burned", "cumulativeCaloriesBurned")
         if cumulative_calories <= 0 and cumulative_hits > 0:
-            cumulative_calories = calories_for_hits(cumulative_hits)
+            cumulative_calories = calories_for_training(cumulative_hits, cumulative_duration, avg_force_n)
         cumulative_fat = _number_from(item, "fat_burned_grams", "fatBurnedGrams", "cumulative_fat_burned_grams", "cumulativeFatBurnedGrams")
         if cumulative_fat <= 0 and cumulative_calories > 0:
             cumulative_fat = fat_grams_for_calories(cumulative_calories)
@@ -162,7 +184,7 @@ def parse_round_reports_json(raw: str | None, *, total_rounds: int, fallback_end
                 "cumulative_calories_burned": round(cumulative_calories, 3),
                 "cumulative_fat_burned_grams": round(cumulative_fat, 3),
                 "peak_force_n": round(_number_from(item, "peak_force_n", "peakForceN"), 3),
-                "avg_force_n": round(_number_from(item, "avg_force_n", "avgForceN"), 3),
+                "avg_force_n": avg_force_n,
                 "avg_bpm": round(_number_from(item, "avg_bpm", "avgBpm"), 3),
                 "rhythm_accuracy": round(min(1.0, max(0.0, _number_from(item, "rhythm_accuracy", "rhythmAccuracy"))), 4),
                 "ended_at": utc_from_epoch_ms(_int_from(item, "ended_at_epoch_ms", "endedAtEpochMs")) or fallback_ended_at,
@@ -527,8 +549,10 @@ def sync_user_progress(conn, user_row: dict[str, Any]) -> tuple[dict[str, Any], 
 
         for item in achievement_rows:
             existing_unlocked_at = unlocked_map.get(item["key"])
-            should_unlock = item["unlocked"] and existing_unlocked_at is None
-            unlocked_at = existing_unlocked_at or (now if should_unlock else None)
+            if item["unlocked"]:
+                unlocked_at = existing_unlocked_at or now
+            else:
+                unlocked_at = None
             if item["key"] in unlocked_map:
                 cur.execute(
                     """
@@ -1342,8 +1366,8 @@ def create_training_session(payload: TrainingSessionCreateRequest, request: Requ
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if payload.mode_seconds not in SUPPORTED_MODE_SECONDS:
-        raise HTTPException(status_code=400, detail="mode_seconds must be one of 10, 15, 30, or 60")
+    if payload.mode_seconds < MIN_MODE_SECONDS or payload.mode_seconds > MAX_MODE_SECONDS:
+        raise HTTPException(status_code=400, detail="mode_seconds must be between 1 and 600 seconds")
 
     install_id = payload.install_id.strip()
     device_hash = payload.device_hash.strip()
@@ -1353,17 +1377,17 @@ def create_training_session(payload: TrainingSessionCreateRequest, request: Requ
     started_at = utc_from_epoch_ms(payload.started_at_epoch_ms)
     ended_at = utc_from_epoch_ms(payload.ended_at_epoch_ms) or utc_now()
     duration_seconds = int(payload.duration_seconds or payload.mode_seconds)
-    calories_burned = float(payload.calories_burned or 0.0)
-    if calories_burned <= 0.0 and payload.total_hits > 0:
-        calories_burned = calories_for_hits(payload.total_hits)
-    fat_burned_grams = float(payload.fat_burned_grams or 0.0)
-    if fat_burned_grams <= 0.0 and calories_burned > 0.0:
-        fat_burned_grams = fat_grams_for_calories(calories_burned)
     avg_bpm = float(payload.avg_bpm or 0.0)
     if avg_bpm <= 0.0 and payload.average_frequency > 0.0:
         avg_bpm = round(payload.average_frequency * 60.0, 3)
     peak_force_n = float(payload.peak_force_n or 0.0)
     avg_force_n = float(payload.avg_force_n or 0.0)
+    calories_burned = float(payload.calories_burned or 0.0)
+    if calories_burned <= 0.0 and payload.total_hits > 0:
+        calories_burned = calories_for_training(payload.total_hits, duration_seconds, avg_force_n)
+    fat_burned_grams = float(payload.fat_burned_grams or 0.0)
+    if fat_burned_grams <= 0.0 and calories_burned > 0.0:
+        fat_burned_grams = fat_grams_for_calories(calories_burned)
     rhythm_accuracy = float(payload.rhythm_accuracy or 0.0)
     play_mode = (payload.play_mode or "").strip() or None
     sound_pack_id = (payload.sound_pack_id or "").strip() or None

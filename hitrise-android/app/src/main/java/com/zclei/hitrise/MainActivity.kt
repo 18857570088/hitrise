@@ -115,6 +115,7 @@ import kotlin.math.PI
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -166,8 +167,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private data class TrainingSessionSetup(
-        val workMinutes: Int = 2,
-        val restHalfMinutes: Int = 2,
+        val workMinutes: Int = 1,
+        val restHalfMinutes: Int = 1,
         val rounds: Int = 3,
         val rhythmMode: TrainingRhythmMode = TrainingRhythmMode.Rhythm,
         val bpm: Int = 80,
@@ -244,12 +245,13 @@ class MainActivity : AppCompatActivity() {
     private var activationJob: Job? = null
     private var bluetoothTrainingCount: Int = 0
     private var bluetoothTrainingMode: TrainingMode? = null
+    private var partialTrainingUploadTriggered: Boolean = false
     private var trainingAcceptingPunches: Boolean = false
     private var currentTrainingRound: Int = 1
     private var currentTrainingRoundCount: Int = 1
     private var currentRoundDurationMs: Long = 0L
     private var currentRoundRemainingMs: Long = 0L
-    private var trainingResting: Boolean = false
+    @Volatile private var trainingResting: Boolean = false
     private var lastDisplayedCount = 0
     private var lastSpokenCountdown: Int? = null
     private var goSpoken = false
@@ -280,6 +282,9 @@ class MainActivity : AppCompatActivity() {
     private var cloudStatusMessageKey: String? = null
     private var cloudStatusFallbackMessage: String? = null
     private var cloudStatusColor: Int = Color.parseColor("#FFD060")
+    private var trainingBluetoothReconnectJob: Job? = null
+    private var bluetoothAutoConnectInProgress: Boolean = false
+    private var bluetoothLastAutoConnectStartedMs: Long = 0L
     private var pendingAvatarSelection: ((Uri?) -> Unit)? = null
     private var autoRestoreAttempted = false
     private var splashDismissed = false
@@ -535,8 +540,24 @@ class MainActivity : AppCompatActivity() {
                         bluetoothRealHitCount = 0
                         lastBluetoothGyroRawCount = null
                         pendingBluetoothGyroHitTimes.clear()
-                        ensureGyroscopeOffAfterConnection()
-                        bluetoothStatusMessage = bluetoothConnectedText(device.name)
+                        bluetoothAutoConnectInProgress = false
+                        trainingBluetoothReconnectJob?.cancel()
+                        trainingBluetoothReconnectJob = null
+                        if (trainingJob?.isActive == true) {
+                            bluetoothGyroscopeEnabled = false
+                            bluetoothStatusMessage = bluetoothTrainingReconnectedText(device.name)
+                            if (trainingAcceptingPunches && !trainingResting) {
+                                lifecycleScope.launch(Dispatchers.Main) {
+                                    delay(350L)
+                                    setTrainingGyroscopeEnabled(true, reportFailure = false)
+                                }
+                            } else {
+                                updateBluetoothSettingsViews()
+                            }
+                        } else {
+                            ensureGyroscopeOffAfterConnection()
+                            bluetoothStatusMessage = bluetoothConnectedText(device.name)
+                        }
                         updateBluetoothSettingsViews()
                     }
                 }
@@ -549,8 +570,15 @@ class MainActivity : AppCompatActivity() {
                         bluetoothBatteryText = "--"
                         bluetoothBatteryRaw = null
                         pendingBluetoothGyroHitTimes.clear()
-                        bluetoothStatusMessage = bluetoothDisconnectedText()
+                        bluetoothAutoConnectInProgress = false
+                        bluetoothStatusMessage =
+                            if (trainingJob?.isActive == true) {
+                                bluetoothTrainingReconnectText()
+                            } else {
+                                bluetoothDisconnectedText()
+                            }
                         updateBluetoothSettingsViews()
+                        scheduleTrainingBluetoothReconnect()
                     }
                 }
 
@@ -644,6 +672,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         trainingJob?.cancel()
+        trainingBluetoothReconnectJob?.cancel()
         activationJob?.cancel()
         cloudJob?.cancel()
         cloudSoundEffectsLoadingJob?.cancel()
@@ -1786,7 +1815,7 @@ class MainActivity : AppCompatActivity() {
 
             val brandTitle =
                 TextView(this@MainActivity).apply {
-                    text = "SMART SENSOR BALL"
+                    text = "HITRISE"
                     setTextColor(Color.parseColor("#FFF8E8"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
@@ -2279,6 +2308,7 @@ class MainActivity : AppCompatActivity() {
         val sessionMode = selectedMode
         val sessionPlayMode = selectedPlayMode
         val sessionSetup = trainingSessionSetup
+        partialTrainingUploadTriggered = false
         selectedRhythmMode = sessionSetup.rhythmMode
         selectedBeatBpm = sessionSetup.bpm
         lastDisplayedCount = 0
@@ -2329,6 +2359,7 @@ class MainActivity : AppCompatActivity() {
                                 "Déclencheur : début du round | coaching IA",
                                 "สาเหตุ: เริ่มรอบ | โค้ช AI สด",
                             ),
+                        speak = false,
                     )
                     if (!setTrainingGyroscopeEnabled(true, reportFailure = true)) {
                         throw IllegalStateException(
@@ -2386,6 +2417,8 @@ class MainActivity : AppCompatActivity() {
                     renderError(t.message ?: tr("training_failed"))
                 } finally {
                     stopImmersiveTrainingAudio()
+                    trainingBluetoothReconnectJob?.cancel()
+                    trainingBluetoothReconnectJob = null
                     trainingJob = null
                     bluetoothTrainingMode = null
                     trainingAcceptingPunches = false
@@ -2417,6 +2450,7 @@ class MainActivity : AppCompatActivity() {
                     "รอบ $round กำลังฝึก",
                 )
             statusView.setTextColor(Color.parseColor("#FFB347"))
+            scheduleRoundStartAiCoachCue(round, setup.rounds)
             val startMs = SystemClock.elapsedRealtime()
             while (SystemClock.elapsedRealtime() - startMs < workDurationMs) {
                 val remainingMs = (workDurationMs - (SystemClock.elapsedRealtime() - startMs)).coerceAtLeast(0L)
@@ -2446,6 +2480,7 @@ class MainActivity : AppCompatActivity() {
                 currentRoundDurationMs = restDurationMs
                 val restStartMs = SystemClock.elapsedRealtime()
                 setTrainingGyroscopeEnabled(false, reportFailure = false)
+                startRestBackgroundMusic()
                 while (SystemClock.elapsedRealtime() - restStartMs < restDurationMs) {
                     val remainingMs = (restDurationMs - (SystemClock.elapsedRealtime() - restStartMs)).coerceAtLeast(0L)
                     currentRoundRemainingMs = remainingMs
@@ -2460,7 +2495,14 @@ class MainActivity : AppCompatActivity() {
                     delay(100L)
                 }
                 trainingResting = false
-                if (!setTrainingGyroscopeEnabled(true, reportFailure = true)) {
+                startSelectedBackgroundMusic()
+                var countingRestarted = setTrainingGyroscopeEnabled(true, reportFailure = false)
+                if (!countingRestarted) {
+                    scheduleTrainingBluetoothReconnect()
+                    delay(2_000L)
+                    countingRestarted = setTrainingGyroscopeEnabled(true, reportFailure = true)
+                }
+                if (!countingRestarted) {
                     throw IllegalStateException(
                         localText(
                             "休息结束后蓝牙计数未重新启动，请检查设备连接后重试。",
@@ -2520,7 +2562,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopTraining(showStoppedState: Boolean) {
+        val partialReport = if (showStoppedState) buildManualStopUploadReport() else null
         trainingJob?.cancel()
+        trainingBluetoothReconnectJob?.cancel()
+        trainingBluetoothReconnectJob = null
         setTrainingGyroscopeEnabledAsync(false)
         tts?.stop()
         stopImmersiveTrainingAudio()
@@ -2540,7 +2585,29 @@ class MainActivity : AppCompatActivity() {
             applyStaticTexts()
             updateDashboardViews(selectedMode.durationSeconds * 1_000L)
             showCompletedForceStats()
+            partialReport?.let { report ->
+                latestReport = report
+                renderReport(report)
+                renderTrainingHero()
+                syncTrainingReport(report)
+            }
         }
+    }
+
+    private fun buildManualStopUploadReport(): TrainingReport? {
+        if (partialTrainingUploadTriggered) {
+            return null
+        }
+        val latestCompletedRound =
+            trainingRoundReports
+                .filter { it.totalRounds > 1 && it.completedRounds in 1 until it.totalRounds }
+                .maxByOrNull { it.completedRounds }
+                ?: return null
+        if (latestCompletedRound.totalHits <= 0 && latestCompletedRound.durationSeconds <= 0) {
+            return null
+        }
+        partialTrainingUploadTriggered = true
+        return latestCompletedRound.copy(roundReports = buildRoundReportSnapshots())
     }
 
     private fun buildBluetoothTrainingReport(
@@ -2554,7 +2621,7 @@ class MainActivity : AppCompatActivity() {
         val durationSeconds = setup.workSeconds * safeCompletedRounds
         val forceSamples = trainingPunchEvents.map { it.forceN.toFloat() }.filter { it > 0f }
         val avgForceN = forceSamples.average().takeIf { !it.isNaN() }?.toFloat() ?: 0f
-        val calories = caloriesForHits(totalHits)
+        val calories = caloriesForTraining(totalHits, durationSeconds, avgForceN)
         val rhythmSummary = RhythmSummary(trainingPerfectBeats, trainingGoodBeats, trainingMissBeats)
         return TrainingReport(
             mode = mode,
@@ -2780,7 +2847,27 @@ class MainActivity : AppCompatActivity() {
         return best
     }
 
-    private fun caloriesForHits(hits: Int): Float = hits.coerceAtLeast(0) * CALORIES_PER_HIT
+    private fun caloriesForTraining(
+        hits: Int,
+        durationSeconds: Int,
+        avgForceN: Float,
+    ): Float {
+        val safeHits = hits.coerceAtLeast(0)
+        val safeDurationSeconds = durationSeconds.coerceAtLeast(0)
+        if (safeHits == 0 || safeDurationSeconds == 0) {
+            return 0f
+        }
+        val minutes = safeDurationSeconds / 60f
+        val punchesPerMinute = safeHits / minutes.coerceAtLeast(1f / 60f)
+        val frequencyFactor = (punchesPerMinute / 60f).coerceIn(0.50f, 1.60f)
+        val forceFactor =
+            sqrt((avgForceN.coerceAtLeast(0f) / FORCE_REFERENCE_N).toDouble())
+                .toFloat()
+                .coerceIn(0.70f, 1.35f)
+        val intensity = 0.70f * frequencyFactor + 0.30f * forceFactor
+        val dynamicMet = (BASE_BOXING_MET * intensity).coerceIn(MIN_DYNAMIC_MET, MAX_DYNAMIC_MET)
+        return dynamicMet * 3.5f * DEFAULT_BODY_WEIGHT_KG / 200f * minutes
+    }
 
     private fun fatGramsForCalories(calories: Float): Float =
         if (calories <= 0f) 0f else calories / KCAL_PER_FAT_GRAM
@@ -2831,10 +2918,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun trainingBattleReportSummary(report: TrainingReport): String =
         localText(
-            "累计锻炼 ${formatTrainingDuration(report.durationSeconds)} | 累计 ${report.totalHits} 拳 | ${formatCalories(report.caloriesBurned)} | 燃脂 ${formatFatGrams(report.fatBurnedGrams)}",
-            "Total ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} punches | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} fat",
-            "Total ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} coups | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} graisse",
-            "รวม ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} หมัด | ${formatCalories(report.caloriesBurned)} | ไขมัน ${formatFatGrams(report.fatBurnedGrams)}",
+            "累计锻炼 ${formatTrainingDuration(report.durationSeconds)} | 累计 ${report.totalHits} 拳 | ${formatCalories(report.caloriesBurned)} | 等效燃脂 ${formatFatGrams(report.fatBurnedGrams)}",
+            "Total ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} punches | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} equivalent fat",
+            "Total ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} coups | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} graisse équiv.",
+            "รวม ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} หมัด | ${formatCalories(report.caloriesBurned)} | ไขมันเทียบเท่า ${formatFatGrams(report.fatBurnedGrams)}",
         )
 
     private fun trainingBattleReportForceLine(report: TrainingReport): String =
@@ -2855,18 +2942,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun trainingStatsForceBurnLine(stats: CloudUserStatistics): String =
         localText(
-            "最大力度 ${forceDisplay(stats.bestPeakForceN)} | 最佳平均力度 ${forceDisplay(stats.bestAvgForceN)} | 累计燃脂 ${formatFatGrams(stats.totalFatBurnedGrams)}",
+            "最大力度 ${forceDisplay(stats.bestPeakForceN)} | 最佳平均力度 ${forceDisplay(stats.bestAvgForceN)} | 累计等效燃脂 ${formatFatGrams(stats.totalFatBurnedGrams)}",
             "Peak ${forceDisplay(stats.bestPeakForceN)} | Best avg ${forceDisplay(stats.bestAvgForceN)} | Fat ${formatFatGrams(stats.totalFatBurnedGrams)}",
             "Max ${forceDisplay(stats.bestPeakForceN)} | Moy. max ${forceDisplay(stats.bestAvgForceN)} | Graisse ${formatFatGrams(stats.totalFatBurnedGrams)}",
-            "สูงสุด ${forceDisplay(stats.bestPeakForceN)} | เฉลี่ยดีที่สุด ${forceDisplay(stats.bestAvgForceN)} | ไขมัน ${formatFatGrams(stats.totalFatBurnedGrams)}",
+            "สูงสุด ${forceDisplay(stats.bestPeakForceN)} | เฉลี่ยดีที่สุด ${forceDisplay(stats.bestAvgForceN)} | ไขมันเทียบเท่า ${formatFatGrams(stats.totalFatBurnedGrams)}",
         )
 
     private fun trainingReportLeaderboardLine(): String =
         localText(
-            "锻炼成果与榜单按：时间、拳数、最大力度、平均力度、卡路里、燃脂量同步统计",
-            "Badges and leaderboards track duration, punches, peak force, average force, calories, and fat burn.",
-            "Badges et classements suivent duree, coups, force max, force moyenne, calories et graisse.",
-            "เหรียญและอันดับนับเวลา หมัด แรงสูงสุด แรงเฉลี่ย แคลอรี และไขมัน",
+            "锻炼成果与榜单按：时间、拳数、最大力度、平均力度、卡路里、等效燃脂量同步统计",
+            "Badges and leaderboards track duration, punches, peak force, average force, calories, and equivalent fat burn.",
+            "Badges et classements suivent durée, coups, force max, force moyenne, calories et graisse équivalente.",
+            "เหรียญและอันดับนับเวลา หมัด แรงสูงสุด แรงเฉลี่ย แคลอรี และไขมันเทียบเท่า",
         )
 
     private fun showCompletedForceStats() {
@@ -2946,24 +3033,48 @@ class MainActivity : AppCompatActivity() {
         if (key in trainingDeliveredCoachCues && key != "combo_flow") {
             return false
         }
-        if (trainingLastCoachCueKey == key && elapsedMs - trainingLastCoachCueElapsedMs < 60_000L) {
+        if (trainingLastCoachCueKey == key && elapsedMs - trainingLastCoachCueElapsedMs < 45_000L) {
             return false
         }
-        if (elapsedMs - trainingLastCoachCueElapsedMs < 25_000L) {
+        if (elapsedMs - trainingLastCoachCueElapsedMs < aiCoachCueCooldownMs()) {
             return false
         }
         return true
     }
 
+    private fun aiCoachCueCooldownMs(): Long =
+        when {
+            trainingSessionSetup.workSeconds <= 60 -> 18_000L
+            trainingSessionSetup.workSeconds <= 120 -> 22_000L
+            else -> 25_000L
+        }
+
+    private fun aiCoachSpeechCooldownMs(key: String): Long =
+        when {
+            key.startsWith("round_start") -> 0L
+            key.startsWith("final_30") -> 18_000L
+            key == "tempo_up" -> 24_000L
+            key == "power_burst" -> 28_000L
+            key == "force_drop" -> 30_000L
+            key == "combo_flow" -> 32_000L
+            else -> 45_000L
+        }
+
     private fun shouldSpeakAiCoachCue(key: String, elapsedMs: Long, forced: Boolean): Boolean {
         if (forced) {
             return true
         }
-        val importantCue = key == "round_start" || key == "final_30" || key == "tempo_up"
+        val importantCue =
+            key.startsWith("round_start") ||
+                key.startsWith("final_30") ||
+                key == "tempo_up" ||
+                key == "power_burst" ||
+                key == "force_drop" ||
+                key == "combo_flow"
         if (!importantCue) {
             return false
         }
-        return elapsedMs - trainingLastCoachSpeechElapsedMs >= 60_000L
+        return elapsedMs - trainingLastCoachSpeechElapsedMs >= aiCoachSpeechCooldownMs(key)
     }
 
     private fun pushAiCoachCue(
@@ -2973,9 +3084,6 @@ class MainActivity : AppCompatActivity() {
         speak: Boolean = true,
         force: Boolean = false,
     ) {
-        if (!::aiCoachMessageView.isInitialized) {
-            return
-        }
         val elapsedMs =
             if (trainingStartedElapsedMs > 0L) {
                 SystemClock.elapsedRealtime() - trainingStartedElapsedMs
@@ -2990,34 +3098,39 @@ class MainActivity : AppCompatActivity() {
         trainingDeliveredCoachCues += key
         lastCoachMessage = message
         val willSpeak = speak && shouldSpeakAiCoachCue(key, elapsedMs, force)
-        aiCoachStatusView.text =
-            if (willSpeak) {
-                localText("语音播报中", "Speaking", "En annonce", "กำลังพูด")
-            } else {
-                localText("提示已更新", "Cue updated", "Conseil mis à jour", "อัปเดตคำแนะนำ")
-            }
-        aiCoachStatusView.background =
-            if (willSpeak) {
-                roundedBackground("#412402", "#BA7517", 999)
-            } else {
-                roundedBackground("#04342C", "#0F6E56", 999)
-            }
-        aiCoachMessageView.text = message
-        aiCoachMetaView.text = meta
-        updateAiCoachVoiceBar(active = willSpeak)
-        aiCoachVoiceBar.postDelayed(
-            {
-                if (::aiCoachStatusView.isInitialized) {
-                    aiCoachStatusView.text = localText("实时监听", "Listening", "Écoute", "กำลังฟัง")
-                    aiCoachStatusView.background = roundedBackground("#04342C", "#0F6E56", 999)
-                    updateAiCoachVoiceBar(active = false)
+        if (::aiCoachStatusView.isInitialized &&
+            ::aiCoachMessageView.isInitialized &&
+            ::aiCoachMetaView.isInitialized
+        ) {
+            aiCoachStatusView.text =
+                if (willSpeak) {
+                    localText("语音播报中", "Speaking", "En annonce", "กำลังพูด")
+                } else {
+                    localText("提示已更新", "Cue updated", "Conseil mis à jour", "อัปเดตคำแนะนำ")
                 }
-            },
-            4_000L,
-        )
+            aiCoachStatusView.background =
+                if (willSpeak) {
+                    roundedBackground("#412402", "#BA7517", 999)
+                } else {
+                    roundedBackground("#04342C", "#0F6E56", 999)
+                }
+            aiCoachMessageView.text = message
+            aiCoachMetaView.text = meta
+            updateAiCoachVoiceBar(active = willSpeak)
+            aiCoachStatusView.postDelayed(
+                {
+                    if (::aiCoachStatusView.isInitialized) {
+                        aiCoachStatusView.text = localText("实时监听", "Listening", "Écoute", "กำลังฟัง")
+                        aiCoachStatusView.background = roundedBackground("#04342C", "#0F6E56", 999)
+                        updateAiCoachVoiceBar(active = false)
+                    }
+                },
+                4_000L,
+            )
+        }
         if (willSpeak) {
             trainingLastCoachSpeechElapsedMs = elapsedMs
-            speakCue(message)
+            speakAiCoachCue(message)
         }
     }
 
@@ -3115,13 +3228,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun scheduleRoundStartAiCoachCue(round: Int, totalRounds: Int) {
+        val action =
+            Runnable {
+                if (trainingJob?.isActive == true && currentTrainingRound == round && !trainingResting) {
+                    pushRoundStartAiCoachCue(round, totalRounds)
+                }
+            }
+        if (::contentRootView.isInitialized) {
+            contentRootView.postDelayed(action, 900L)
+        } else {
+            action.run()
+        }
+    }
+
+    private fun pushRoundStartAiCoachCue(round: Int, totalRounds: Int) {
+        pushAiCoachCue(
+            key = "round_start_$round",
+            message =
+                localText(
+                    "第 $round 回合开始。先稳住呼吸，出拳短促，注意回防。",
+                    "Round $round starts. Settle your breathing, punch short, and bring the guard back.",
+                    "Round $round. Respirez, frappez court et ramenez la garde.",
+                    "เริ่มรอบ $round คุมลมหายใจ ชกสั้น และยกการ์ดกลับ",
+                ),
+            meta =
+                localText(
+                    "触发原因：第 $round/$totalRounds 回合开始",
+                    "Trigger: round $round/$totalRounds started",
+                    "Déclencheur : round $round/$totalRounds lancé",
+                    "สาเหตุ: เริ่มรอบ $round/$totalRounds",
+                ),
+            force = true,
+        )
+    }
+
     private fun evaluateAiCoachTimerCue(remainingMs: Long) {
         if (trainingStartedElapsedMs <= 0L) {
             return
         }
         if (remainingMs in 1L..30_000L) {
             pushAiCoachCue(
-                key = "final_30",
+                key = "final_30_round_$currentTrainingRound",
                 message =
                     localText(
                         "最后 30 秒！全力冲刺，把节奏顶住，拳不要飘。",
@@ -3145,6 +3293,27 @@ class MainActivity : AppCompatActivity() {
             return currentRoundRemainingMs.coerceIn(0L, currentRoundDurationMs)
         }
         return trainingSessionSetup.workSeconds * 1_000L
+    }
+
+    private fun currentEffectiveTrainingSeconds(): Int {
+        if (trainingJob?.isActive != true) {
+            return 0
+        }
+        val completedBeforeCurrent = (currentTrainingRound - 1).coerceAtLeast(0) * trainingSessionSetup.workSeconds
+        val currentRoundWorkSeconds =
+            if (trainingResting) {
+                trainingSessionSetup.workSeconds
+            } else {
+                ((currentRoundDurationMs - currentRoundRemainingMs).coerceAtLeast(0L) / 1_000L)
+                    .toInt()
+                    .coerceIn(0, trainingSessionSetup.workSeconds)
+            }
+        return completedBeforeCurrent + currentRoundWorkSeconds
+    }
+
+    private fun currentAverageTrainingForceN(): Float {
+        val samples = trainingPunchEvents.map { it.forceN.toFloat() }.filter { it > 0f }
+        return samples.average().takeIf { !it.isNaN() }?.toFloat() ?: 0f
     }
 
     private fun showDashboardCenterCue(center: String, caption: String, color: Int) {
@@ -3194,7 +3363,12 @@ class MainActivity : AppCompatActivity() {
                     },
             color = dashboardCenterCueColor ?: timerColor,
         )
-        val calories = caloriesForHits(bluetoothTrainingCount)
+        val calories =
+            caloriesForTraining(
+                bluetoothTrainingCount,
+                currentEffectiveTrainingSeconds(),
+                currentAverageTrainingForceN(),
+            )
         val fat = fatGramsForCalories(calories)
         val goalTarget = trainingGoalPresentationFor(selectedPlayMode).targetHits ?: 500
         dashboardRoundBadgeView.text =
@@ -3322,7 +3496,11 @@ class MainActivity : AppCompatActivity() {
                 try {
                     track.play()
                     while (isActive) {
-                        renderImmersiveGroove(buffer, frameCursor, sampleRate, bpm, soundPack)
+                        if (trainingResting) {
+                            buffer.fill(0)
+                        } else {
+                            renderImmersiveGroove(buffer, frameCursor, sampleRate, bpm, soundPack)
+                        }
                         val written = runCatching { track.write(buffer, 0, buffer.size) }.getOrDefault(-1)
                         if (written < 0) {
                             break
@@ -3555,9 +3733,23 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun startSelectedBackgroundMusic() {
+        val track = selectedBackgroundMusicTrack()
+        if (track == null) {
+            stopTrainingBackgroundMusic()
+            return
+        }
+        startTrainingBackgroundMusic(track.id, track.url, 0.42f)
+    }
+
+    private fun startRestBackgroundMusic() {
+        startTrainingBackgroundMusic(REST_BACKGROUND_MUSIC_ID, REST_BACKGROUND_MUSIC_URL, 0.34f)
+    }
+
+    private fun startTrainingBackgroundMusic(trackId: String, url: String, volume: Float) {
         stopTrainingBackgroundMusic()
-        val track = selectedBackgroundMusicTrack() ?: return
-        val trackId = track.id
+        if (url.isBlank()) {
+            return
+        }
         trainingBackgroundMusicPreparingId = trackId
         trainingBackgroundMusicPlayer =
             MediaPlayer().apply {
@@ -3568,7 +3760,7 @@ class MainActivity : AppCompatActivity() {
                         .build(),
                 )
                 isLooping = true
-                setVolume(0.42f, 0.42f)
+                setVolume(volume, volume)
                 setOnPreparedListener { player ->
                     if (trainingBackgroundMusicPreparingId == trackId) {
                         player.start()
@@ -3579,7 +3771,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 try {
-                    setMusicDataSource(track.url)
+                    setMusicDataSource(url)
                     prepareAsync()
                 } catch (_: Throwable) {
                     stopTrainingBackgroundMusic()
@@ -4097,10 +4289,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun roundReportCumulativeLine(report: TrainingReport): String =
         localText(
-            "第 ${report.completedRounds} 回合：累计 ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} 拳 | ${formatCalories(report.caloriesBurned)} | 燃脂 ${formatFatGrams(report.fatBurnedGrams)}",
-            "Round ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} punches | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} fat",
-            "Round ${report.completedRounds} : ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} coups | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} graisse",
-            "รอบ ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} หมัด | ${formatCalories(report.caloriesBurned)} | ไขมัน ${formatFatGrams(report.fatBurnedGrams)}",
+            "第 ${report.completedRounds} 回合：累计 ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} 拳 | ${formatCalories(report.caloriesBurned)} | 等效燃脂 ${formatFatGrams(report.fatBurnedGrams)}",
+            "Round ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} punches | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} equivalent fat",
+            "Round ${report.completedRounds} : ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} coups | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} graisse équiv.",
+            "รอบ ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} หมัด | ${formatCalories(report.caloriesBurned)} | ไขมันเทียบเท่า ${formatFatGrams(report.fatBurnedGrams)}",
         )
 
     private fun addShareTrainingButtonToReport() {
@@ -6091,7 +6283,7 @@ class MainActivity : AppCompatActivity() {
                     "peak_force" -> "最大拳击力度"
                     "avg_force" -> "平均拳击力度"
                     "calories" -> "卡路里消耗"
-                    else -> "燃脂量"
+                    else -> "等效燃脂量"
                 }
             else ->
                 when (key) {
@@ -6100,7 +6292,7 @@ class MainActivity : AppCompatActivity() {
                     "peak_force" -> "Peak Force"
                     "avg_force" -> "Average Force"
                     "calories" -> "Calories Burned"
-                    else -> "Fat Burn"
+                    else -> "Equivalent Fat Burn"
                 }
         }
 
@@ -6146,21 +6338,21 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun tierHeroProgressText(tier: CloudTierProgress): String {
-        val best30 = cloudStatistics?.best30Hits ?: tier.bestHits
+        val bestRoundHits = max(cloudStatistics?.bestRoundHits ?: 0, tier.bestHits)
         return if (tier.nextHits != null && tier.nextKey != null) {
-            val remaining = (tier.nextHits - best30).coerceAtLeast(0)
+            val remaining = (tier.nextHits - bestRoundHits).coerceAtLeast(0)
             localText(
-                "30 秒最佳：$best30 | 距离 ${tierLabelForKey(tier.nextKey)} 还差 $remaining 击",
-                "Best 30s: $best30 | $remaining hits to ${tierLabelForKey(tier.nextKey)}",
-                "Meilleur 30 s : $best30 | Encore $remaining coups pour ${tierLabelForKey(tier.nextKey)}",
-                "ดีที่สุด 30 วิ: $best30 | อีก $remaining ครั้งจะถึง ${tierLabelForKey(tier.nextKey)}",
+                "最佳单回合：$bestRoundHits | 距离 ${tierLabelForKey(tier.nextKey)} 还差 $remaining 击",
+                "Best round: $bestRoundHits | $remaining hits to ${tierLabelForKey(tier.nextKey)}",
+                "Meilleur round : $bestRoundHits | Encore $remaining coups pour ${tierLabelForKey(tier.nextKey)}",
+                "รอบดีที่สุด: $bestRoundHits | อีก $remaining ครั้งจะถึง ${tierLabelForKey(tier.nextKey)}",
             )
         } else {
             localText(
-                "30 秒最佳：$best30 | 已达到最高段位",
-                "Best 30s: $best30 | Top tier reached",
-                "Meilleur 30 s : $best30 | Rang maximum atteint",
-                "ดีที่สุด 30 วิ: $best30 | ถึงระดับสูงสุดแล้ว",
+                "最佳单回合：$bestRoundHits | 已达到最高段位",
+                "Best round: $bestRoundHits | Top tier reached",
+                "Meilleur round : $bestRoundHits | Rang maximum atteint",
+                "รอบดีที่สุด: $bestRoundHits | ถึงระดับสูงสุดแล้ว",
             )
         }
     }
@@ -6415,7 +6607,7 @@ class MainActivity : AppCompatActivity() {
                     LeaderboardBoard.PeakForce -> "最大力度"
                     LeaderboardBoard.AvgForce -> "平均力度"
                     LeaderboardBoard.Calories -> "卡路里"
-                    LeaderboardBoard.FatBurned -> "燃脂榜"
+                    LeaderboardBoard.FatBurned -> "等效燃脂榜"
                 }
             else ->
                 when (board) {
@@ -6424,7 +6616,7 @@ class MainActivity : AppCompatActivity() {
                     LeaderboardBoard.PeakForce -> "Peak Force"
                     LeaderboardBoard.AvgForce -> "Avg Force"
                     LeaderboardBoard.Calories -> "Calories"
-                    LeaderboardBoard.FatBurned -> "Fat Burn"
+                    LeaderboardBoard.FatBurned -> "Equivalent Fat"
                 }
         }
 
@@ -6437,7 +6629,7 @@ class MainActivity : AppCompatActivity() {
                     LeaderboardBoard.PeakForce -> "按历史最大拳击力度排名"
                     LeaderboardBoard.AvgForce -> "按单次训练最佳平均力度排名"
                     LeaderboardBoard.Calories -> "按累计卡路里消耗排名"
-                    LeaderboardBoard.FatBurned -> "按累计燃脂量排名"
+                    LeaderboardBoard.FatBurned -> "按累计等效燃脂量排名"
                 }
             else ->
                 when (board) {
@@ -6446,7 +6638,7 @@ class MainActivity : AppCompatActivity() {
                     LeaderboardBoard.PeakForce -> "Ranked by peak punch force"
                     LeaderboardBoard.AvgForce -> "Ranked by best average force"
                     LeaderboardBoard.Calories -> "Ranked by total calories burned"
-                    LeaderboardBoard.FatBurned -> "Ranked by total fat burn"
+                    LeaderboardBoard.FatBurned -> "Ranked by total equivalent fat burn"
                 }
         }
 
@@ -6826,7 +7018,7 @@ class MainActivity : AppCompatActivity() {
                 },
             )
             metricsRow.addView(
-                metricTile(localText("燃脂", "Fat", "Graisse", "ไขมัน"), dashboardFatValueView, "g").apply {
+                metricTile(localText("等效燃脂", "Equivalent fat", "Graisse équiv.", "ไขมันเทียบเท่า"), dashboardFatValueView, "g").apply {
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 },
             )
@@ -7435,8 +7627,8 @@ class MainActivity : AppCompatActivity() {
                         LinearLayout(this@MainActivity).apply {
                             orientation = LinearLayout.HORIZONTAL
                             listOf(
-                                Triple("2/1", localText("初学者", "Beginner", "Débutant", "มือใหม่"), pending.copy(workMinutes = 2, restHalfMinutes = 2, rounds = 3)),
-                                Triple("3/1", localText("经典", "Classic", "Classique", "คลาสสิก"), pending.copy(workMinutes = 3, restHalfMinutes = 2, rounds = 3)),
+                                Triple("1/0.5", localText("初学者", "Beginner", "Débutant", "มือใหม่"), pending.copy(workMinutes = 1, restHalfMinutes = 1, rounds = 3)),
+                                Triple("2/0.5", localText("经典", "Classic", "Classique", "คลาสสิก"), pending.copy(workMinutes = 2, restHalfMinutes = 1, rounds = 3)),
                             ).forEach { (title, subtitle, setup) ->
                                 addView(presetCard(title, subtitle, setup).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(6) } })
                             }
@@ -8211,8 +8403,39 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#1A0C00"))
     }
 
+    private fun scheduleTrainingBluetoothReconnect() {
+        if (trainingJob?.isActive != true) {
+            return
+        }
+        if (trainingBluetoothReconnectJob?.isActive == true) {
+            return
+        }
+        trainingBluetoothReconnectJob =
+            lifecycleScope.launch(Dispatchers.Main) {
+                repeat(18) { attempt ->
+                    if (trainingJob?.isActive != true || bluetoothConnectedDevice != null) {
+                        return@launch
+                    }
+                    val delayMs =
+                        if (attempt == 0) {
+                            800L
+                        } else {
+                            (1_600L + attempt * 350L).coerceAtMost(4_500L)
+                        }
+                    delay(delayMs)
+                    if (trainingJob?.isActive == true && bluetoothConnectedDevice == null) {
+                        autoConnectLastBluetoothDevice()
+                    }
+                }
+            }
+    }
+
     private fun autoConnectLastBluetoothDevice() {
         if (bluetoothConnectedDevice != null) {
+            return
+        }
+        val now = SystemClock.elapsedRealtime()
+        if (bluetoothAutoConnectInProgress && now - bluetoothLastAutoConnectStartedMs < 6_000L) {
             return
         }
         val savedDevice = loadLastBluetoothDevice() ?: return
@@ -8234,6 +8457,8 @@ class MainActivity : AppCompatActivity() {
         updateBluetoothSettingsViews()
         runWithBluetoothPermissions {
             if (bluetoothConnectedDevice == null) {
+                bluetoothAutoConnectInProgress = true
+                bluetoothLastAutoConnectStartedMs = SystemClock.elapsedRealtime()
                 sensorBallBluetooth.connect(
                     bleDevice,
                     allowClassicFallback = false,
@@ -8354,6 +8579,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun bluetoothConnectedText(name: String): String =
         localText("已连接 $name", "Connected to $name", "Connecté à $name", "เชื่อมต่อกับ $name แล้ว")
+
+    private fun bluetoothTrainingReconnectText(): String =
+        localText(
+            "训练中蓝牙断开，正在自动重连...",
+            "Bluetooth dropped during training. Reconnecting...",
+            "Bluetooth coupé pendant l'entraînement. Reconnexion...",
+            "บลูทูธหลุดระหว่างฝึก กำลังเชื่อมต่อใหม่...",
+        )
+
+    private fun bluetoothTrainingReconnectedText(name: String): String =
+        localText(
+            "训练中已重连 $name",
+            "Reconnected during training: $name",
+            "Reconnecté pendant l'entraînement : $name",
+            "เชื่อมต่อใหม่ระหว่างฝึก: $name",
+        )
 
     private fun bluetoothDisconnectedText(): String =
         localText("蓝牙已断开", "Bluetooth disconnected", "Bluetooth déconnecté", "ตัดการเชื่อมต่อบลูทูธแล้ว")
@@ -9482,7 +9723,7 @@ class MainActivity : AppCompatActivity() {
                 }
             addView(
                 TextView(this@MainActivity).apply {
-                    text = "SMART SENSOR BALL"
+                    text = "HITRISE"
                     setTextColor(Color.parseColor("#FFF0BF"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -10292,10 +10533,10 @@ class MainActivity : AppCompatActivity() {
         val shareText =
             if (report != null) {
                 localText(
-                    "我刚完成 ${roundReportBadgeText(report)} HitRise 训练战报：累计锻炼 ${formatTrainingDuration(report.durationSeconds)}，累计击打 ${report.totalHits} 次，最大力度 ${forceDisplay(report.peakForceN)}，平均力度 ${forceDisplay(report.avgForceN)}，消耗 ${formatCalories(report.caloriesBurned)}，燃脂约 ${formatFatGrams(report.fatBurnedGrams)}。",
-                    "I just finished a HitRise ${roundReportBadgeText(report)} report: total ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} punches, peak ${forceDisplay(report.peakForceN)}, avg ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, and ${formatFatGrams(report.fatBurnedGrams)} fat burn.",
-                    "Rapport HitRise ${roundReportBadgeText(report)} terminé : total ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} coups, max ${forceDisplay(report.peakForceN)}, moy. ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, ${formatFatGrams(report.fatBurnedGrams)} graisse.",
-                    "รายงาน HitRise ${roundReportBadgeText(report)}: รวม ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} หมัด, สูงสุด ${forceDisplay(report.peakForceN)}, เฉลี่ย ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, ไขมัน ${formatFatGrams(report.fatBurnedGrams)}",
+                    "我刚完成 ${roundReportBadgeText(report)} HitRise 训练战报：累计锻炼 ${formatTrainingDuration(report.durationSeconds)}，累计击打 ${report.totalHits} 次，最大力度 ${forceDisplay(report.peakForceN)}，平均力度 ${forceDisplay(report.avgForceN)}，消耗 ${formatCalories(report.caloriesBurned)}，等效燃脂约 ${formatFatGrams(report.fatBurnedGrams)}。",
+                    "I just finished a HitRise ${roundReportBadgeText(report)} report: total ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} punches, peak ${forceDisplay(report.peakForceN)}, avg ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, and ${formatFatGrams(report.fatBurnedGrams)} equivalent fat burn.",
+                    "Rapport HitRise ${roundReportBadgeText(report)} terminé : total ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} coups, max ${forceDisplay(report.peakForceN)}, moy. ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, ${formatFatGrams(report.fatBurnedGrams)} graisse équivalente.",
+                    "รายงาน HitRise ${roundReportBadgeText(report)}: รวม ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} หมัด, สูงสุด ${forceDisplay(report.peakForceN)}, เฉลี่ย ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, ไขมันเทียบเท่า ${formatFatGrams(report.fatBurnedGrams)}",
                 )
             } else {
                 localText(
@@ -10505,17 +10746,57 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(KEY_IMMERSIVE_AUDIO_ENABLED_ONCE, true)
                 .apply()
         }
+        val storedTrainingWorkMinutes = prefs.getInt(KEY_TRAINING_SETUP_WORK_MINUTES, TrainingSessionSetup().workMinutes).coerceIn(1, 10)
+        val storedTrainingRestHalfMinutes = prefs.getInt(KEY_TRAINING_SETUP_REST_HALF_MINUTES, TrainingSessionSetup().restHalfMinutes).coerceIn(0, 10)
+        val storedTrainingRounds = prefs.getInt(KEY_TRAINING_SETUP_ROUNDS, TrainingSessionSetup().rounds).coerceIn(1, 10)
         trainingSessionSetup =
             TrainingSessionSetup(
-                workMinutes = prefs.getInt(KEY_TRAINING_SETUP_WORK_MINUTES, 2).coerceIn(1, 10),
-                restHalfMinutes = prefs.getInt(KEY_TRAINING_SETUP_REST_HALF_MINUTES, 2).coerceIn(0, 10),
-                rounds = prefs.getInt(KEY_TRAINING_SETUP_ROUNDS, 3).coerceIn(1, 10),
+                workMinutes = storedTrainingWorkMinutes,
+                restHalfMinutes = storedTrainingRestHalfMinutes,
+                rounds = storedTrainingRounds,
                 rhythmMode =
                     runCatching {
                         TrainingRhythmMode.valueOf(prefs.getString(KEY_TRAINING_SETUP_RHYTHM_MODE, selectedRhythmMode.name).orEmpty())
                     }.getOrDefault(selectedRhythmMode),
                 bpm = prefs.getInt(KEY_TRAINING_SETUP_BPM, 80).coerceIn(40, 140),
             )
+        if (!prefs.getBoolean(KEY_TRAINING_SETUP_BEGINNER_DEFAULT_APPLIED, false)) {
+            val hasStoredTrainingSetup =
+                prefs.contains(KEY_TRAINING_SETUP_WORK_MINUTES) ||
+                    prefs.contains(KEY_TRAINING_SETUP_REST_HALF_MINUTES) ||
+                    prefs.contains(KEY_TRAINING_SETUP_ROUNDS)
+            val looksLikeOldDefault =
+                trainingSessionSetup.workMinutes == 2 &&
+                    trainingSessionSetup.restHalfMinutes == 2 &&
+                    trainingSessionSetup.rounds == 3
+            if (!hasStoredTrainingSetup || looksLikeOldDefault) {
+                trainingSessionSetup = TrainingSessionSetup()
+                prefs.edit()
+                    .putInt(KEY_TRAINING_SETUP_WORK_MINUTES, trainingSessionSetup.workMinutes)
+                    .putInt(KEY_TRAINING_SETUP_REST_HALF_MINUTES, trainingSessionSetup.restHalfMinutes)
+                    .putInt(KEY_TRAINING_SETUP_ROUNDS, trainingSessionSetup.rounds)
+                    .putString(KEY_TRAINING_SETUP_RHYTHM_MODE, trainingSessionSetup.rhythmMode.name)
+                    .putInt(KEY_TRAINING_SETUP_BPM, trainingSessionSetup.bpm)
+                    .putBoolean(KEY_TRAINING_SETUP_BEGINNER_DEFAULT_APPLIED, true)
+                    .apply()
+            } else {
+                prefs.edit()
+                    .putBoolean(KEY_TRAINING_SETUP_BEGINNER_DEFAULT_APPLIED, true)
+                    .apply()
+            }
+        }
+        if (!prefs.getBoolean(KEY_TRAINING_SETUP_BEGINNER_20260522_APPLIED, false)) {
+            trainingSessionSetup = TrainingSessionSetup()
+            prefs.edit()
+                .putInt(KEY_TRAINING_SETUP_WORK_MINUTES, trainingSessionSetup.workMinutes)
+                .putInt(KEY_TRAINING_SETUP_REST_HALF_MINUTES, trainingSessionSetup.restHalfMinutes)
+                .putInt(KEY_TRAINING_SETUP_ROUNDS, trainingSessionSetup.rounds)
+                .putString(KEY_TRAINING_SETUP_RHYTHM_MODE, trainingSessionSetup.rhythmMode.name)
+                .putInt(KEY_TRAINING_SETUP_BPM, trainingSessionSetup.bpm)
+                .putBoolean(KEY_TRAINING_SETUP_BEGINNER_DEFAULT_APPLIED, true)
+                .putBoolean(KEY_TRAINING_SETUP_BEGINNER_20260522_APPLIED, true)
+                .apply()
+        }
         selectedRhythmMode = trainingSessionSetup.rhythmMode
         selectedBeatBpm = trainingSessionSetup.bpm
         currentTrainingRound = 1
@@ -10543,6 +10824,12 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     ttsReady = true
                     updateTtsLanguage()
+                    speaker.setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build(),
+                    )
                     speaker.setOnUtteranceProgressListener(
                         object : UtteranceProgressListener() {
                             override fun onStart(utteranceId: String?) = Unit
@@ -10645,26 +10932,78 @@ class MainActivity : AppCompatActivity() {
         ttsReady = appliedLocale != null
     }
 
-    private fun speakCue(text: String, onDone: (() -> Unit)? = null) {
+    private fun speakCue(text: String, onDone: (() -> Unit)? = null): Boolean {
+        updateTtsLanguage()
         if (!ttsReady) {
             onDone?.invoke()
-            return
+            return false
         }
         val cueText = spokenCueText(text)
         if (cueText.isBlank()) {
             onDone?.invoke()
-            return
+            return false
         }
         val utteranceId = "cue-${UUID.randomUUID()}"
         if (onDone != null) {
             ttsCompletionCallbacks[utteranceId] = onDone
         }
-        val result = tts?.speak(cueText, TextToSpeech.QUEUE_FLUSH, null, utteranceId) ?: TextToSpeech.ERROR
+        val params =
+            Bundle().apply {
+                putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+                putString(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC.toString())
+            }
+        val result = tts?.speak(cueText, TextToSpeech.QUEUE_FLUSH, params, utteranceId) ?: TextToSpeech.ERROR
         if (result == TextToSpeech.ERROR) {
             ttsCompletionCallbacks.remove(utteranceId)
             onDone?.invoke()
+            return false
+        }
+        return true
+    }
+
+    private fun speakAiCoachCue(text: String, attempt: Int = 0) {
+        updateTtsLanguage()
+        if (!ttsReady) {
+            if (attempt < 3 && ::contentRootView.isInitialized) {
+                contentRootView.postDelayed({ speakAiCoachCue(text, attempt + 1) }, 700L)
+            }
+            return
+        }
+        val cueText = if (usesEnglishSpeechFallback()) englishAiCoachFallbackText(text) else text
+        val loweredVolume = if (trainingResting) 0.12f else 0.16f
+        val restoreVolume = if (trainingResting) 0.34f else 0.42f
+        runCatching { trainingBackgroundMusicPlayer?.setVolume(loweredVolume, loweredVolume) }
+        val queued = speakCue(cueText) {
+            val restore =
+                Runnable {
+                runCatching { trainingBackgroundMusicPlayer?.setVolume(restoreVolume, restoreVolume) }
+            }
+            if (::contentRootView.isInitialized) {
+                contentRootView.post(restore)
+            } else {
+                restore.run()
+            }
+        }
+        if (!queued && attempt < 3 && ::contentRootView.isInitialized) {
+            contentRootView.postDelayed({ speakAiCoachCue(text, attempt + 1) }, 700L)
         }
     }
+
+    private fun englishAiCoachFallbackText(text: String): String =
+        when {
+            text.contains("回合开始") || text.contains("Round") ->
+                "Round starts. Settle your breathing, punch short, and bring the guard back."
+            text.contains("最后") || text.contains("Final") ->
+                "Final 30 seconds. Push hard, hold the rhythm, and keep punches clean."
+            text.contains("节奏") || text.contains("pace", ignoreCase = true) || text.contains("BPM") ->
+                "Pick up the pace. Shorten the punch and recover faster."
+            text.contains("力度") || text.contains("force", ignoreCase = true) ->
+                "Watch the force. Lock the wrist and land clean."
+            text.contains("连击") || text.contains("combo", ignoreCase = true) || text.contains("burst", ignoreCase = true) ->
+                "Nice combo rhythm. Keep the guard returning and stay compact."
+            else ->
+                "Keep the rhythm steady, breathe, and stay sharp."
+        }
 
     private fun completeTtsCue(utteranceId: String?) {
         if (utteranceId.isNullOrBlank()) {
@@ -10771,10 +11110,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun leaderboardSubtitleText(): String =
         when (selectedLanguage) {
-            AppLanguage.Chinese -> "按锻炼时间、拳数、力度、卡路里与燃脂量排名"
-            AppLanguage.English -> "Rank by duration, hits, force, calories, and fat burn"
-            AppLanguage.French -> "Classement par durée, coups, force, calories et graisse"
-            AppLanguage.Thai -> "จัดอันดับตามเวลา หมัด แรง แคลอรี และไขมัน"
+            AppLanguage.Chinese -> "按锻炼时间、拳数、力度、卡路里与等效燃脂量排名"
+            AppLanguage.English -> "Rank by duration, hits, force, calories, and equivalent fat burn"
+            AppLanguage.French -> "Classement par durée, coups, force, calories et graisse équivalente"
+            AppLanguage.Thai -> "จัดอันดับตามเวลา หมัด แรง แคลอรี และไขมันเทียบเท่า"
         }
 
     private fun avatarChooseButtonLabel(): String =
@@ -10860,7 +11199,7 @@ class MainActivity : AppCompatActivity() {
     private fun developerCompanyDescription(): String =
         when (selectedLanguage) {
             AppLanguage.Chinese -> "专注于智能拳击产品与运动数据体验"
-            AppLanguage.English -> "Focused on smart sensor ball products and sports data experiences"
+            AppLanguage.English -> "Focused on HitRise training products and sports data experiences"
             AppLanguage.French -> "Spécialisée dans les produits de balle à capteurs intelligents et l'expérience des données sportives"
             AppLanguage.Thai -> "มุ่งเน้นผลิตภัณฑ์ลูกบอลเซ็นเซอร์อัจฉริยะและประสบการณ์ข้อมูลการกีฬา"
         }
@@ -10949,7 +11288,7 @@ class MainActivity : AppCompatActivity() {
         localText("锻炼成果徽章", "Training Result Badges", "Badges de résultats", "เหรียญผลการฝึก")
 
     private fun achievementsSectionHint(): String =
-        localText("按锻炼时间、拳击次数、力度、卡路里和燃脂量记录成果", "Track badges by duration, hits, force, calories, and fat burn.", "Suivez les badges par durée, coups, force, calories et graisse.", "ติดตามเหรียญจากเวลา หมัด แรง แคลอรี และไขมัน")
+        localText("按锻炼时间、拳击次数、力度、卡路里和等效燃脂量记录成果", "Track badges by duration, hits, force, calories, and equivalent fat burn.", "Suivez les badges par durée, coups, force, calories et graisse équivalente.", "ติดตามเหรียญจากเวลา หมัด แรง แคลอรี และไขมันเทียบเท่า")
 
     private fun profilePageSubtitle(): String =
         localText("查看你的段位、训练统计与最近获得的徽章", "View your tier, key stats and recently unlocked badges.", "Consultez votre rang, vos statistiques et vos badges récents.", "ดูระดับ สถิติหลัก และเหรียญล่าสุดของคุณ")
@@ -11031,59 +11370,59 @@ class MainActivity : AppCompatActivity() {
 
     private fun achievementDisplayName(key: String): String =
         when (key) {
-            "duration_5m" -> localText("锻炼 5 分钟", "5-Min Training", "5 min d'entraînement", "ฝึก 5 นาที")
-            "duration_15m" -> localText("锻炼 15 分钟", "15-Min Training", "15 min d'entraînement", "ฝึก 15 นาที")
-            "duration_30m" -> localText("锻炼 30 分钟", "30-Min Training", "30 min d'entraînement", "ฝึก 30 นาที")
-            "duration_60m" -> localText("锻炼 60 分钟", "60-Min Training", "60 min d'entraînement", "ฝึก 60 นาที")
+            "duration_5m" -> localText("锻炼 60 分钟", "60-Min Training", "60 min d'entraînement", "ฝึก 60 นาที")
+            "duration_15m" -> localText("锻炼 300 分钟", "300-Min Training", "300 min d'entraînement", "ฝึก 300 นาที")
+            "duration_30m" -> localText("锻炼 600 分钟", "600-Min Training", "600 min d'entraînement", "ฝึก 600 นาที")
+            "duration_60m" -> localText("锻炼 2000 分钟", "2000-Min Training", "2000 min d'entraînement", "ฝึก 2000 นาที")
             "hits_100" -> localText("百拳试锋", "100-Hit Trial", "Essai 100 coups", "ทดสอบ 100 หมัด")
             "hits_500" -> localText("五百重击", "500 Heavy Hits", "500 frappes", "500 หมัดหนัก")
             "hits_1000" -> localText("千拳风暴", "1K Punch Storm", "Tempête 1K coups", "พายุ 1K หมัด")
             "hits_5000" -> localText("万击宗匠", "5K Master", "Maître 5K coups", "ปรมาจารย์ 5K")
-            "peak_force_50" -> localText("最大力度 50N", "Peak 50N", "Force max 50N", "แรงสูงสุด 50N")
-            "peak_force_100" -> localText("最大力度 100N", "Peak 100N", "Force max 100N", "แรงสูงสุด 100N")
-            "peak_force_150" -> localText("最大力度 150N", "Peak 150N", "Force max 150N", "แรงสูงสุด 150N")
-            "peak_force_200" -> localText("最大力度 200N", "Peak 200N", "Force max 200N", "แรงสูงสุด 200N")
-            "avg_force_30" -> localText("平均力度 30N", "Avg 30N", "Force moy. 30N", "แรงเฉลี่ย 30N")
-            "avg_force_60" -> localText("平均力度 60N", "Avg 60N", "Force moy. 60N", "แรงเฉลี่ย 60N")
-            "avg_force_90" -> localText("平均力度 90N", "Avg 90N", "Force moy. 90N", "แรงเฉลี่ย 90N")
-            "avg_force_120" -> localText("平均力度 120N", "Avg 120N", "Force moy. 120N", "แรงเฉลี่ย 120N")
-            "calories_30" -> localText("消耗 30 kcal", "30 kcal Burned", "30 kcal brûlées", "เผาผลาญ 30 kcal")
-            "calories_100" -> localText("消耗 100 kcal", "100 kcal Burned", "100 kcal brûlées", "เผาผลาญ 100 kcal")
-            "calories_300" -> localText("消耗 300 kcal", "300 kcal Burned", "300 kcal brûlées", "เผาผลาญ 300 kcal")
-            "calories_600" -> localText("消耗 600 kcal", "600 kcal Burned", "600 kcal brûlées", "เผาผลาญ 600 kcal")
-            "fat_5" -> localText("燃脂 5g", "5g Fat Burn", "5 g graisse", "ไขมัน 5g")
-            "fat_15" -> localText("燃脂 15g", "15g Fat Burn", "15 g graisse", "ไขมัน 15g")
-            "fat_40" -> localText("燃脂 40g", "40g Fat Burn", "40 g graisse", "ไขมัน 40g")
-            "fat_80" -> localText("燃脂 80g", "80g Fat Burn", "80 g graisse", "ไขมัน 80g")
+            "peak_force_50" -> localText("最大力度 500N", "Peak 500N", "Force max 500N", "แรงสูงสุด 500N")
+            "peak_force_100" -> localText("最大力度 1000N", "Peak 1000N", "Force max 1000N", "แรงสูงสุด 1000N")
+            "peak_force_150" -> localText("最大力度 1300N", "Peak 1300N", "Force max 1300N", "แรงสูงสุด 1300N")
+            "peak_force_200" -> localText("最大力度 1600N", "Peak 1600N", "Force max 1600N", "แรงสูงสุด 1600N")
+            "avg_force_30" -> localText("平均力度 500N", "Avg 500N", "Force moy. 500N", "แรงเฉลี่ย 500N")
+            "avg_force_60" -> localText("平均力度 800N", "Avg 800N", "Force moy. 800N", "แรงเฉลี่ย 800N")
+            "avg_force_90" -> localText("平均力度 1000N", "Avg 1000N", "Force moy. 1000N", "แรงเฉลี่ย 1000N")
+            "avg_force_120" -> localText("平均力度 1200N", "Avg 1200N", "Force moy. 1200N", "แรงเฉลี่ย 1200N")
+            "calories_30" -> localText("消耗 500 kcal", "500 kcal Burned", "500 kcal brûlées", "เผาผลาญ 500 kcal")
+            "calories_100" -> localText("消耗 1000 kcal", "1000 kcal Burned", "1000 kcal brûlées", "เผาผลาญ 1000 kcal")
+            "calories_300" -> localText("消耗 2000 kcal", "2000 kcal Burned", "2000 kcal brûlées", "เผาผลาญ 2000 kcal")
+            "calories_600" -> localText("消耗 4000 kcal", "4000 kcal Burned", "4000 kcal brûlées", "เผาผลาญ 4000 kcal")
+            "fat_5" -> localText("等效燃脂 100g", "100g Equivalent Fat", "100 g graisse équiv.", "ไขมันเทียบเท่า 100g")
+            "fat_15" -> localText("等效燃脂 500g", "500g Equivalent Fat", "500 g graisse équiv.", "ไขมันเทียบเท่า 500g")
+            "fat_40" -> localText("等效燃脂 1000g", "1000g Equivalent Fat", "1000 g graisse équiv.", "ไขมันเทียบเท่า 1000g")
+            "fat_80" -> localText("等效燃脂 2000g", "2000g Equivalent Fat", "2000 g graisse équiv.", "ไขมันเทียบเท่า 2000g")
             else -> key
         }
 
     private fun achievementBadgeCode(key: String): String =
         when (key) {
-            "duration_5m" -> "5M"
-            "duration_15m" -> "15M"
-            "duration_30m" -> "30M"
-            "duration_60m" -> "60M"
+            "duration_5m" -> "60M"
+            "duration_15m" -> "300M"
+            "duration_30m" -> "600M"
+            "duration_60m" -> "2000M"
             "hits_100" -> "H100"
             "hits_500" -> "H500"
             "hits_1000" -> "1K"
             "hits_5000" -> "5K"
-            "peak_force_50" -> "P50"
-            "peak_force_100" -> "P100"
-            "peak_force_150" -> "P150"
-            "peak_force_200" -> "P200"
-            "avg_force_30" -> "A30"
-            "avg_force_60" -> "A60"
-            "avg_force_90" -> "A90"
-            "avg_force_120" -> "A120"
-            "calories_30" -> "C30"
-            "calories_100" -> "C100"
-            "calories_300" -> "C300"
-            "calories_600" -> "C600"
-            "fat_5" -> "F5"
-            "fat_15" -> "F15"
-            "fat_40" -> "F40"
-            "fat_80" -> "F80"
+            "peak_force_50" -> "500N"
+            "peak_force_100" -> "1000N"
+            "peak_force_150" -> "1300N"
+            "peak_force_200" -> "1600N"
+            "avg_force_30" -> "500N"
+            "avg_force_60" -> "800N"
+            "avg_force_90" -> "1000N"
+            "avg_force_120" -> "1200N"
+            "calories_30" -> "500"
+            "calories_100" -> "1000"
+            "calories_300" -> "2000"
+            "calories_600" -> "4000"
+            "fat_5" -> "100g"
+            "fat_15" -> "500g"
+            "fat_40" -> "1000g"
+            "fat_80" -> "2000g"
             else -> "BADGE"
         }
 
@@ -11467,10 +11806,10 @@ class MainActivity : AppCompatActivity() {
             )
         val body =
             localText(
-                "当前最佳 30 秒成绩提升至 ${tier.bestHits}，成功晋升为 ${tierLabelForKey(tier.key)}。",
-                "Your best 30-second score is now ${tier.bestHits}. You have been promoted to ${tierLabelForKey(tier.key)}.",
-                "Votre meilleur score sur 30 s atteint ${tier.bestHits}. Promotion en ${tierLabelForKey(tier.key)}.",
-                "สถิติ 30 วินาทีดีที่สุดเป็น ${tier.bestHits} เลื่อนเป็น ${tierLabelForKey(tier.key)} แล้ว",
+                "当前最佳单回合成绩提升至 ${tier.bestHits}，成功晋升为 ${tierLabelForKey(tier.key)}。",
+                "Your best round score is now ${tier.bestHits}. You have been promoted to ${tierLabelForKey(tier.key)}.",
+                "Votre meilleur score par round atteint ${tier.bestHits}. Promotion en ${tierLabelForKey(tier.key)}.",
+                "สถิติรอบดีที่สุดเป็น ${tier.bestHits} เลื่อนเป็น ${tierLabelForKey(tier.key)} แล้ว",
             )
         showCelebrationDialog(
             accentColor = "#FFD060",
@@ -11826,10 +12165,10 @@ class MainActivity : AppCompatActivity() {
                 card.addView(
                     bodyText(
                         localText(
-                            "第 ${round.roundIndex}/${round.totalRounds} 回合：本回合 ${round.roundHits} 拳 | 累计 ${round.cumulativeHits} 拳 | ${formatCalories(round.cumulativeCaloriesBurned)} | 燃脂 ${formatFatGrams(round.cumulativeFatBurnedGrams)}",
-                            "Round ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} hits | ${round.cumulativeHits} total | ${formatCalories(round.cumulativeCaloriesBurned)} | ${formatFatGrams(round.cumulativeFatBurnedGrams)} fat",
-                            "Round ${round.roundIndex}/${round.totalRounds} : ${round.roundHits} coups | ${round.cumulativeHits} total | ${formatCalories(round.cumulativeCaloriesBurned)} | ${formatFatGrams(round.cumulativeFatBurnedGrams)} graisse",
-                            "รอบ ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} หมัด | รวม ${round.cumulativeHits} | ${formatCalories(round.cumulativeCaloriesBurned)} | ไขมัน ${formatFatGrams(round.cumulativeFatBurnedGrams)}",
+                            "第 ${round.roundIndex}/${round.totalRounds} 回合：本回合 ${round.roundHits} 拳 | 累计 ${round.cumulativeHits} 拳 | ${formatCalories(round.cumulativeCaloriesBurned)} | 等效燃脂 ${formatFatGrams(round.cumulativeFatBurnedGrams)}",
+                            "Round ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} hits | ${round.cumulativeHits} total | ${formatCalories(round.cumulativeCaloriesBurned)} | ${formatFatGrams(round.cumulativeFatBurnedGrams)} equivalent fat",
+                            "Round ${round.roundIndex}/${round.totalRounds} : ${round.roundHits} coups | ${round.cumulativeHits} total | ${formatCalories(round.cumulativeCaloriesBurned)} | ${formatFatGrams(round.cumulativeFatBurnedGrams)} graisse équiv.",
+                            "รอบ ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} หมัด | รวม ${round.cumulativeHits} | ${formatCalories(round.cumulativeCaloriesBurned)} | ไขมันเทียบเท่า ${formatFatGrams(round.cumulativeFatBurnedGrams)}",
                         ),
                     ).apply {
                         setTextColor(Color.parseColor("#BFE6D0"))
@@ -12629,6 +12968,8 @@ class MainActivity : AppCompatActivity() {
         const val KEY_TRAINING_SETUP_ROUNDS = "training_setup_rounds"
         const val KEY_TRAINING_SETUP_RHYTHM_MODE = "training_setup_rhythm_mode"
         const val KEY_TRAINING_SETUP_BPM = "training_setup_bpm"
+        const val KEY_TRAINING_SETUP_BEGINNER_DEFAULT_APPLIED = "training_setup_beginner_default_applied"
+        const val KEY_TRAINING_SETUP_BEGINNER_20260522_APPLIED = "training_setup_beginner_20260522_applied"
         const val KEY_CLOUD_SOUND_EFFECT_ID = "training_cloud_sound_effect_id"
         const val KEY_CLOUD_SOUND_EFFECT_NAME = "training_cloud_sound_effect_name"
         const val KEY_CLOUD_SOUND_EFFECT_URL = "training_cloud_sound_effect_url"
@@ -12638,6 +12979,8 @@ class MainActivity : AppCompatActivity() {
         const val KEY_BACKGROUND_MUSIC_NONE_DEFAULT_APPLIED = "training_background_music_none_default_applied"
         const val BACKGROUND_MUSIC_NONE_ID = "htr_music_none"
         const val LEGACY_AUTO_BACKGROUND_MUSIC_ID = "htr_music_champion_rush"
+        const val REST_BACKGROUND_MUSIC_ID = "htr_music_rest_relax"
+        const val REST_BACKGROUND_MUSIC_URL = "asset://music/00_htr_music_rest_relax.mp3"
         const val KEY_LAST_BLUETOOTH_NAME = "last_bluetooth_name"
         const val KEY_LAST_BLUETOOTH_ADDRESS = "last_bluetooth_address"
         const val KEY_LAST_BLUETOOTH_TRANSPORT = "last_bluetooth_transport"
@@ -12652,7 +12995,11 @@ class MainActivity : AppCompatActivity() {
         const val DEVELOPER_COMPANY_NAME_TH = "บริษัท Shaoxing Weimai Technology Co., Ltd."
         const val DEVELOPER_EMAIL = "zclei@vip.sina.com"
         const val DEVELOPER_EMAIL_SUBJECT = "HitRise APP咨询"
-        const val CALORIES_PER_HIT = 0.12f
+        const val DEFAULT_BODY_WEIGHT_KG = 70f
+        const val BASE_BOXING_MET = 7.0f
+        const val FORCE_REFERENCE_N = 800f
+        const val MIN_DYNAMIC_MET = 4.0f
+        const val MAX_DYNAMIC_MET = 10.5f
         const val KCAL_PER_FAT_GRAM = 7.7f
         const val CLOUD_EFFECT_PREVIEW_MIN_MS = 5_000L
         const val BACKGROUND_MUSIC_PREVIEW_MIN_MS = 6_000L

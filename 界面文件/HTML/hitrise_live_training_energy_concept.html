@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HitRise 实时训练金属燃脂动效确认稿</title>
+  <style>
+    :root {
+      --ink: #050908;
+      --graphite: #0d1213;
+      --gunmetal: #151d1f;
+      --steel: #253034;
+      --steel-2: #303b3e;
+      --teal: #65cfa7;
+      --teal-soft: #9edfc4;
+      --neon: #34ff91;
+      --neon-soft: #9bffc9;
+      --gold: #d8ba70;
+      --gold-bright: #f1d487;
+      --platinum: #fff3c5;
+      --amber: #d9823b;
+      --copper: #b95337;
+      --red: #9e2f2e;
+      --text: #f5f1e6;
+      --muted: #a9b2ac;
+      --line: rgba(216, 186, 112, .28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 8%, rgba(216, 186, 112, .16), transparent 30%),
+        radial-gradient(circle at 78% 32%, rgba(52, 255, 145, .075), transparent 24%),
+        linear-gradient(180deg, #020403, #0a0e0d 58%, #030504);
+      color: var(--text);
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+    }
+
+    .wrap { padding: 22px; }
+
+    .phone {
+      position: relative;
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      border-radius: 34px;
+      border: 1px solid rgba(241, 212, 135, .34);
+      background:
+        linear-gradient(145deg, rgba(34, 39, 39, .98), rgba(5, 8, 7, .985)),
+        var(--ink);
+      box-shadow:
+        0 32px 88px rgba(0, 0, 0, .62),
+        inset 0 1px 0 rgba(255, 255, 255, .08),
+        0 0 42px rgba(216, 186, 112, .13);
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      inset: -120px -80px auto;
+      height: 330px;
+      background:
+        radial-gradient(circle at 45% 48%, rgba(216, 186, 112, .22), transparent 58%),
+        radial-gradient(circle at 70% 52%, rgba(52, 255, 145, .075), transparent 38%);
+      filter: blur(12px);
+      pointer-events: none;
+    }
+
+    .speed-lines,
+    .metal-sweep {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .speed-lines {
+      opacity: .50;
+      background:
+        repeating-linear-gradient(112deg, transparent 0 28px, rgba(216, 186, 112, .075) 28px 29px, transparent 29px 58px),
+        linear-gradient(120deg, transparent 0 18%, rgba(52, 255, 145, .06) 18% 19%, transparent 19% 48%, rgba(217, 130, 59, .07) 48% 49%, transparent 49%);
+      animation: speedSlide 4.5s linear infinite;
+    }
+
+    .metal-sweep {
+      opacity: .35;
+      background: linear-gradient(105deg, transparent 8%, rgba(255, 255, 255, .18) 12%, transparent 18%);
+      transform: translateX(-120%);
+      animation: sweep 3.8s ease-in-out infinite;
+    }
+
+    @keyframes speedSlide {
+      from { transform: translateX(-28px); }
+      to { transform: translateX(28px); }
+    }
+
+    @keyframes sweep {
+      0%, 45% { transform: translateX(-120%); }
+      78%, 100% { transform: translateX(120%); }
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      padding: 12px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .status {
+      height: 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 6px;
+      color: #e8e1ce;
+      font-size: 12px;
+    }
+
+    .battery {
+      color: var(--neon-soft);
+      font-weight: 800;
+      text-shadow: 0 0 10px rgba(52, 255, 145, .28);
+    }
+
+    .hero,
+    .dash {
+      position: relative;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(145deg, rgba(45, 50, 50, .80), rgba(10, 14, 13, .95)),
+        var(--gunmetal);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .08),
+        inset 0 -1px 0 rgba(0, 0, 0, .32),
+        0 14px 34px rgba(0, 0, 0, .28);
+    }
+
+    .hero {
+      padding: 13px;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .hero::after,
+    .dash::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(125deg, transparent 0 32%, rgba(255, 255, 255, .08) 42%, transparent 52%);
+      transform: translateX(-95%);
+      animation: panelSweep 4.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes panelSweep {
+      0%, 55% { transform: translateX(-95%); }
+      88%, 100% { transform: translateX(95%); }
+    }
+
+    .top {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title {
+      font-size: 19px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .gear {
+      width: 64px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 243, 197, .45);
+      display: grid;
+      place-items: center;
+      color: var(--platinum);
+      background: linear-gradient(180deg, rgba(255, 243, 197, .13), rgba(255, 255, 255, .025));
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .gear span {
+      display: block;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .goal {
+      position: relative;
+      z-index: 1;
+      margin-top: 12px;
+      border-radius: 15px;
+      padding: 11px;
+      background: linear-gradient(90deg, rgba(216, 186, 112, .18), rgba(101, 207, 167, .08));
+      border: 1px solid rgba(255, 243, 197, .32);
+    }
+
+    .goal strong {
+      display: block;
+      font-size: 18px;
+      color: var(--platinum);
+      text-shadow: 0 0 15px rgba(216, 186, 112, .42);
+    }
+
+    .goal small {
+      display: block;
+      margin-top: 2px;
+      color: #c9d0c8;
+      font-size: 11px;
+    }
+
+    .bar {
+      margin-top: 8px;
+      height: 9px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .09);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+    }
+
+    .bar i {
+      display: block;
+      width: 37%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--neon), var(--teal), var(--gold), var(--amber));
+      box-shadow: 0 0 14px rgba(52, 255, 145, .24), 0 0 18px rgba(216, 186, 112, .24);
+      animation: progressDrive 1.8s ease-in-out infinite;
+    }
+
+    @keyframes progressDrive {
+      0%, 100% { width: 37%; filter: brightness(.96); }
+      50% { width: 43%; filter: brightness(1.18); }
+    }
+
+    .dash {
+      flex: 1;
+      min-height: 0;
+      border-radius: 22px;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    .round-row {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 74px 1fr 74px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .label {
+      color: #dcd4be;
+      font-weight: 900;
+      font-size: 15px;
+    }
+
+    .round {
+      justify-self: center;
+      padding: 6px 13px;
+      border-radius: 999px;
+      color: #0d100d;
+      font-weight: 900;
+      font-size: 13px;
+      background: linear-gradient(90deg, var(--platinum), var(--gold), var(--amber));
+      box-shadow: 0 0 20px rgba(216, 186, 112, .24);
+    }
+
+    .timer-area {
+      position: relative;
+      z-index: 1;
+      height: 176px;
+      display: grid;
+      place-items: center;
+    }
+
+    .ring {
+      position: relative;
+      width: 154px;
+      height: 154px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        conic-gradient(from -90deg, var(--gold) 0 47%, var(--neon) 47% 52%, var(--teal) 52% 72%, rgba(255, 255, 255, .10) 72% 100%);
+      box-shadow:
+        0 0 30px rgba(216, 186, 112, .20),
+        0 0 18px rgba(52, 255, 145, .08),
+        inset 0 0 0 1px rgba(255, 255, 255, .12);
+      animation: torque 1.8s ease-in-out infinite;
+    }
+
+    .ring::before {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #0b1110 0 55%, #1a2424 100%);
+      border: 1px solid rgba(216, 186, 112, .20);
+    }
+
+    .ring::after {
+      content: "";
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-left-color: transparent;
+      border-bottom-color: transparent;
+      animation: orbit 2.2s linear infinite;
+    }
+
+    @keyframes torque {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.025) rotate(1.5deg); }
+    }
+
+    @keyframes orbit {
+      to { transform: rotate(360deg); }
+    }
+
+    .time {
+      position: relative;
+      text-align: center;
+    }
+
+    .time b {
+      display: block;
+      font-size: 38px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .time span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .go {
+      position: absolute;
+      inset: auto 0 10px;
+      margin: auto;
+      text-align: center;
+      color: var(--platinum);
+      font-size: 17px;
+      font-weight: 900;
+      text-shadow: 0 0 16px rgba(216, 186, 112, .52), 0 0 8px rgba(52, 255, 145, .20);
+      animation: goDrive 1.15s infinite;
+    }
+
+    @keyframes goDrive {
+      0%, 100% { opacity: .62; transform: skewX(-6deg) translateX(-3px); }
+      50% { opacity: 1; transform: skewX(-6deg) translateX(3px); }
+    }
+
+    .metrics {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+    }
+
+    .metric {
+      min-height: 73px;
+      border-radius: 14px;
+      padding: 8px 5px;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .075), rgba(255, 255, 255, .028));
+      border: 1px solid rgba(216, 186, 112, .18);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+    }
+
+    .metric b {
+      display: block;
+      font-size: 20px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .metric small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.2;
+    }
+
+    .metric.hot b { color: var(--platinum); text-shadow: 0 0 12px rgba(216, 186, 112, .24); }
+    .metric.fat b { color: var(--neon-soft); text-shadow: 0 0 12px rgba(52, 255, 145, .30); }
+
+    .force {
+      position: relative;
+      z-index: 1;
+      margin-top: 12px;
+      border-radius: 16px;
+      padding: 10px;
+      background: rgba(255, 255, 255, .038);
+      border: 1px solid rgba(216, 186, 112, .16);
+    }
+
+    .force-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      color: #dcd4be;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .peak {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(158, 47, 46, .23);
+      color: #ffd6c8;
+      border: 1px solid rgba(190, 78, 58, .34);
+    }
+
+    .bars {
+      height: 75px;
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+      padding: 6px 2px 0;
+    }
+
+    .bars i {
+      flex: 1;
+      min-width: 0;
+      border-radius: 8px 8px 3px 3px;
+      background: linear-gradient(180deg, var(--red), var(--copper), var(--amber), var(--gold), var(--neon-soft));
+      box-shadow: 0 0 10px rgba(216, 186, 112, .14);
+      transform-origin: bottom;
+      animation: impactBars 1.25s ease-in-out infinite;
+    }
+
+    .bars i:nth-child(2n) { animation-delay: .10s; }
+    .bars i:nth-child(3n) { animation-delay: .20s; }
+    .bars i:nth-child(5n) { animation-delay: .30s; }
+
+    @keyframes impactBars {
+      0%, 100% { filter: brightness(.90) contrast(1.02); transform: scaleY(.92) skewX(-2deg); }
+      50% { filter: brightness(1.18) contrast(1.12); transform: scaleY(1.08) skewX(2deg); }
+    }
+
+    .summary {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      color: var(--muted);
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .summary b {
+      color: var(--text);
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+    }
+
+    .combo {
+      position: relative;
+      z-index: 1;
+      margin-top: 10px;
+      display: flex;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .combo span {
+      flex: 1;
+      padding: 7px 4px;
+      border-radius: 999px;
+      text-align: center;
+      font-size: 10px;
+      color: #e4dfd2;
+      border: 1px solid rgba(216, 186, 112, .14);
+      background: rgba(255, 255, 255, .045);
+    }
+
+    .combo .on {
+      color: #11100c;
+      font-weight: 900;
+      background: linear-gradient(90deg, var(--platinum), var(--gold), var(--amber));
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      height: 46px;
+      border: 0;
+      border-radius: 16px;
+      color: #11100c;
+      font-weight: 900;
+      font-size: 16px;
+      background: linear-gradient(90deg, var(--platinum), var(--gold), var(--amber));
+      box-shadow: 0 12px 24px rgba(216, 186, 112, .18);
+    }
+
+    .btn.stop {
+      color: #fff1ec;
+      background: linear-gradient(90deg, #6f2524, #b83b36);
+      box-shadow: 0 12px 24px rgba(158, 47, 46, .18);
+    }
+
+    .caption {
+      color: rgba(232, 225, 206, .74);
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="phone" aria-label="HitRise 实时训练金属燃脂动效确认稿">
+      <div class="speed-lines"></div>
+      <div class="metal-sweep"></div>
+      <section class="content">
+        <div class="status">
+          <span>9:41</span>
+          <span class="battery">SENBALL#A · 86%</span>
+        </div>
+
+        <section class="hero">
+          <div class="top">
+            <div>
+              <div class="title">HitRise 实时训练</div>
+              <div class="subtitle">金属燃脂风 · 持续运动反馈</div>
+            </div>
+            <div class="gear"><span>⚙</span>训练设置</div>
+          </div>
+          <div class="goal">
+            <strong>今日目标：500拳 · 已完成 186拳</strong>
+            <small>目标进度 37% · 连续运动 06:18</small>
+            <div class="bar"><i></i></div>
+          </div>
+        </section>
+
+        <section class="dash">
+          <div class="round-row">
+            <div class="label">实时训练</div>
+            <div class="round">第 2 / 3 回合</div>
+            <div></div>
+          </div>
+
+          <div class="timer-area">
+            <div class="ring">
+              <div class="time">
+                <b>00:42</b>
+                <span>燃脂冲刺</span>
+              </div>
+            </div>
+            <div class="go">3 · 2 · 1 · GO</div>
+          </div>
+
+          <div class="metrics">
+            <div class="metric"><b>186</b><small>总击打数</small></div>
+            <div class="metric"><b>92</b><small>BPM</small></div>
+            <div class="metric hot"><b>31.8</b><small>卡路里 kcal</small></div>
+            <div class="metric fat"><b>4.1</b><small>等效燃脂 g</small></div>
+          </div>
+
+          <section class="force">
+            <div class="force-head">
+              <span>击打力度</span>
+              <span class="peak">峰值 1180N</span>
+            </div>
+            <div class="bars">
+              <i style="height:28%"></i>
+              <i style="height:45%"></i>
+              <i style="height:36%"></i>
+              <i style="height:62%"></i>
+              <i style="height:78%"></i>
+              <i style="height:48%"></i>
+              <i style="height:83%"></i>
+              <i style="height:55%"></i>
+              <i style="height:88%"></i>
+              <i style="height:68%"></i>
+              <i style="height:94%"></i>
+              <i style="height:51%"></i>
+              <i style="height:73%"></i>
+              <i style="height:38%"></i>
+            </div>
+            <div class="summary">
+              <span>最小力度<b>420N</b></span>
+              <span>最大力度<b>1180N</b></span>
+              <span>平均力度<b>760N</b></span>
+            </div>
+          </section>
+
+          <div class="combo">
+            <span class="on">Power Burst</span>
+            <span>三连</span>
+            <span>Jab-Cross</span>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button class="btn">开始</button>
+          <button class="btn stop">结束</button>
+        </div>
+        <div class="caption">确认稿：正式开发会保留现有蓝牙、回合、战报和上传逻辑</div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

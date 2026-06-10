@@ -13,4 +13,4 @@ HitRise is the Hitrise Android and cloud service project.
 
 ## Safety Notes
 
-Runtime secrets, database backups, APK outputs, local Android properties, and the Smart sensor ball reference project are intentionally excluded by `.gitignore`.
+Runtime secrets, database backups, APK outputs, and local Android properties are intentionally excluded by `.gitignore`. Legacy reference copies are not kept in this Hitrise workspace.

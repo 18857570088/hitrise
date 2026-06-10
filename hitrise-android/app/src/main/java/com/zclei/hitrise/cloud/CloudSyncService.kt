@@ -62,7 +62,7 @@ class CloudSyncService(
             path = "/api/v1/training/session",
             payload =
                 authPayload(state, appVersion)
-                    .put("mode_seconds", report.mode.durationSeconds)
+                    .put("mode_seconds", report.roundConfig?.workSeconds?.takeIf { it > 0 } ?: report.mode.durationSeconds)
                     .put("duration_seconds", report.durationSeconds)
                     .put("total_hits", report.totalHits)
                     .put("average_frequency", report.averageFrequency.toDouble())

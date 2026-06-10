@@ -29,7 +29,7 @@
 
 ## Current Status
 
-- Android source has been migrated from Smart sensor ball to HitRise.
+- Android source now uses the HitRise product identity and deployment parameters.
 - Server code has been migrated to an independent Hitrise service.
 - Database hitrise has been created with the current schema.
 - Public health check: http://152.136.62.157/hitrise/health

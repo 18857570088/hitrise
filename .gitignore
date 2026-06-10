@@ -30,7 +30,7 @@ hitrise-deploy/icon/
 hitrise-deploy/verify_language/
 hitrise-deploy/verify_language_current/
 
-# Keep Smart sensor ball reference project out of the Hitrise repository
+# Keep legacy reference copies out of the Hitrise repository
 smartsensorball/
 hitrise-docs/SmartSensorBall_*
 
