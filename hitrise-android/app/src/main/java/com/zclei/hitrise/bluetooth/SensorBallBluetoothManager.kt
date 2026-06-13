@@ -353,6 +353,17 @@ class SensorBallBluetoothManager(
         return writeGyroscopeCommand(targetGatt, characteristic, enabled, reportStatus)
     }
 
+    fun isGyroscopeCommandChannelReady(): Boolean {
+        val targetSocket = classicSocket
+        if (targetSocket != null && targetSocket.isConnected) {
+            return true
+        }
+        return gatt != null &&
+            writeCharacteristic != null &&
+            !bleSetupInProgress &&
+            !bleWriteInFlight
+    }
+
     @SuppressLint("MissingPermission")
     private fun writeGyroscopeCommand(
         targetGatt: BluetoothGatt,

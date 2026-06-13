@@ -41,6 +41,7 @@ class CircularTimerView @JvmOverloads constructor(
     private var progress = 1f
     private var centerText = "00:00"
     private var captionText = ""
+    private var textColor = Color.WHITE
 
     fun setTimerState(
         progressFraction: Float,
@@ -56,6 +57,17 @@ class CircularTimerView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setPalette(
+        trackColor: Int,
+        captionColor: Int,
+        centerColor: Int,
+    ) {
+        trackPaint.color = trackColor
+        captionPaint.color = captionColor
+        textColor = centerColor
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val size = min(width, height).toFloat()
@@ -66,6 +78,9 @@ class CircularTimerView @JvmOverloads constructor(
         bounds.set((width - size) / 2f + pad, (height - size) / 2f + pad, (width + size) / 2f - pad, (height + size) / 2f - pad)
         canvas.drawArc(bounds, -90f, 360f, false, trackPaint)
         canvas.drawArc(bounds, -90f, 360f * progress, false, progressPaint)
+        if (progressPaint.color == Color.TRANSPARENT) {
+            textPaint.color = textColor
+        }
         textPaint.textSize = size * 0.2f
         captionPaint.textSize = size * 0.085f
         canvas.drawText(centerText, width / 2f, height / 2f - size * 0.01f, textPaint)
@@ -95,6 +110,9 @@ class PunchWaveformView @JvmOverloads constructor(
     private var emptyLabel = "Waiting for punch force"
     private var latestLabel = "Latest"
     private var peakLabel = "Peak"
+    private var lowForceColor = LOW_FORCE_COLOR
+    private var midForceColor = MID_FORCE_COLOR
+    private var highForceColor = HIGH_FORCE_COLOR
 
     fun setLabelText(
         empty: String,
@@ -104,6 +122,21 @@ class PunchWaveformView @JvmOverloads constructor(
         emptyLabel = empty
         latestLabel = latest
         peakLabel = peak
+        invalidate()
+    }
+
+    fun setPalette(
+        guideColor: Int,
+        labelColor: Int,
+        lowColor: Int,
+        midColor: Int,
+        highColor: Int,
+    ) {
+        guidePaint.color = guideColor
+        labelPaint.color = labelColor
+        lowForceColor = lowColor
+        midForceColor = midColor
+        highForceColor = highColor
         invalidate()
     }
 
@@ -167,9 +200,9 @@ class PunchWaveformView @JvmOverloads constructor(
                 (force / 120f).coerceIn(0f, 1f)
             }
         return if (normalized <= 0.5f) {
-            blendColor(LOW_FORCE_COLOR, MID_FORCE_COLOR, normalized / 0.5f)
+            blendColor(lowForceColor, midForceColor, normalized / 0.5f)
         } else {
-            blendColor(MID_FORCE_COLOR, HIGH_FORCE_COLOR, (normalized - 0.5f) / 0.5f)
+            blendColor(midForceColor, highForceColor, (normalized - 0.5f) / 0.5f)
         }
     }
 

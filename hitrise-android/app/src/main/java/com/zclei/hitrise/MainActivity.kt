@@ -240,6 +240,7 @@ class MainActivity : AppCompatActivity() {
     private var lastCoachMessage: String? = null
     private var lastCoachOutcome: TrainingCoachOutcome? = null
     private var selectedLanguage: AppLanguage = defaultLanguage()
+    private var selectedPalette: AppPalette = HitRisePalettes.byId(HitRisePalettes.DEFAULT_ID)
     private var selectedHomePage: HomePage = HomePage.TrainingCenter
     private var trainingJob: Job? = null
     private var activationJob: Job? = null
@@ -697,9 +698,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildContentView(): View {
+        val palette = selectedPalette
         val root =
             FrameLayout(this).apply {
-                setBackgroundColor(Color.parseColor("#040C08"))
+                setBackgroundColor(Color.parseColor(palette.backgroundBottom))
                 layoutParams =
                     FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -728,7 +730,7 @@ class MainActivity : AppCompatActivity() {
             }
         pageHost =
             FrameLayout(this).apply {
-                setBackgroundColor(Color.parseColor("#040C08"))
+                setBackgroundColor(Color.parseColor(palette.backgroundBottom))
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -761,7 +763,7 @@ class MainActivity : AppCompatActivity() {
             }
         subtitleView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#DFFFF0"))
+                setTextColor(Color.parseColor(palette.textSecondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setPadding(0, 0, dp(12), 0)
                 translationY = -dp(2).toFloat()
@@ -780,7 +782,7 @@ class MainActivity : AppCompatActivity() {
         bluetoothHeaderIndicatorView =
             ImageView(this).apply {
                 setImageResource(R.drawable.ic_bluetooth_universal)
-                setColorFilter(Color.WHITE)
+                setColorFilter(Color.parseColor(palette.textPrimary))
                 setPadding(0, 0, 0, 0)
                 layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { rightMargin = dp(8) }
             }
@@ -788,7 +790,7 @@ class MainActivity : AppCompatActivity() {
             TextView(this).apply {
                 gravity = Gravity.CENTER
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor(palette.textPrimary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
                 includeFontPadding = false
                 setPadding(0, 0, dp(4), 0)
@@ -804,7 +806,7 @@ class MainActivity : AppCompatActivity() {
             ImageButton(this).apply {
                 setImageResource(android.R.drawable.ic_menu_manage)
                 setBackgroundColor(Color.TRANSPARENT)
-                setColorFilter(Color.parseColor("#44FF88"))
+                setColorFilter(Color.parseColor(palette.accent))
                 setPadding(dp(7), dp(7), dp(7), dp(7))
                 translationY = -dp(4).toFloat()
                 layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
@@ -821,10 +823,10 @@ class MainActivity : AppCompatActivity() {
         promotionBannerView =
             bodyText("").apply {
                 visibility = View.GONE
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor(palette.buttonText))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setPadding(dp(16), dp(14), dp(16), dp(14))
-                background = roundedBackground("#008840", "#80FFB0", 22)
+                background = roundedBackground(palette.button, palette.accentSoft, 22)
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -931,7 +933,7 @@ class MainActivity : AppCompatActivity() {
                     ).apply {
                         topMargin = dp(4)
                     }
-                setPadding(dp(8), dp(5), dp(8), dp(5))
+                setPadding(dp(8), dp(8), dp(8), dp(8))
                 background = bottomNavBackground()
                 elevation = dp(6).toFloat()
             }
@@ -2014,12 +2016,12 @@ class MainActivity : AppCompatActivity() {
         bodyText("").apply {
             gravity = Gravity.CENTER
             setTypeface(Typeface.DEFAULT_BOLD)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             includeFontPadding = false
-            setPadding(dp(6), dp(4), dp(6), dp(4))
-            compoundDrawablePadding = dp(2)
+            setPadding(dp(7), dp(7), dp(7), dp(7))
+            compoundDrawablePadding = dp(4)
             isAllCaps = false
-            minHeight = dp(46)
+            minHeight = dp(58)
             layoutParams =
                 LinearLayout.LayoutParams(
                     0,
@@ -2047,6 +2049,7 @@ class MainActivity : AppCompatActivity() {
         enabled: Boolean,
         onRefresh: (() -> Unit)? = null,
     ): SwipeRefreshLayout {
+        val palette = selectedPalette
         val scroll =
             ScrollView(this).apply {
                 setBackgroundColor(Color.TRANSPARENT)
@@ -2064,8 +2067,8 @@ class MainActivity : AppCompatActivity() {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
             isEnabled = enabled
-            setColorSchemeColors(Color.parseColor("#00FF88"), Color.parseColor("#AAFF00"))
-            setProgressBackgroundColorSchemeColor(Color.parseColor("#061410"))
+            setColorSchemeColors(Color.parseColor(palette.accent), Color.parseColor(palette.accentHot))
+            setProgressBackgroundColorSchemeColor(Color.parseColor(palette.surfaceBottom))
             if (onRefresh != null) {
                 setOnRefreshListener { onRefresh() }
             }
@@ -2075,12 +2078,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildTrainingWatermarkPage(content: View): FrameLayout =
         FrameLayout(this).apply {
+            val palette = selectedPalette
             layoutParams =
                 FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
-            setBackgroundColor(Color.parseColor("#040C08"))
+            setBackgroundColor(Color.parseColor(palette.backgroundBottom))
             addView(
                 ImageView(this@MainActivity).apply {
                         setImageResource(R.drawable.training_center_watermark)
@@ -2100,8 +2104,8 @@ class MainActivity : AppCompatActivity() {
                             GradientDrawable.Orientation.TOP_BOTTOM,
                             intArrayOf(
                                 Color.parseColor("#F008111A"),
-                                Color.parseColor("#B8040C08"),
-                                Color.parseColor("#F8040C08"),
+                                Color.argb(184, Color.red(Color.parseColor(palette.backgroundTop)), Color.green(Color.parseColor(palette.backgroundTop)), Color.blue(Color.parseColor(palette.backgroundTop))),
+                                Color.argb(248, Color.red(Color.parseColor(palette.backgroundBottom)), Color.green(Color.parseColor(palette.backgroundBottom)), Color.blue(Color.parseColor(palette.backgroundBottom))),
                             ),
                         )
                     layoutParams =
@@ -2116,15 +2120,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun bottomNavBackground(): GradientDrawable =
         GradientDrawable().apply {
+            val palette = selectedPalette
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dp(28).toFloat()
             colors =
                 intArrayOf(
-                    Color.parseColor("#0D1822"),
-                    Color.parseColor("#061410"),
+                    Color.parseColor(palette.surfaceTop),
+                    Color.parseColor(palette.surfaceBottom),
                 )
             orientation = GradientDrawable.Orientation.TOP_BOTTOM
-            setStroke(dp(1), Color.parseColor("#1A3A24"))
+            setStroke(dp(1), Color.parseColor(palette.stroke))
         }
 
     private fun homePageIconRes(page: HomePage): Int =
@@ -2190,25 +2195,25 @@ class MainActivity : AppCompatActivity() {
         button.scaleY = if (selected) 1.03f else 1.0f
         val iconTint =
             if (!enabled) {
-                Color.parseColor("#37624A")
+                Color.parseColor(selectedPalette.textMuted)
             } else if (selected) {
-                Color.parseColor("#001A08")
+                Color.parseColor(selectedPalette.buttonText)
             } else {
-                Color.parseColor("#8FEFBC")
+                Color.parseColor(selectedPalette.accentSoft)
             }
         val icon =
             ContextCompat.getDrawable(this, homePageIconRes(page))?.mutate()?.apply {
                 setTint(iconTint)
-                setBounds(0, 0, dp(18), dp(18))
+                setBounds(0, 0, dp(21), dp(21))
             }
         button.setCompoundDrawables(null, icon, null, null)
         if (selected) {
-            button.setTextColor(Color.parseColor("#001A08"))
-            button.background = roundedBackground("#80FFB0", "#DFFFF0", 16)
+            button.setTextColor(Color.parseColor(selectedPalette.buttonText))
+            button.background = roundedBackground(selectedPalette.accentSoft, selectedPalette.accentSoft, 24)
             button.elevation = dp(4).toFloat()
         } else {
-            button.setTextColor(Color.parseColor("#8FEFBC"))
-            button.background = roundedBackground("#061410", "#1A3A24", 16)
+            button.setTextColor(Color.parseColor(selectedPalette.accentSoft))
+            button.background = roundedBackground(selectedPalette.surfaceBottom, selectedPalette.stroke, 24)
             button.elevation = 0f
         }
     }
@@ -2339,6 +2344,16 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch(Dispatchers.Main) {
                 try {
                     runPreTrainingCueSequence(currentRoundDurationMs)
+                    if (!waitForInitialTrainingCountingReady()) {
+                        throw IllegalStateException(
+                            localText(
+                                "蓝牙计数未启动，请检查设备连接后重试。",
+                                "Bluetooth counting did not start. Check the device connection and retry.",
+                                "Le comptage Bluetooth n'a pas démarré. Vérifiez la connexion puis réessayez.",
+                                "เริ่มนับผ่านบลูทูธไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+                            ),
+                        )
+                    }
                     clearDashboardCenterCue()
                     trainingStartedElapsedMs = SystemClock.elapsedRealtime()
                     updateDashboardViews(currentRoundRemainingMs)
@@ -2361,16 +2376,6 @@ class MainActivity : AppCompatActivity() {
                             ),
                         speak = false,
                     )
-                    if (!setTrainingGyroscopeEnabled(true, reportFailure = true)) {
-                        throw IllegalStateException(
-                            localText(
-                                "蓝牙计数未启动，请检查设备连接后重试。",
-                                "Bluetooth counting did not start. Check the device connection and retry.",
-                                "Le comptage Bluetooth n'a pas démarré. Vérifiez la connexion puis réessayez.",
-                                "เริ่มนับผ่านบลูทูธไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
-                            ),
-                        )
-                    }
                     runConfiguredTrainingRounds(sessionMode, sessionSetup)
                     val report =
                         buildBluetoothTrainingReport(
@@ -2426,6 +2431,73 @@ class MainActivity : AppCompatActivity() {
                     updateBluetoothSettingsViews()
                 }
             }
+    }
+
+    private suspend fun waitForInitialTrainingCountingReady(): Boolean {
+        val delaysMs = longArrayOf(250L, 350L, 500L, 700L, 900L, 1_100L, 1_400L, 1_700L, 2_000L, 2_300L)
+        var refreshedStuckConnection = false
+        for (attempt in delaysMs.indices) {
+            val readyText =
+                localText(
+                    "计数通道准备中...",
+                    "Preparing counting channel...",
+                    "Préparation du canal de comptage...",
+                    "กำลังเตรียมช่องนับ...",
+                )
+            statusView.text = readyText
+            statusView.setTextColor(Color.parseColor(selectedPalette.warning))
+            remainingView.text = displayRemaining(currentRoundRemainingMs)
+            showDashboardCenterCue(
+                center = localText("准备", "Ready", "Prêt", "พร้อม"),
+                caption = readyText,
+                color = Color.parseColor(selectedPalette.warning),
+            )
+            updateDashboardViews(currentRoundRemainingMs)
+
+            if (bluetoothConnectedDevice != null && sensorBallBluetooth.isGyroscopeCommandChannelReady()) {
+                if (setTrainingGyroscopeEnabled(true, reportFailure = false)) {
+                    bluetoothStatusMessage =
+                        localText(
+                            "蓝牙计数已启动",
+                            "Bluetooth counting started",
+                            "Comptage Bluetooth démarré",
+                            "เริ่มนับผ่านบลูทูธแล้ว",
+                        )
+                    updateBluetoothSettingsViews()
+                    return true
+                }
+            }
+
+            if (bluetoothConnectedDevice == null) {
+                bluetoothStatusMessage = bluetoothTrainingReconnectText()
+                updateBluetoothSettingsViews()
+                scheduleTrainingBluetoothReconnect()
+                if (attempt % 2 == 0) {
+                    autoConnectLastBluetoothDevice()
+                }
+            } else if (!refreshedStuckConnection && attempt >= 5 && !sensorBallBluetooth.isGyroscopeCommandChannelReady()) {
+                refreshedStuckConnection = true
+                bluetoothStatusMessage =
+                    localText(
+                        "计数通道仍未就绪，正在刷新蓝牙连接...",
+                        "Counting channel is still not ready. Refreshing Bluetooth...",
+                        "Le canal de comptage n'est pas prêt. Reconnexion Bluetooth...",
+                        "ช่องนับยังไม่พร้อม กำลังรีเฟรชบลูทูธ...",
+                    )
+                updateBluetoothSettingsViews()
+                sensorBallBluetooth.disconnect()
+                delay(450L)
+                autoConnectLastBluetoothDevice()
+            }
+
+            delay(delaysMs[attempt])
+        }
+
+        if (bluetoothConnectedDevice != null && sensorBallBluetooth.isGyroscopeCommandChannelReady()) {
+            return setTrainingGyroscopeEnabled(true, reportFailure = true)
+        }
+        scheduleTrainingBluetoothReconnect()
+        return false
     }
 
     private suspend fun runConfiguredTrainingRounds(
@@ -3346,9 +3418,10 @@ class MainActivity : AppCompatActivity() {
         val remainingSec = (remainingMs / 1_000L).coerceAtLeast(0L)
         val timerColor =
             when {
-                remainingSec <= 10 -> Color.parseColor("#E24B4A")
-                remainingSec <= 30 -> Color.parseColor("#FFB347")
-                else -> Color.parseColor("#E24B4A")
+                remainingSec <= 10 -> Color.parseColor(selectedPalette.danger)
+                remainingSec <= 30 -> Color.parseColor(selectedPalette.accentHot)
+                trainingResting -> Color.parseColor(selectedPalette.success)
+                else -> Color.parseColor(selectedPalette.accent)
             }
         val centerCue = dashboardCenterCueText
         timerRingView.setTimerState(
@@ -3423,8 +3496,8 @@ class MainActivity : AppCompatActivity() {
             dashboardComboContainer.addView(
                 badgeText(
                     text = if (count > 0) "${comboDisplayName(combo)} ×$count" else comboDisplayName(combo),
-                    textColor = if (count > 0) "#140800" else "#B7CFE0",
-                    fillColor = if (count > 0) comboAccentFill(combo) else "#122230",
+                    textColor = if (count > 0) selectedPalette.buttonText else selectedPalette.textSecondary,
+                    fillColor = if (count > 0) comboAccentFill(combo) else selectedPalette.cardAlt,
                 ).apply {
                     (layoutParams as? LinearLayout.LayoutParams)?.rightMargin = dp(6)
                     alpha = if (count > 0) 1f else 0.64f
@@ -3435,11 +3508,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun comboAccentFill(combo: String): String =
         when (combo) {
-            "heavy_hit" -> "#FAEEDA"
-            "combo" -> "#EDE9FE"
-            "triple_combo" -> "#D1FAE5"
-            "power_burst" -> "#FFD060"
-            else -> "#DBEAFE"
+            "heavy_hit" -> selectedPalette.accentSoft
+            "combo" -> selectedPalette.accent
+            "triple_combo" -> selectedPalette.success
+            "power_burst" -> selectedPalette.accentHot
+            else -> selectedPalette.textSecondary
         }
 
     private fun comboDisplayName(combo: String): String =
@@ -6809,9 +6882,10 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun buildRealtimeDashboardCard(): LinearLayout {
+        val palette = selectedPalette
         fun metricValueView(initial: String): TextView =
             titleText(initial, 20f).apply {
-                setTextColor(Color.parseColor("#FFF8E8"))
+                setTextColor(Color.parseColor(palette.textPrimary))
                 gravity = Gravity.CENTER
                 setPadding(0, dp(2), 0, 0)
             }
@@ -6820,7 +6894,7 @@ class MainActivity : AppCompatActivity() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                background = roundedBackground("#111A22", "#243241", 12)
+                background = roundedBackground(palette.cardAlt, palette.stroke, 12)
                 setPadding(dp(8), dp(9), dp(8), dp(9))
                 addView(valueView)
                 addView(
@@ -6832,7 +6906,7 @@ class MainActivity : AppCompatActivity() {
                         },
                     ).apply {
                         gravity = Gravity.CENTER
-                        setTextColor(Color.parseColor("#8EA6B9"))
+                        setTextColor(Color.parseColor(palette.textMuted))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                         setPadding(0, dp(3), 0, 0)
                     },
@@ -6847,7 +6921,7 @@ class MainActivity : AppCompatActivity() {
                 addView(
                     bodyText(title).apply {
                         setTypeface(Typeface.DEFAULT_BOLD)
-                        setTextColor(Color.parseColor("#B7CFE0"))
+                        setTextColor(Color.parseColor(palette.textSecondary))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                         layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                     },
@@ -6862,37 +6936,53 @@ class MainActivity : AppCompatActivity() {
         dashboardPeakValueView = metricValueView("-- N")
         dashboardRhythmValueView = metricValueView("--")
         dashboardRoundBadgeView =
-            badgeText(localText("第 1 回合", "Round 1", "Round 1", "รอบ 1"), textColor = "#FFD4D1", fillColor = "#3A1012")
+            badgeText(localText("第 1 回合", "Round 1", "Round 1", "รอบ 1"), textColor = palette.buttonText, fillColor = palette.accentSoft)
         dashboardPeakTagView =
-            badgeText(localText("峰值 -- N", "Peak -- N", "Pic -- N", "สูงสุด -- N"), textColor = "#B5D4F4", fillColor = "#042C53")
+            badgeText(localText("峰值 -- N", "Peak -- N", "Pic -- N", "สูงสุด -- N"), textColor = palette.textPrimary, fillColor = palette.accentHot)
         dashboardGoalProgressView =
             bodyText(localText("今日目标：500 拳 | 已完成 0 拳", "Today: 500 hits | Done 0 hits", "Aujourd'hui : 500 coups | 0 coups faits", "วันนี้ 500 หมัด | ทำแล้ว 0 หมัด")).apply {
-                setTextColor(Color.parseColor("#FFD060"))
+                setTextColor(Color.parseColor(palette.accentHot))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                setShadowLayer(8f, 0f, 0f, Color.parseColor("#AA6B00"))
+                setShadowLayer(8f, 0f, 0f, Color.parseColor(palette.backgroundBottom))
                 gravity = Gravity.CENTER
                 setPadding(0, dp(10), 0, dp(2))
             }
-        timerRingView = CircularTimerView(this)
-        waveformView = PunchWaveformView(this)
+        timerRingView =
+            CircularTimerView(this).apply {
+                setPalette(
+                    trackColor = Color.parseColor(palette.cardAlt),
+                    captionColor = Color.parseColor(palette.textMuted),
+                    centerColor = Color.parseColor(palette.textPrimary),
+                )
+            }
+        waveformView =
+            PunchWaveformView(this).apply {
+                setPalette(
+                    guideColor = Color.parseColor(palette.stroke),
+                    labelColor = Color.parseColor(palette.textSecondary),
+                    lowColor = Color.parseColor(palette.forceLow),
+                    midColor = Color.parseColor(palette.forceMid),
+                    highColor = Color.parseColor(palette.forceHigh),
+                )
+            }
         refreshWaveformLocalizedLabels()
         dashboardForceSummaryView =
             bodyText("").apply {
                 visibility = View.GONE
-                setTextColor(Color.parseColor("#D6E8DA"))
+                setTextColor(Color.parseColor(palette.textSecondary))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
                 gravity = Gravity.CENTER
                 setPadding(dp(10), dp(8), dp(10), dp(8))
-                background = roundedBackground("#0A241A", "#1E6C46", 12)
+                background = roundedBackground(palette.cardAlt, palette.stroke, 12)
             }
         dashboardTrainingSettingsButton =
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(8), dp(5), dp(8), dp(5))
-                background = roundedBackground("#111A22", "#3D4B5C", 14)
+                background = roundedBackground(palette.cardAlt, palette.stroke, 14)
                 isClickable = true
                 isFocusable = true
                 applyRippleOverlay()
@@ -6910,13 +7000,13 @@ class MainActivity : AppCompatActivity() {
                 addView(
                     ImageView(this@MainActivity).apply {
                         setImageResource(R.drawable.ic_training_settings)
-                        setColorFilter(Color.parseColor("#FFF8E8"))
+                        setColorFilter(Color.parseColor(palette.textPrimary))
                         layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
                     },
                 )
                 addView(
                     bodyText(localText("训练设置", "Settings", "Réglages", "ตั้งค่า")).apply {
-                        setTextColor(Color.parseColor("#FFF8E8"))
+                        setTextColor(Color.parseColor(palette.textPrimary))
                         setTypeface(Typeface.DEFAULT_BOLD)
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
                         gravity = Gravity.CENTER
@@ -6930,13 +7020,13 @@ class MainActivity : AppCompatActivity() {
             }
         dashboardComboSummaryView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#C8FFE0"))
+                setTextColor(Color.parseColor(palette.textSecondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
                 setPadding(0, dp(7), 0, 0)
             }
 
-        return detailCard(fillColor = "#0B1118", strokeColor = "#253241", cornerDp = 22).apply {
-            background = roundedBackground("#0B1118", "#253241", 22)
+        return detailCard(fillColor = palette.card, strokeColor = palette.stroke, cornerDp = 22).apply {
+            background = roundedBackground(palette.card, palette.stroke, 22)
             setPadding(dp(14), dp(12), dp(14), dp(14))
             layoutParams =
                 LinearLayout.LayoutParams(
@@ -6955,7 +7045,7 @@ class MainActivity : AppCompatActivity() {
                         )
                     addView(
                         sectionLabel(localText("实时训练", "Live Training", "Entraînement live", "ฝึกสด")).apply {
-                            setTextColor(Color.parseColor("#FFF8E8"))
+                            setTextColor(Color.parseColor(palette.textPrimary))
                             textSize = 16f
                             layoutParams =
                                 FrameLayout.LayoutParams(
@@ -7028,7 +7118,7 @@ class MainActivity : AppCompatActivity() {
             addView(
                 waveformView.apply {
                     layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(72))
-                    background = roundedBackground("#111A22", "#243241", 12)
+                    background = roundedBackground(palette.cardAlt, palette.stroke, 12)
                     setPadding(dp(8), dp(8), dp(8), dp(8))
                 },
             )
@@ -7415,13 +7505,14 @@ class MainActivity : AppCompatActivity() {
 
         fun presetCard(title: String, subtitle: String, setup: TrainingSessionSetup): TextView =
             bodyText("$title\n$subtitle").apply {
+                val selected = pending.workMinutes == setup.workMinutes && pending.restHalfMinutes == setup.restHalfMinutes && pending.rounds == setup.rounds
                 gravity = Gravity.CENTER
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.parseColor(if (pending.workMinutes == setup.workMinutes && pending.restHalfMinutes == setup.restHalfMinutes && pending.rounds == setup.rounds) "#001A2E" else "#D6E8DA"))
+                setTextColor(Color.parseColor(if (selected) selectedPalette.buttonText else selectedPalette.textSecondary))
                 background =
                     roundedBackground(
-                        if (pending.workMinutes == setup.workMinutes && pending.restHalfMinutes == setup.restHalfMinutes && pending.rounds == setup.rounds) "#E6F1FB" else "#101821",
-                        if (pending.workMinutes == setup.workMinutes && pending.restHalfMinutes == setup.restHalfMinutes && pending.rounds == setup.rounds) "#1F4E79" else "#2A6A8F",
+                        if (selected) selectedPalette.accentSoft else selectedPalette.card,
+                        if (selected) selectedPalette.accentHot else selectedPalette.stroke,
                         14,
                     )
                 setPadding(dp(8), dp(9), dp(8), dp(9))
@@ -7437,11 +7528,11 @@ class MainActivity : AppCompatActivity() {
             }
 
         fun stepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit): LinearLayout =
-            detailCard(fillColor = "#101821", strokeColor = "#263A4A", cornerDp = 14).apply {
+            detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.stroke, cornerDp = 14).apply {
                 setPadding(dp(10), dp(8), dp(10), dp(8))
                 addView(
                     bodyText(label).apply {
-                        setTextColor(Color.parseColor("#8EA6B9"))
+                        setTextColor(Color.parseColor(selectedPalette.textMuted))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                     },
                 )
@@ -7450,7 +7541,7 @@ class MainActivity : AppCompatActivity() {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
                         addView(
-                            compactActionButton("-", "#17354A").apply {
+                            compactActionButton("-", selectedPalette.surfaceTop).apply {
                                 setOnClickListener { onMinus() }
                             },
                         )
@@ -7458,13 +7549,13 @@ class MainActivity : AppCompatActivity() {
                             bodyText(value).apply {
                                 gravity = Gravity.CENTER
                                 setTypeface(Typeface.DEFAULT_BOLD)
-                                setTextColor(Color.WHITE)
+                                setTextColor(Color.parseColor(selectedPalette.textPrimary))
                                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             },
                         )
                         addView(
-                            compactActionButton("+", "#17354A").apply {
+                            compactActionButton("+", selectedPalette.surfaceTop).apply {
                                 setOnClickListener { onPlus() }
                             },
                         )
@@ -7474,8 +7565,8 @@ class MainActivity : AppCompatActivity() {
 
         fun modeCard(title: String, subtitle: String, mode: TrainingRhythmMode): LinearLayout =
             detailCard(
-                fillColor = if (pending.rhythmMode == mode) "#E6F1FB" else "#101821",
-                strokeColor = if (pending.rhythmMode == mode) "#1F4E79" else "#263A4A",
+                fillColor = if (pending.rhythmMode == mode) selectedPalette.accentSoft else selectedPalette.card,
+                strokeColor = if (pending.rhythmMode == mode) selectedPalette.accentHot else selectedPalette.stroke,
                 cornerDp = 14,
             ).apply {
                 setPadding(dp(11), dp(10), dp(11), dp(10))
@@ -7486,12 +7577,12 @@ class MainActivity : AppCompatActivity() {
                 addView(
                     bodyText(title).apply {
                         setTypeface(Typeface.DEFAULT_BOLD)
-                        setTextColor(Color.parseColor(if (pending.rhythmMode == mode) "#0C447C" else "#FFF8E8"))
+                        setTextColor(Color.parseColor(if (pending.rhythmMode == mode) selectedPalette.buttonText else selectedPalette.textPrimary))
                     },
                 )
                 addView(
                     bodyText(subtitle).apply {
-                        setTextColor(Color.parseColor(if (pending.rhythmMode == mode) "#185FA5" else "#8EA6B9"))
+                        setTextColor(Color.parseColor(if (pending.rhythmMode == mode) selectedPalette.buttonText else selectedPalette.textMuted))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
                         setPadding(0, dp(3), 0, 0)
                     },
@@ -7505,14 +7596,14 @@ class MainActivity : AppCompatActivity() {
                     subtitle =
                         if (pending.rhythmMode == TrainingRhythmMode.Rhythm) {
                             localText("跟拍模式下用于节拍评分和训练音床。", "Used for rhythm scoring and the training groove.", "Utilisé pour le score de rythme.", "ใช้ให้คะแนนจังหวะ")
-                        } else {
-                            localText("自由模式下 BPM 仅作为参考节拍，不参与评分。", "In free mode BPM is only a reference metronome.", "En mode libre, BPM sert de référence.", "โหมดอิสระ BPM เป็นข้อมูลอ้างอิง")
-                        },
-                    accentColor = "#8FD8FF",
+                    } else {
+                        localText("自由模式下 BPM 仅作为参考节拍，不参与评分。", "In free mode BPM is only a reference metronome.", "En mode libre, BPM sert de référence.", "โหมดอิสระ BPM เป็นข้อมูลอ้างอิง")
+                    },
+                    accentColor = selectedPalette.accentSoft,
                 ),
             )
             root.addView(
-                detailCard(fillColor = "#101821", strokeColor = "#263A4A", cornerDp = 14).apply {
+                detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.stroke, cornerDp = 14).apply {
                     alpha = if (pending.rhythmMode == TrainingRhythmMode.Rhythm) 1f else 0.58f
                     setPadding(dp(12), dp(10), dp(12), dp(10))
                     addView(
@@ -7520,7 +7611,7 @@ class MainActivity : AppCompatActivity() {
                             orientation = LinearLayout.HORIZONTAL
                             gravity = Gravity.CENTER_VERTICAL
                             addView(
-                                compactActionButton("-", "#17354A").apply {
+                                compactActionButton("-", selectedPalette.surfaceTop).apply {
                                     setOnClickListener {
                                         pending = pending.copy(bpm = (pending.bpm - 5).coerceAtLeast(40))
                                         render()
@@ -7549,7 +7640,7 @@ class MainActivity : AppCompatActivity() {
                                 },
                             )
                             addView(
-                                compactActionButton("+", "#17354A").apply {
+                                compactActionButton("+", selectedPalette.surfaceTop).apply {
                                     setOnClickListener {
                                         pending = pending.copy(bpm = (pending.bpm + 5).coerceAtMost(140))
                                         render()
@@ -7560,7 +7651,7 @@ class MainActivity : AppCompatActivity() {
                                 bodyText("${pending.bpm}\nBPM").apply {
                                     gravity = Gravity.CENTER
                                     setTypeface(Typeface.DEFAULT_BOLD)
-                                    setTextColor(Color.WHITE)
+                                    setTextColor(Color.parseColor(selectedPalette.textPrimary))
                                     setPadding(dp(10), 0, 0, 0)
                                 },
                             )
@@ -7582,8 +7673,13 @@ class MainActivity : AppCompatActivity() {
                                         gravity = Gravity.CENTER
                                         setTypeface(Typeface.DEFAULT_BOLD)
                                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                                        setTextColor(Color.parseColor(if (pending.bpm == value) "#FFFFFF" else "#B7CFE0"))
-                                        background = roundedBackground(if (pending.bpm == value) "#1F4E79" else "#0B1721", "#263A4A", 12)
+                                        setTextColor(Color.parseColor(if (pending.bpm == value) selectedPalette.buttonText else selectedPalette.textSecondary))
+                                        background =
+                                            roundedBackground(
+                                                if (pending.bpm == value) selectedPalette.accentSoft else selectedPalette.surfaceBottom,
+                                                selectedPalette.stroke,
+                                                12,
+                                            )
                                         setPadding(dp(4), dp(5), dp(4), dp(5))
                                         setOnClickListener {
                                             pending = pending.copy(bpm = value)
@@ -7619,7 +7715,7 @@ class MainActivity : AppCompatActivity() {
 
         render = {
             root.removeAllViews()
-            root.addView(settingsSectionHeader(localText("回合预设", "Round presets", "Préréglages", "พรีเซ็ตรอบ"), localText("选择一个常用结构，也可以继续微调。", "Choose a structure, then fine tune.", "Choisissez puis ajustez.", "เลือกแล้วปรับต่อได้"), "#8FD8FF"))
+            root.addView(settingsSectionHeader(localText("回合预设", "Round presets", "Préréglages", "พรีเซ็ตรอบ"), localText("选择一个常用结构，也可以继续微调。", "Choose a structure, then fine tune.", "Choisissez puis ajustez.", "เลือกแล้วปรับต่อได้"), selectedPalette.accentSoft))
             root.addView(
                 LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
@@ -7670,7 +7766,7 @@ class MainActivity : AppCompatActivity() {
                     pending = pending.copy(rounds = (pending.rounds + 1).coerceAtMost(10)); render()
                 }).apply { (layoutParams as? LinearLayout.LayoutParams)?.topMargin = dp(8) },
             )
-            root.addView(settingsSectionHeader(localText("训练方式", "Training mode", "Mode", "โหมดฝึก"), localText("自由模式不计算节拍分；跟拍模式启用 Perfect/Good/Miss。", "Free mode skips beat scoring; beat mode enables Perfect/Good/Miss.", "Libre sans score; tempo avec score.", "อิสระไม่ให้คะแนนจังหวะ"), "#8FD8FF"))
+            root.addView(settingsSectionHeader(localText("训练方式", "Training mode", "Mode", "โหมดฝึก"), localText("自由模式不计算节拍分；跟拍模式启用 Perfect/Good/Miss。", "Free mode skips beat scoring; beat mode enables Perfect/Good/Miss.", "Libre sans score; tempo avec score.", "อิสระไม่ให้คะแนนจังหวะ"), selectedPalette.accentSoft))
             root.addView(
                 LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -7680,11 +7776,11 @@ class MainActivity : AppCompatActivity() {
             )
             renderBpmSection()
             root.addView(
-                detailCard(fillColor = "#E6F1FB", strokeColor = "#B5D4F4", cornerDp = 14).apply {
+                detailCard(fillColor = selectedPalette.cardAlt, strokeColor = selectedPalette.accentHot, cornerDp = 14).apply {
                     setPadding(dp(12), dp(10), dp(12), dp(10))
                     addView(
                         bodyText(summaryText()).apply {
-                            setTextColor(Color.parseColor(if (pending.totalEstimatedSeconds > 3600) "#8A4A00" else "#0C447C"))
+                            setTextColor(Color.parseColor(if (pending.totalEstimatedSeconds > 3600) selectedPalette.warning else selectedPalette.textPrimary))
                             setTypeface(Typeface.DEFAULT_BOLD)
                         },
                     )
@@ -7712,7 +7808,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#1A0C00"))
+        dialog.window?.decorView?.setBackgroundColor(Color.parseColor(selectedPalette.backgroundBottom))
     }
 
     private fun applyTrainingSessionSetup(setup: TrainingSessionSetup) {
@@ -7792,7 +7888,7 @@ class MainActivity : AppCompatActivity() {
 
         dialogRoot.addView(createBluetoothSettingsPanel())
         val languageCard =
-            detailCard(fillColor = "#101821", strokeColor = "#2A6A8F", cornerDp = 20).apply {
+            detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.stroke, cornerDp = 20).apply {
                 setPadding(dp(14), dp(13), dp(14), dp(12))
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -7803,7 +7899,7 @@ class MainActivity : AppCompatActivity() {
                     settingsSectionHeader(
                         title = tr("language"),
                         subtitle = tr("language_helper"),
-                        accentColor = "#8FD8FF",
+                        accentColor = selectedPalette.accentSoft,
                     ),
                 )
             }
@@ -7817,28 +7913,28 @@ class MainActivity : AppCompatActivity() {
                 id = View.generateViewId()
                 text = tr("language_chinese")
                 isChecked = selectedLanguage == AppLanguage.Chinese
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor(selectedPalette.textPrimary))
             }
         val enOption =
             RadioButton(this).apply {
                 id = View.generateViewId()
                 text = tr("language_english")
                 isChecked = selectedLanguage == AppLanguage.English
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor(selectedPalette.textPrimary))
             }
         val frOption =
             RadioButton(this).apply {
                 id = View.generateViewId()
                 text = tr("language_french")
                 isChecked = selectedLanguage == AppLanguage.French
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor(selectedPalette.textPrimary))
             }
         val thOption =
             RadioButton(this).apply {
                 id = View.generateViewId()
                 text = tr("language_thai")
                 isChecked = selectedLanguage == AppLanguage.Thai
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor(selectedPalette.textPrimary))
             }
         languageGroup.addView(zhOption)
         languageGroup.addView(enOption)
@@ -7847,9 +7943,47 @@ class MainActivity : AppCompatActivity() {
         languageCard.addView(languageGroup)
         dialogRoot.addView(languageCard)
 
+        val selectedPaletteHolder = arrayOf(selectedPalette.id)
+        val paletteCard =
+            detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.strokeStrong, cornerDp = 20).apply {
+                setPadding(dp(14), dp(13), dp(14), dp(12))
+                layoutParams =
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        topMargin = dp(16)
+                    }
+                addView(
+                    settingsSectionHeader(
+                        title = paletteSettingTitle(),
+                        subtitle = paletteSettingSubtitle(),
+                        accentColor = selectedPalette.accentSoft,
+                    ),
+                )
+            }
+        val paletteContainer =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, dp(8), 0, 0)
+            }
+        fun rerenderPaletteOptions() {
+            renderPaletteSettings(
+                container = paletteContainer,
+                pendingSelectedId = selectedPaletteHolder[0],
+                onSelect = { palette ->
+                    selectedPaletteHolder[0] = palette.id
+                    rerenderPaletteOptions()
+                },
+            )
+        }
+        paletteCard.addView(paletteContainer)
+        dialogRoot.addView(paletteCard)
+        rerenderPaletteOptions()
+
         val selectedCloudEffectHolder = arrayOf(selectedCloudSoundEffectId)
         val soundEffectCard =
-            detailCard(fillColor = "#10131C", strokeColor = "#C084FC", cornerDp = 20).apply {
+            detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.accentHot, cornerDp = 20).apply {
                 setPadding(dp(14), dp(13), dp(14), dp(12))
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -7868,7 +8002,7 @@ class MainActivity : AppCompatActivity() {
                                 "Écoutez puis choisissez un son pour les frappes.",
                                 "ฟังตัวอย่างแล้วเลือกเสียงหมัดสำหรับการฝึก",
                             ),
-                        accentColor = "#E7D7FF",
+                        accentColor = selectedPalette.accentSoft,
                     ),
                 )
             }
@@ -7888,7 +8022,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
         soundEffectCard.addView(
-            compactActionButton(localText("刷新音效", "Refresh Effects", "Actualiser", "รีเฟรชเสียง"), "#17354A").apply {
+            compactActionButton(localText("刷新音效", "Refresh Effects", "Actualiser", "รีเฟรชเสียง"), selectedPalette.button).apply {
                 setOnClickListener {
                     fetchCloudSoundEffects { rerenderSoundEffects() }
                     rerenderSoundEffects()
@@ -7904,7 +8038,7 @@ class MainActivity : AppCompatActivity() {
 
         val selectedBackgroundMusicHolder = arrayOf(selectedBackgroundMusicId)
         val backgroundMusicCard =
-            detailCard(fillColor = "#0D1915", strokeColor = "#36D178", cornerDp = 20).apply {
+            detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.success, cornerDp = 20).apply {
                 setPadding(dp(14), dp(13), dp(14), dp(12))
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -7923,7 +8057,7 @@ class MainActivity : AppCompatActivity() {
                                 "Écoutez puis choisissez une musique de fond pour l'entraînement.",
                                 "ฟังตัวอย่างแล้วเลือกเพลงพื้นหลังที่จะวนระหว่างฝึก",
                             ),
-                        accentColor = "#CFFFE0",
+                        accentColor = selectedPalette.success,
                     ),
                 )
             }
@@ -7943,7 +8077,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
         backgroundMusicCard.addView(
-            compactActionButton(localText("刷新音乐", "Refresh Music", "Actualiser", "รีเฟรชเพลง"), "#174A2C").apply {
+            compactActionButton(localText("刷新音乐", "Refresh Music", "Actualiser", "รีเฟรชเพลง"), selectedPalette.button).apply {
                 setOnClickListener {
                     fetchBackgroundMusic {
                         if (selectedBackgroundMusicHolder[0].isBlank()) {
@@ -7981,6 +8115,8 @@ class MainActivity : AppCompatActivity() {
                 .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val previousPaletteId = selectedPalette.id
+                selectedPalette = HitRisePalettes.byId(selectedPaletteHolder[0])
                 cloudSoundEffects.firstOrNull { it.id == selectedCloudEffectHolder[0] }?.let(::applyCloudSoundEffectSelection)
                 findBackgroundMusicOption(selectedBackgroundMusicHolder[0])?.let(::applyBackgroundMusicSelection)
                 applyLanguageAndSensitivitySettings(
@@ -7990,10 +8126,13 @@ class MainActivity : AppCompatActivity() {
                             frOption.id -> AppLanguage.French
                             thOption.id -> AppLanguage.Thai
                             else -> AppLanguage.Chinese
-                        },
+                    },
                     refreshCloud = true,
                 )
                 dialog.dismiss()
+                if (previousPaletteId != selectedPalette.id && trainingJob?.isActive != true) {
+                    rebuildLocalizedContent(refreshCloud = false)
+                }
             }
         }
         dialog.setOnDismissListener {
@@ -8004,7 +8143,7 @@ class MainActivity : AppCompatActivity() {
             bluetoothDisconnectButton = null
         }
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#1A0C00"))
+        dialog.window?.decorView?.setBackgroundColor(Color.parseColor(selectedPalette.backgroundBottom))
         dialog.window?.let { window ->
             val attributes = window.attributes
             attributes.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
@@ -8015,7 +8154,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createBluetoothSettingsPanel(): LinearLayout =
-        detailCard(fillColor = "#061410", strokeColor = "#00FF88", cornerDp = 20).apply {
+        detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.strokeStrong, cornerDp = 20).apply {
             setPadding(dp(14), dp(13), dp(14), dp(14))
             layoutParams =
                 LinearLayout.LayoutParams(
@@ -8027,14 +8166,14 @@ class MainActivity : AppCompatActivity() {
                 settingsSectionHeader(
                     title = bluetoothSectionTitle(),
                     subtitle = bluetoothSectionSubtitle(),
-                    accentColor = "#80FFB0",
+                    accentColor = selectedPalette.accentSoft,
                 ),
             )
             bluetoothStatusView =
                 bodyText(bluetoothStatusMessage).apply {
-                    setTextColor(Color.parseColor("#B9F8D0"))
+                    setTextColor(Color.parseColor(selectedPalette.textSecondary))
                     setPadding(dp(12), dp(10), dp(12), dp(10))
-                    background = roundedBackground("#082018", "#1D5C3D", 16)
+                    background = roundedBackground(selectedPalette.cardAlt, selectedPalette.stroke, 16)
                     layoutParams =
                         LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -8048,7 +8187,7 @@ class MainActivity : AppCompatActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     addView(
-                        compactActionButton(bluetoothScanLabel(), "#008840").apply {
+                        compactActionButton(bluetoothScanLabel(), selectedPalette.button).apply {
                             bluetoothScanButton = this
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
@@ -8060,7 +8199,7 @@ class MainActivity : AppCompatActivity() {
                     )
                     addView(horizontalSpace(dp(8)))
                     addView(
-                        compactActionButton(bluetoothConnectLabel(), "#16384A").apply {
+                        compactActionButton(bluetoothConnectLabel(), selectedPalette.surfaceTop).apply {
                             bluetoothConnectButton = this
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
@@ -8079,7 +8218,7 @@ class MainActivity : AppCompatActivity() {
                     )
                     addView(horizontalSpace(dp(8)))
                     addView(
-                        compactActionButton(bluetoothDisconnectLabel(), "#5B2D2D").apply {
+                        compactActionButton(bluetoothDisconnectLabel(), selectedPalette.danger).apply {
                             bluetoothDisconnectButton = this
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
@@ -8112,20 +8251,174 @@ class MainActivity : AppCompatActivity() {
             )
             addView(
                 bodyText(subtitle).apply {
-                    setTextColor(Color.parseColor("#D6E8DA"))
+                    setTextColor(Color.parseColor(selectedPalette.textSecondary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     setPadding(0, 0, 0, dp(2))
                 },
             )
         }
 
+    private fun paletteSettingTitle(): String =
+        localText("配色选择", "Color Theme", "Thème couleur", "ธีมสี")
+
+    private fun paletteSettingSubtitle(): String =
+        localText(
+            "选择 1 套界面配色，保存后立即应用；界面结构保持不变。",
+            "Choose one color theme. It applies after saving without changing the layout.",
+            "Choisissez un thème. Il s'applique après l'enregistrement sans modifier la mise en page.",
+            "เลือกธีมสีหนึ่งชุด บันทึกแล้วใช้ทันที โดยไม่เปลี่ยนโครงสร้างหน้าจอ",
+        )
+
+    private fun paletteCurrentDefaultLabel(): String =
+        localText("默认", "Default", "Défaut", "ค่าเริ่มต้น")
+
+    private fun paletteSelectedLabel(): String =
+        localText("已选择", "Selected", "Sélectionné", "เลือกแล้ว")
+
+    private fun renderPaletteSettings(
+        container: LinearLayout,
+        pendingSelectedId: String,
+        onSelect: (AppPalette) -> Unit,
+    ) {
+        container.removeAllViews()
+        HitRisePalettes.all.forEachIndexed { index, option ->
+            val isSelected = option.id == pendingSelectedId
+            val row =
+                LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(10), dp(9), dp(10), dp(9))
+                    background =
+                        roundedBackground(
+                            if (isSelected) selectedPalette.cardAlt else selectedPalette.surfaceBottom,
+                            if (isSelected) selectedPalette.accentHot else selectedPalette.stroke,
+                            14,
+                        )
+                    isClickable = true
+                    isFocusable = true
+                    applyRippleOverlay()
+                    setOnClickListener { onSelect(option) }
+                    layoutParams =
+                        LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            if (index > 0) {
+                                topMargin = dp(8)
+                            }
+                        }
+                }
+            row.addView(palettePreviewView(option))
+            row.addView(
+                LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams =
+                        LinearLayout.LayoutParams(
+                            0,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            1f,
+                        ).apply {
+                            leftMargin = dp(10)
+                            rightMargin = dp(8)
+                        }
+                    addView(
+                        bodyText(option.displayName(selectedLanguage)).apply {
+                            setTypeface(Typeface.DEFAULT_BOLD)
+                            setTextColor(Color.parseColor(selectedPalette.textPrimary))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                        },
+                    )
+                    addView(
+                        bodyText(
+                            buildString {
+                                if (option.id == HitRisePalettes.DEFAULT_ID) {
+                                    append(paletteCurrentDefaultLabel())
+                                    append(" · ")
+                                }
+                                append(option.previewColors.joinToString(" / "))
+                            },
+                        ).apply {
+                            setTextColor(Color.parseColor(selectedPalette.textMuted))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
+                            setPadding(0, dp(3), 0, 0)
+                        },
+                    )
+                },
+            )
+            row.addView(
+                TextView(this).apply {
+                    text = if (isSelected) "✓" else ""
+                    gravity = Gravity.CENTER
+                    setTypeface(Typeface.DEFAULT_BOLD)
+                    setTextColor(Color.parseColor(selectedPalette.accentHot))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                    contentDescription = if (isSelected) paletteSelectedLabel() else option.displayName(selectedLanguage)
+                    layoutParams = LinearLayout.LayoutParams(dp(24), dp(28))
+                },
+            )
+            container.addView(row)
+        }
+    }
+
+    private fun palettePreviewView(option: AppPalette): View =
+        FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(46), dp(46))
+            background = roundedBackground(selectedPalette.card, selectedPalette.stroke, 14)
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            if (option.iconRes != null) {
+                addView(
+                    ImageView(this@MainActivity).apply {
+                        setImageResource(option.iconRes)
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        clipToOutline = true
+                        outlineProvider =
+                            object : ViewOutlineProvider() {
+                                override fun getOutline(view: View, outline: Outline) {
+                                    outline.setRoundRect(0, 0, view.width, view.height, dp(11).toFloat())
+                                }
+                            }
+                        layoutParams =
+                            FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                            )
+                    },
+                )
+            } else {
+                addView(
+                    LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER
+                        option.previewColors.forEachIndexed { colorIndex, color ->
+                            addView(
+                                View(this@MainActivity).apply {
+                                    background = roundedBackground(color, color, 999)
+                                    layoutParams =
+                                        LinearLayout.LayoutParams(dp(10), dp(28)).apply {
+                                            if (colorIndex > 0) {
+                                                leftMargin = dp(3)
+                                            }
+                                        }
+                                },
+                            )
+                        }
+                        layoutParams =
+                            FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                            )
+                    },
+                )
+            }
+        }
+
     private fun bluetoothMetricView(label: String, value: String): TextView =
         bodyText("$label\n$value").apply {
             gravity = Gravity.CENTER
-            setTextColor(Color.parseColor("#DFFFF0"))
+            setTextColor(Color.parseColor(selectedPalette.textSecondary))
             setTypeface(Typeface.DEFAULT_BOLD)
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedBackground("#0A241A", "#1E6C46", 16)
+            background = roundedBackground(selectedPalette.cardAlt, selectedPalette.stroke, 16)
         }
 
     private fun updateBluetoothGyroHitCount(rawCount: Int) {
@@ -8196,7 +8489,7 @@ class MainActivity : AppCompatActivity() {
             if (visibleDevices.isEmpty()) {
                 list.addView(
                     bodyText(bluetoothNoDeviceText()).apply {
-                        setTextColor(Color.parseColor("#8FEFBC"))
+                        setTextColor(Color.parseColor(selectedPalette.textMuted))
                         setPadding(dp(10), dp(8), dp(10), dp(8))
                     },
                 )
@@ -8207,12 +8500,12 @@ class MainActivity : AppCompatActivity() {
                             bluetoothConnectedDevice?.matchesBluetoothDevice(device) == true
                     list.addView(
                         bodyText("${device.name}\n${device.address} | ${device.transportLabel()} | RSSI ${device.rssi}").apply {
-                            setTextColor(Color.parseColor(if (selected) "#001A08" else "#DFFFF0"))
+                            setTextColor(Color.parseColor(if (selected) selectedPalette.buttonText else selectedPalette.textSecondary))
                             setPadding(dp(12), dp(9), dp(12), dp(9))
                             background =
                                 roundedBackground(
-                                    if (selected) "#80FFB0" else "#0A241A",
-                                    if (selected) "#DFFFF0" else "#1E6C46",
+                                    if (selected) selectedPalette.accentSoft else selectedPalette.cardAlt,
+                                    if (selected) selectedPalette.accentHot else selectedPalette.stroke,
                                     14,
                                 )
                             setOnClickListener {
@@ -8836,7 +9129,7 @@ class MainActivity : AppCompatActivity() {
         cloudSoundEffectsMessage?.takeIf { it.isNotBlank() }?.let { message ->
             container.addView(
                 bodyText(message).apply {
-                    setTextColor(Color.parseColor("#FFD060"))
+                    setTextColor(Color.parseColor(selectedPalette.accentHot))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                     setPadding(0, dp(6), 0, dp(8))
                 },
@@ -8852,7 +9145,7 @@ class MainActivity : AppCompatActivity() {
                         "กำลังรอรายการเสียงบนคลาวด์",
                     ),
                 ).apply {
-                    setTextColor(Color.parseColor("#8EA6B9"))
+                    setTextColor(Color.parseColor(selectedPalette.textMuted))
                     setPadding(0, dp(4), 0, dp(10))
                 },
             )
@@ -8868,7 +9161,12 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    background = roundedBackground(if (isSelected) "#142F42" else "#0B1721", if (isSelected) "#FF9A30" else "#243241", 14)
+                    background =
+                        roundedBackground(
+                            if (isSelected) selectedPalette.cardAlt else selectedPalette.surfaceBottom,
+                            if (isSelected) selectedPalette.accentHot else selectedPalette.stroke,
+                            14,
+                        )
                     setPadding(dp(10), dp(8), dp(10), dp(8))
                     minimumHeight = dp(CLOUD_AUDIO_ROW_HEIGHT_DP - 10)
                     layoutParams =
@@ -8893,13 +9191,13 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         bodyText(cloudSoundEffectName(effect)).apply {
                             setTypeface(Typeface.DEFAULT_BOLD)
-                            setTextColor(Color.parseColor("#FFF8E8"))
+                            setTextColor(Color.parseColor(selectedPalette.textPrimary))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                         },
                     )
                     addView(
                         bodyText(cloudSoundEffectDescription(effect)).apply {
-                            setTextColor(Color.parseColor("#8EA6B9"))
+                            setTextColor(Color.parseColor(selectedPalette.textMuted))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
                             setPadding(0, dp(2), 0, 0)
                         },
@@ -8907,7 +9205,7 @@ class MainActivity : AppCompatActivity() {
                 },
             )
             row.addView(
-                compactActionButton(localText("试听", "Preview", "Écouter", "ลองฟัง"), "#0A3A24").apply {
+                compactActionButton(localText("试听", "Preview", "Écouter", "ลองฟัง"), selectedPalette.button).apply {
                     setOnClickListener { onPreview(effect) }
                 },
             )
@@ -9105,7 +9403,7 @@ class MainActivity : AppCompatActivity() {
         cloudBackgroundMusicMessage?.takeIf { it.isNotBlank() }?.let { message ->
             container.addView(
                 bodyText(message).apply {
-                    setTextColor(Color.parseColor("#FFD060"))
+                    setTextColor(Color.parseColor(selectedPalette.accentHot))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                     setPadding(0, dp(6), 0, dp(8))
                 },
@@ -9121,7 +9419,7 @@ class MainActivity : AppCompatActivity() {
                         "กำลังรอรายการเพลงพื้นหลังบนคลาวด์",
                     ),
                 ).apply {
-                    setTextColor(Color.parseColor("#8EA6B9"))
+                    setTextColor(Color.parseColor(selectedPalette.textMuted))
                     setPadding(0, dp(4), 0, dp(10))
                 },
             )
@@ -9137,7 +9435,12 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    background = roundedBackground(if (isSelected) "#17331F" else "#0B1721", if (isSelected) "#48E07C" else "#243241", 14)
+                    background =
+                        roundedBackground(
+                            if (isSelected) selectedPalette.cardAlt else selectedPalette.surfaceBottom,
+                            if (isSelected) selectedPalette.success else selectedPalette.stroke,
+                            14,
+                        )
                     setPadding(dp(10), dp(8), dp(10), dp(8))
                     minimumHeight = dp(CLOUD_AUDIO_ROW_HEIGHT_DP - 10)
                     layoutParams =
@@ -9162,13 +9465,13 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         bodyText(backgroundMusicName(track)).apply {
                             setTypeface(Typeface.DEFAULT_BOLD)
-                            setTextColor(Color.parseColor("#FFF8E8"))
+                            setTextColor(Color.parseColor(selectedPalette.textPrimary))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                         },
                     )
                     addView(
                         bodyText(backgroundMusicDescription(track)).apply {
-                            setTextColor(Color.parseColor("#8EA6B9"))
+                            setTextColor(Color.parseColor(selectedPalette.textMuted))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
                             setPadding(0, dp(2), 0, 0)
                         },
@@ -9178,7 +9481,7 @@ class MainActivity : AppCompatActivity() {
             row.addView(
                 compactActionButton(
                     if (isNoMusic) localText("无", "Off", "Sans", "ปิด") else localText("试听", "Preview", "Écouter", "ลองฟัง"),
-                    if (isNoMusic) "#17222A" else "#0A3A24",
+                    if (isNoMusic) selectedPalette.cardAlt else selectedPalette.button,
                 ).apply {
                     isEnabled = !isNoMusic
                     alpha = if (isNoMusic) 0.58f else 1f
@@ -10699,6 +11002,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadSettings() {
         selectedLanguage = AppLanguage.fromStorage(prefs.getString(KEY_LANGUAGE, defaultLanguage().storageValue))
+        selectedPalette = HitRisePalettes.byId(prefs.getString(KEY_COLOR_PALETTE, HitRisePalettes.DEFAULT_ID))
         selectedPlayMode =
             runCatching {
                 TrainingPlayMode.valueOf(prefs.getString(KEY_SELECTED_PLAY_MODE, TrainingPlayMode.Classic30.name).orEmpty())
@@ -10810,6 +11114,7 @@ class MainActivity : AppCompatActivity() {
     private fun saveSettings() {
         prefs.edit()
             .putString(KEY_LANGUAGE, selectedLanguage.storageValue)
+            .putString(KEY_COLOR_PALETTE, selectedPalette.id)
             .apply()
     }
 
@@ -12026,18 +12331,18 @@ class MainActivity : AppCompatActivity() {
             GradientDrawable.Orientation.TL_BR,
             intArrayOf(
                 Color.parseColor(primaryColor),
-                Color.parseColor("#061410"),
-                Color.parseColor("#040C08"),
+                Color.parseColor(selectedPalette.surfaceBottom),
+                Color.parseColor(selectedPalette.backgroundBottom),
             ),
         ).apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dp(26).toFloat()
-            setStroke(dp(1), Color.parseColor("#00FF88"))
+            setStroke(dp(1), Color.parseColor(selectedPalette.strokeStrong))
         }
 
     private fun detailCard(
-        fillColor: String = "#0C1822",
-        strokeColor: String = "#1C3344",
+        fillColor: String = selectedPalette.card,
+        strokeColor: String = selectedPalette.stroke,
         cornerDp: Int = 18,
     ): LinearLayout =
         LinearLayout(this).apply {
@@ -12059,8 +12364,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun badgeText(
         text: String,
-        textColor: String = "#FFF5E6",
-        fillColor: String = "#16384A",
+        textColor: String = selectedPalette.textPrimary,
+        fillColor: String = selectedPalette.cardAlt,
     ): TextView =
         bodyText(text).apply {
             setTextColor(Color.parseColor(textColor))
@@ -12786,7 +13091,7 @@ class MainActivity : AppCompatActivity() {
     ): TextView =
         TextView(this).apply {
             this.text = text
-            setTextColor(Color.WHITE)
+            setTextColor(Color.parseColor(selectedPalette.textPrimary))
             gravity = Gravity.CENTER_HORIZONTAL
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
@@ -12796,7 +13101,7 @@ class MainActivity : AppCompatActivity() {
     private fun sectionTitle(text: String): TextView =
         bodyText(text).apply {
             setTypeface(Typeface.DEFAULT_BOLD)
-            setTextColor(Color.parseColor("#FFF8E8"))
+            setTextColor(Color.parseColor(selectedPalette.textPrimary))
             setPadding(0, dp(10), 0, dp(8))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 21f)
             letterSpacing = 0.01f
@@ -12804,7 +13109,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun sectionSubtitle(text: String): TextView =
         bodyText(text).apply {
-            setTextColor(Color.parseColor("#8EA6B9"))
+            setTextColor(Color.parseColor(selectedPalette.textMuted))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
             setPadding(0, 0, 0, dp(12))
         }
@@ -12812,7 +13117,7 @@ class MainActivity : AppCompatActivity() {
     private fun sectionLabel(text: String): TextView =
         bodyText(text).apply {
             setTypeface(Typeface.DEFAULT_BOLD)
-            setTextColor(Color.parseColor("#FFF8E8"))
+            setTextColor(Color.parseColor(selectedPalette.textPrimary))
             setPadding(0, 0, 0, dp(6))
         }
 
@@ -12820,9 +13125,9 @@ class MainActivity : AppCompatActivity() {
         EditText(this).apply {
             this.hint = hint
             inputType = InputType.TYPE_CLASS_NUMBER
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.parseColor("#4A8A5A"))
-            background = roundedBackground("#061410", "#1A3A24", 12)
+            setTextColor(Color.parseColor(selectedPalette.textPrimary))
+            setHintTextColor(Color.parseColor(selectedPalette.textMuted))
+            background = roundedBackground(selectedPalette.surfaceBottom, selectedPalette.stroke, 12)
             setPadding(dp(12), dp(12), dp(12), dp(12))
             layoutParams =
                 LinearLayout.LayoutParams(
@@ -12834,7 +13139,7 @@ class MainActivity : AppCompatActivity() {
     private fun bodyText(text: String): TextView =
         TextView(this).apply {
             this.text = text
-            setTextColor(Color.parseColor("#DFFFF0"))
+            setTextColor(Color.parseColor(selectedPalette.textSecondary))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f)
             setLineSpacing(0f, 1.18f)
         }
@@ -12849,15 +13154,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun surfaceCardBackground(): GradientDrawable =
         GradientDrawable().apply {
+            val palette = selectedPalette
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dp(24).toFloat()
             colors =
                 intArrayOf(
-                    Color.parseColor("#112230"),
-                    Color.parseColor("#061410"),
+                    Color.parseColor(palette.surfaceTop),
+                    Color.parseColor(palette.surfaceBottom),
                 )
             orientation = GradientDrawable.Orientation.TOP_BOTTOM
-            setStroke(dp(1), Color.parseColor("#1A3A24"))
+            setStroke(dp(1), Color.parseColor(palette.stroke))
         }
 
     private fun chipBackground(accentColor: Int): GradientDrawable =
@@ -12874,8 +13180,8 @@ class MainActivity : AppCompatActivity() {
     ): Button =
         Button(this).apply {
             this.text = text
-            setTextColor(Color.WHITE)
-            background = roundedBackground(color, "#DFFFF0", 22)
+            setTextColor(Color.parseColor(if (color.equals(selectedPalette.button, ignoreCase = true)) selectedPalette.buttonText else selectedPalette.textPrimary))
+            background = roundedBackground(color, selectedPalette.textSecondary, 22)
             setTypeface(Typeface.DEFAULT_BOLD)
             setPadding(dp(18), dp(14), dp(18), dp(14))
             textSize = 15f
@@ -12896,8 +13202,8 @@ class MainActivity : AppCompatActivity() {
     ): Button =
         Button(this).apply {
             this.text = text
-            setTextColor(Color.WHITE)
-            background = roundedBackground(color, "#DFFFF0", 20)
+            setTextColor(Color.parseColor(if (color.equals(selectedPalette.button, ignoreCase = true) || color.equals(selectedPalette.accentSoft, ignoreCase = true)) selectedPalette.buttonText else selectedPalette.textPrimary))
+            background = roundedBackground(color, selectedPalette.textSecondary, 20)
             setTypeface(Typeface.DEFAULT_BOLD)
             minWidth = 0
             minimumWidth = 0
@@ -12937,6 +13243,7 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val PREFS_NAME = "reflex_ball_settings"
         const val KEY_LANGUAGE = "language"
+        const val KEY_COLOR_PALETTE = "app_color_palette"
         const val KEY_INSTALL_ID = "install_id"
         const val KEY_AUTH_SERIAL = "auth_serial"
         const val KEY_AUTH_TOKEN = "auth_token"
