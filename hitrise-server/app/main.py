@@ -922,28 +922,12 @@ def public_music_asset_base_url(request: Request) -> str:
 
 @app.get("/api/v1/sound-effects")
 def sound_effects(request: Request) -> dict[str, Any]:
-    manifest_path = sound_effects_dir() / SFX_MANIFEST_NAME
-    if not manifest_path.exists():
-        return {"status": "ok", "version": 1, "items": []}
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="sound effects manifest is invalid") from exc
-    base_url = public_sound_asset_base_url(request)
-    items = []
-    for item in manifest.get("items", []):
-        filename = Path(str(item.get("file", ""))).name
-        if not filename:
-            continue
-        next_item = dict(item)
-        next_item["file"] = filename
-        next_item["url"] = f"{base_url}/{filename}"
-        items.append(next_item)
     return {
         "status": "ok",
-        "version": manifest.get("version", 1),
-        "updated_at": manifest.get("updated_at"),
-        "items": items,
+        "version": 1,
+        "feature_enabled": False,
+        "message": "Cloud sound effect selection is disabled in the current HitRise app.",
+        "items": [],
     }
 
 
@@ -960,28 +944,12 @@ def sound_effect_asset(filename: str):
 
 @app.get("/api/v1/background-music")
 def background_music(request: Request) -> dict[str, Any]:
-    manifest_path = background_music_dir() / MUSIC_MANIFEST_NAME
-    if not manifest_path.exists():
-        return {"status": "ok", "version": 1, "items": []}
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="background music manifest is invalid") from exc
-    base_url = public_music_asset_base_url(request)
-    items = []
-    for item in manifest.get("items", []):
-        filename = Path(str(item.get("file", ""))).name
-        if not filename:
-            continue
-        next_item = dict(item)
-        next_item["file"] = filename
-        next_item["url"] = f"{base_url}/{filename}"
-        items.append(next_item)
     return {
         "status": "ok",
-        "version": manifest.get("version", 1),
-        "updated_at": manifest.get("updated_at"),
-        "items": items,
+        "version": 1,
+        "feature_enabled": False,
+        "message": "Background music selection is disabled in the current HitRise app.",
+        "items": [],
     }
 
 

@@ -664,8 +664,6 @@ class MainActivity : AppCompatActivity() {
         initTextToSpeech()
         renderIdle()
         refreshCloudData(forceLeaderboard = true)
-        fetchCloudSoundEffects()
-        fetchBackgroundMusic()
         startLaunchSplash()
         contentRootView.post { autoConnectLastBluetoothDevice() }
         contentRootView.postDelayed({ maybeShowBluetoothFirstUseGuide() }, 1200L)
@@ -7978,7 +7976,6 @@ class MainActivity : AppCompatActivity() {
             )
         }
         paletteCard.addView(paletteContainer)
-        dialogRoot.addView(paletteCard)
         rerenderPaletteOptions()
 
         val selectedCloudEffectHolder = arrayOf(selectedCloudSoundEffectId)
@@ -8030,11 +8027,6 @@ class MainActivity : AppCompatActivity() {
             },
         )
         soundEffectCard.addView(soundEffectsContainer)
-        dialogRoot.addView(soundEffectCard)
-        rerenderSoundEffects()
-        if (cloudSoundEffects.isEmpty()) {
-            fetchCloudSoundEffects { rerenderSoundEffects() }
-        }
 
         val selectedBackgroundMusicHolder = arrayOf(selectedBackgroundMusicId)
         val backgroundMusicCard =
@@ -8090,16 +8082,8 @@ class MainActivity : AppCompatActivity() {
             },
         )
         backgroundMusicCard.addView(backgroundMusicContainer)
-        dialogRoot.addView(backgroundMusicCard)
         if (selectedBackgroundMusicHolder[0].isBlank()) {
             selectedBackgroundMusicHolder[0] = selectedBackgroundMusicId
-        }
-        rerenderBackgroundMusic()
-        if (cloudBackgroundMusic.isEmpty()) {
-            fetchBackgroundMusic {
-                selectedBackgroundMusicHolder[0] = selectedBackgroundMusicId
-                rerenderBackgroundMusic()
-            }
         }
 
         val dialog =
@@ -8115,10 +8099,6 @@ class MainActivity : AppCompatActivity() {
                 .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val previousPaletteId = selectedPalette.id
-                selectedPalette = HitRisePalettes.byId(selectedPaletteHolder[0])
-                cloudSoundEffects.firstOrNull { it.id == selectedCloudEffectHolder[0] }?.let(::applyCloudSoundEffectSelection)
-                findBackgroundMusicOption(selectedBackgroundMusicHolder[0])?.let(::applyBackgroundMusicSelection)
                 applyLanguageAndSensitivitySettings(
                     language =
                         when (languageGroup.checkedRadioButtonId) {
@@ -8130,9 +8110,6 @@ class MainActivity : AppCompatActivity() {
                     refreshCloud = true,
                 )
                 dialog.dismiss()
-                if (previousPaletteId != selectedPalette.id && trainingJob?.isActive != true) {
-                    rebuildLocalizedContent(refreshCloud = false)
-                }
             }
         }
         dialog.setOnDismissListener {
@@ -8899,7 +8876,7 @@ class MainActivity : AppCompatActivity() {
         localText("正在自动连接上次设备 $name...", "Auto-connecting last device $name...", "Connexion automatique au dernier appareil $name...", "กำลังเชื่อมต่ออุปกรณ์ล่าสุด $name อัตโนมัติ...")
 
     private fun settingsDialogTitle(): String =
-        localText("蓝牙、语言及音效设置", "Bluetooth, Language, and Sounds", "Bluetooth, langue et sons", "บลูทูธ ภาษา และเสียง")
+        localText("蓝牙与语言设置", "Bluetooth and Language", "Bluetooth et langue", "บลูทูธและภาษา")
 
     private fun bluetoothFirstUseGuideTitle(): String =
         localText("连接蓝牙设备", "Connect Bluetooth Device", "Connecter l'appareil Bluetooth", "เชื่อมต่ออุปกรณ์บลูทูธ")
@@ -10225,8 +10202,8 @@ class MainActivity : AppCompatActivity() {
             posterSectionCard(accentColor = accentColor, fillColor = "#1A0C00", strokeColor = accentColor).apply {
                 val heroRow =
                     LinearLayout(this@MainActivity).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        gravity = Gravity.CENTER_VERTICAL
+                        orientation = LinearLayout.VERTICAL
+                        gravity = Gravity.CENTER_HORIZONTAL
                         layoutParams =
                             LinearLayout.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -10236,15 +10213,11 @@ class MainActivity : AppCompatActivity() {
                 val leftColumn =
                     LinearLayout(this@MainActivity).apply {
                         orientation = LinearLayout.VERTICAL
-                        minimumWidth = dp(280)
                         layoutParams =
                             LinearLayout.LayoutParams(
-                                0,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                                1f,
-                            ).apply {
-                                rightMargin = dp(22)
-                            }
+                            )
                     }
                 leftColumn.addView(
                     bodyText(localText("本次训练成绩", "SESSION RESULT", "RÉSULTAT", "ผลการฝึก")).apply {
@@ -10262,7 +10235,8 @@ class MainActivity : AppCompatActivity() {
                 leftColumn.addView(
                     bodyText(trainingBattleReportSummary(report)).apply {
                         setTextColor(Color.parseColor("#FFE49A"))
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                        setLineSpacing(dp(2).toFloat(), 1.0f)
                         setPadding(0, dp(8), 0, 0)
                     },
                 )
@@ -10276,7 +10250,8 @@ class MainActivity : AppCompatActivity() {
                     FrameLayout(this@MainActivity).apply {
                         layoutParams =
                             LinearLayout.LayoutParams(dp(196), dp(196)).apply {
-                                gravity = Gravity.CENTER_VERTICAL
+                                gravity = Gravity.CENTER_HORIZONTAL
+                                topMargin = dp(18)
                             }
                         background = metallicBackground("#214159", "#0A131B", "#D9F2FF", 999)
                         addView(
@@ -11026,19 +11001,7 @@ class MainActivity : AppCompatActivity() {
         selectedCloudSoundEffectId = prefs.getString(KEY_CLOUD_SOUND_EFFECT_ID, "").orEmpty()
         selectedCloudSoundEffectName = prefs.getString(KEY_CLOUD_SOUND_EFFECT_NAME, "").orEmpty()
         selectedCloudSoundEffectUrl = prefs.getString(KEY_CLOUD_SOUND_EFFECT_URL, "").orEmpty()
-        val storedBackgroundMusicId = prefs.getString(KEY_BACKGROUND_MUSIC_ID, null)
-        selectedBackgroundMusicId = storedBackgroundMusicId.orEmpty().ifBlank { BACKGROUND_MUSIC_NONE_ID }
-        selectedBackgroundMusicName = prefs.getString(KEY_BACKGROUND_MUSIC_NAME, "").orEmpty()
-        selectedBackgroundMusicUrl = prefs.getString(KEY_BACKGROUND_MUSIC_URL, "").orEmpty()
-        if (!prefs.getBoolean(KEY_BACKGROUND_MUSIC_NONE_DEFAULT_APPLIED, false)) {
-            if (storedBackgroundMusicId.isNullOrBlank() || selectedBackgroundMusicId == LEGACY_AUTO_BACKGROUND_MUSIC_ID) {
-                applyNoBackgroundMusicSelection()
-            } else {
-                prefs.edit()
-                    .putBoolean(KEY_BACKGROUND_MUSIC_NONE_DEFAULT_APPLIED, true)
-                    .apply()
-            }
-        }
+        applyNoBackgroundMusicSelection()
         if (!prefs.getBoolean(KEY_IMMERSIVE_AUDIO_ENABLED_ONCE, false)) {
             selectedRhythmMode = TrainingRhythmMode.Rhythm
             selectedBeatBpm = 100
