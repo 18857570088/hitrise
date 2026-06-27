@@ -162,24 +162,44 @@ class PunchWaveformView @JvmOverloads constructor(
         super.onDraw(canvas)
         val w = width.toFloat()
         val h = height.toFloat()
-        canvas.drawLine(0f, h * 0.72f, w, h * 0.72f, guidePaint)
+        val chartTop = h * 0.24f
+        val chartBottom = h * 0.78f
+        canvas.drawLine(0f, chartBottom, w, chartBottom, guidePaint)
         if (values.isEmpty()) {
             labelPaint.textSize = min(w, h) * 0.16f
             canvas.drawText(emptyLabel, 10f, h * 0.55f, labelPaint)
             return
         }
-        val gap = 3f
-        val barWidth = ((w - gap * (MAX_BARS - 1)) / MAX_BARS).coerceAtLeast(3f)
-        val start = w - values.size * (barWidth + gap)
         val minForce = values.minOrNull() ?: 0f
         val maxForce = values.maxOrNull() ?: 0f
-        val scale = maxOf(120f, maxForce * 1.15f)
+        val forceRange = (maxForce - minForce).coerceAtLeast(0f)
+        val chartHeight = (chartBottom - chartTop).coerceAtLeast(1f)
+        val step = if (values.size > 1) w / (values.size - 1).toFloat() else w
+        var previousX = 0f
+        var previousY = chartBottom
+        var previousForce = values.first()
+        barPaint.strokeWidth = 5f
+        barPaint.strokeCap = Paint.Cap.ROUND
         values.forEachIndexed { index, force ->
-            val normalized = (force / scale).coerceIn(0.08f, 1f)
-            val barHeight = normalized * (h - 8f)
+            val normalized =
+                if (forceRange > 0.5f) {
+                    ((force - minForce) / forceRange).coerceIn(0f, 1f)
+                } else {
+                    0.5f
+                }
+            val x = if (values.size == 1) w * 0.5f else step * index
+            val y = chartBottom - normalized * chartHeight
+            if (index > 0) {
+                barPaint.style = Paint.Style.STROKE
+                barPaint.color = forceColor((previousForce + force) / 2f, minForce, maxForce)
+                canvas.drawLine(previousX, previousY, x, y, barPaint)
+            }
+            barPaint.style = Paint.Style.FILL
             barPaint.color = forceColor(force, minForce, maxForce)
-            val left = start + index * (barWidth + gap)
-            canvas.drawRoundRect(left, h - barHeight, left + barWidth, h, barWidth / 2f, barWidth / 2f, barPaint)
+            canvas.drawCircle(x, y, 4.2f, barPaint)
+            previousX = x
+            previousY = y
+            previousForce = force
         }
         labelPaint.textSize = min(w, h) * 0.15f
         canvas.drawText("$latestLabel ${latestForce.roundToInt()} N   $peakLabel ${peakForce.roundToInt()} N", 10f, labelPaint.textSize + 6f, labelPaint)

@@ -6,9 +6,12 @@ import android.animation.ObjectAnimator
 import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Outline
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
@@ -434,6 +437,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var dashboardRhythmValueView: TextView
     private lateinit var dashboardPeakTagView: TextView
     private lateinit var dashboardGoalProgressView: TextView
+    private lateinit var dashboardGoalProgressTrackView: FrameLayout
+    private lateinit var dashboardGoalProgressFillView: View
     private lateinit var dashboardForceSummaryView: TextView
     private lateinit var dashboardTrainingSettingsButton: LinearLayout
     private lateinit var dashboardComboContainer: LinearLayout
@@ -442,6 +447,12 @@ class MainActivity : AppCompatActivity() {
     private var dashboardCenterCueCaption: String? = null
     private var dashboardCenterCueColor: Int? = null
     private lateinit var waveformView: PunchWaveformView
+    private lateinit var homeConnectionStatusView: TextView
+    private lateinit var homeReportHitsValueView: TextView
+    private lateinit var homeReportPeakValueView: TextView
+    private lateinit var homeReportAvgValueView: TextView
+    private lateinit var homeGoalPercentView: TextView
+    private lateinit var homeGoalNextBadgeView: TextView
     private lateinit var aiCoachCard: LinearLayout
     private lateinit var aiCoachStatusView: TextView
     private lateinit var aiCoachMessageView: TextView
@@ -478,6 +489,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var contentRootView: LinearLayout
     private lateinit var trainingWatermarkPage: FrameLayout
     private lateinit var trainingSwipe: SwipeRefreshLayout
+    private var trainingScrollView: ScrollView? = null
     private lateinit var achievementsSwipe: SwipeRefreshLayout
     private lateinit var leaderboardSwipe: SwipeRefreshLayout
     private lateinit var profileSwipe: SwipeRefreshLayout
@@ -585,14 +597,20 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onTelemetry(telemetry: SensorBallTelemetry) {
                     runOnUiThread {
+                        var forceSettingsRefresh = false
                         telemetry.batteryRaw.takeIf { it in 0..102 }?.let { batteryRaw ->
-                            bluetoothBatteryRaw = batteryRaw
-                            bluetoothBatteryText = bluetoothBatteryDisplayText(batteryRaw)
+                            if (trainingJob?.isActive == true) {
+                                deferredTrainingBatteryRaw = batteryRaw
+                            } else {
+                                forceSettingsRefresh = bluetoothBatteryRaw != batteryRaw
+                                bluetoothBatteryRaw = batteryRaw
+                                bluetoothBatteryText = bluetoothBatteryDisplayText(batteryRaw)
+                            }
                         }
                         bluetoothPeakText = telemetry.forceN.toString()
                         updateBluetoothGyroHitCount(telemetry.hitCount)
                         bluetoothStatusMessage = bluetoothPacketReceivedText(telemetry.packetIndex)
-                        updateBluetoothSettingsViews()
+                        updateBluetoothSettingsViewsFromTelemetry(force = forceSettingsRefresh)
                     }
                 }
             },
@@ -604,12 +622,15 @@ class MainActivity : AppCompatActivity() {
     private var bluetoothStatusMessage: String = bluetoothDisconnectedText()
     private var bluetoothBatteryText: String = "--"
     private var bluetoothBatteryRaw: Int? = null
+    private var deferredTrainingBatteryRaw: Int? = null
     private var bluetoothHitCount: Int? = null
     private var bluetoothPeakText: String = "--"
     private var bluetoothRealHitCount: Int = 0
     private var lastBluetoothGyroRawCount: Int? = null
     private val pendingBluetoothGyroHitTimes = ArrayDeque<Long>()
     private var bluetoothGyroscopeEnabled: Boolean = false
+    private var lastBluetoothSettingsRefreshElapsedMs: Long = 0L
+    private var lastSecondaryHomeRefreshElapsedMs: Long = 0L
     private var pendingBluetoothAction: (() -> Unit)? = null
     private var bluetoothStatusView: TextView? = null
     private var bluetoothDeviceListView: LinearLayout? = null
@@ -696,10 +717,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildContentView(): View {
-        val palette = selectedPalette
         val root =
             FrameLayout(this).apply {
-                setBackgroundColor(Color.parseColor(palette.backgroundBottom))
+                setBackgroundColor(Color.parseColor("#F0FFFB"))
                 layoutParams =
                     FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -719,7 +739,7 @@ class MainActivity : AppCompatActivity() {
         val topContainer =
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(16), dp(8), dp(16), dp(0))
+                setPadding(0, 0, 0, 0)
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -728,7 +748,7 @@ class MainActivity : AppCompatActivity() {
             }
         pageHost =
             FrameLayout(this).apply {
-                setBackgroundColor(Color.parseColor(palette.backgroundBottom))
+                setBackgroundColor(Color.TRANSPARENT)
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -741,6 +761,7 @@ class MainActivity : AppCompatActivity() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
+                visibility = View.GONE
             }
         val headerTextColumn =
             LinearLayout(this).apply {
@@ -761,7 +782,7 @@ class MainActivity : AppCompatActivity() {
             }
         subtitleView =
             bodyText("").apply {
-                setTextColor(Color.parseColor(palette.textSecondary))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setPadding(0, 0, dp(12), 0)
                 translationY = -dp(2).toFloat()
@@ -780,7 +801,7 @@ class MainActivity : AppCompatActivity() {
         bluetoothHeaderIndicatorView =
             ImageView(this).apply {
                 setImageResource(R.drawable.ic_bluetooth_universal)
-                setColorFilter(Color.parseColor(palette.textPrimary))
+                setColorFilter(Color.parseColor("#17343B"))
                 setPadding(0, 0, 0, 0)
                 layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { rightMargin = dp(8) }
             }
@@ -788,7 +809,7 @@ class MainActivity : AppCompatActivity() {
             TextView(this).apply {
                 gravity = Gravity.CENTER
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.parseColor(palette.textPrimary))
+                setTextColor(Color.parseColor("#17343B"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
                 includeFontPadding = false
                 setPadding(0, 0, dp(4), 0)
@@ -802,11 +823,12 @@ class MainActivity : AppCompatActivity() {
 
         settingsButton =
             ImageButton(this).apply {
-                setImageResource(android.R.drawable.ic_menu_manage)
+                setImageResource(R.drawable.home_icon_settings)
                 setBackgroundColor(Color.TRANSPARENT)
-                setColorFilter(Color.parseColor(palette.accent))
-                setPadding(dp(7), dp(7), dp(7), dp(7))
-                translationY = -dp(4).toFloat()
+                clearColorFilter()
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                setPadding(0, 0, 0, 0)
+                translationY = 0f
                 layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
                 setOnClickListener {
                     if (trainingJob?.isActive != true) {
@@ -814,17 +836,16 @@ class MainActivity : AppCompatActivity() {
                     }
             }
         }
-        headerRow.addView(settingsButton)
         topContainer.addView(headerRow)
         updateHeaderBluetoothStatus()
 
         promotionBannerView =
             bodyText("").apply {
                 visibility = View.GONE
-                setTextColor(Color.parseColor(palette.buttonText))
+                setTextColor(Color.parseColor("#FFFFFF"))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setPadding(dp(16), dp(14), dp(16), dp(14))
-                background = roundedBackground(palette.button, palette.accentSoft, 22)
+                background = roundedBackground("#10BDAA", "#8BEDE2", 22)
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -881,7 +902,7 @@ class MainActivity : AppCompatActivity() {
                 visibility = View.GONE
             }
         activateButton =
-            actionButton("", "#008840").apply {
+            actionButton("", "#10BDAA").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -902,7 +923,7 @@ class MainActivity : AppCompatActivity() {
             }
         activationDetailsView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFF0C9"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setPadding(0, dp(12), 0, 0)
                 visibility = View.GONE
             }
@@ -947,9 +968,10 @@ class MainActivity : AppCompatActivity() {
         pageTabsCard.addView(horizontalSpace(dp(4)))
         pageTabsCard.addView(pageProfileButton)
         pageTrainingContainer = pageContentContainer().apply {
-            setPadding(dp(14), 0, dp(14), dp(12))
+            setPadding(dp(10), 0, dp(10), dp(12))
         }
         trainingSwipe = wrapInSwipeRefresh(pageTrainingContainer, enabled = false)
+        trainingScrollView = findScrollViewChild(trainingSwipe)
         trainingWatermarkPage = buildTrainingWatermarkPage(trainingSwipe)
         pageHost.addView(trainingWatermarkPage)
 
@@ -978,52 +1000,56 @@ class MainActivity : AppCompatActivity() {
         pageHost.addView(profileSwipe)
 
         trainingHeroCard =
-            detailCard(fillColor = "#061410", strokeColor = "#00FF88", cornerDp = 26).apply {
-                background = heroBackground("#008840")
+            detailCard(fillColor = "#F3FFFC", strokeColor = "#C9F0E9", cornerDp = 24).apply {
+                background = roundedBackground("#F3FFFC", "#C9F0E9", 24)
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                     ).apply {
-                        topMargin = 0
-                        bottomMargin = dp(6)
+                        topMargin = dp(10)
+                        bottomMargin = dp(8)
                     }
             }
         trainingHeroBadgeView =
             badgeText(
                 text = "",
-                textColor = "#140800",
-                fillColor = "#80FFB0",
+                textColor = "#096D65",
+                fillColor = "#DFFFF7",
             ).apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             }
         trainingHeroHeadlineView =
-            titleText("", 28f).apply {
+            titleText("", 21f).apply {
                 gravity = Gravity.START
-                setTextColor(Color.parseColor("#DFFFF0"))
-                setPadding(0, dp(14), 0, 0)
+                setTextColor(Color.parseColor("#17343B"))
+                setPadding(0, dp(10), 0, 0)
             }
         trainingHeroSummaryView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#C8FFE0"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 setPadding(0, dp(8), 0, 0)
             }
         trainingHeroInsightView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#DFFFF0"))
+                setTextColor(Color.parseColor("#245A60"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, dp(10), 0, 0)
             }
         trainingHeroProgressView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#AAFF00"))
+                setTextColor(Color.parseColor("#0CA99A"))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, dp(12), 0, 0)
             }
         shareTrainingButton =
-            compactActionButton("", "#0A3A24").apply {
+            compactActionButton("", "#16C8B5").apply {
+                minHeight = dp(52)
+                minimumHeight = dp(52)
+                setTextColor(Color.WHITE)
+                background = roundedBackground("#16C8B5", "#6AF2E7", 999)
                 setOnClickListener { shareTrainingSummary() }
             }
         trainingHeroCard.addView(trainingHeroBadgeView)
@@ -1039,53 +1065,20 @@ class MainActivity : AppCompatActivity() {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                     )
-                background = surfaceCardBackground()
-                elevation = dp(3).toFloat()
+                setBackgroundColor(Color.TRANSPARENT)
+                elevation = 0f
                 outlineProvider =
                     object : ViewOutlineProvider() {
                         override fun getOutline(view: View, outline: Outline) {
                             outline.setRoundRect(0, 0, view.width, view.height, dp(24).toFloat())
                         }
                     }
-                clipToOutline = true
-                addView(
-                    ImageView(this@MainActivity).apply {
-                        setImageResource(R.drawable.training_center_watermark)
-                        scaleType = ImageView.ScaleType.CENTER_CROP
-                        alpha = 0.56f
-                        layoutParams =
-                            FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                            )
-                    },
-                )
-                addView(
-                    View(this@MainActivity).apply {
-                        background =
-                            GradientDrawable(
-                                GradientDrawable.Orientation.TL_BR,
-                                intArrayOf(
-                                    Color.argb(204, 7, 15, 23),
-                                    Color.argb(156, 11, 29, 40),
-                                    Color.argb(196, 6, 13, 20),
-                                ),
-                            ).apply {
-                                shape = GradientDrawable.RECTANGLE
-                                cornerRadius = dp(24).toFloat()
-                            }
-                        layoutParams =
-                            FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                            )
-                    },
-                )
+                clipToOutline = false
             }
         val trainingControlCard =
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(12), dp(8), dp(12), dp(4))
+                setPadding(0, 0, 0, 0)
                 layoutParams =
                     FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1174,8 +1167,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         trainingPlayCard =
-            detailCard(fillColor = "#0B1B27", strokeColor = "#2E5E78", cornerDp = 22).apply {
-                background = metallicBackground("#142F42", "#08131C", "#FF9A30", 22)
+            detailCard(fillColor = "#EFFFFA", strokeColor = "#BFEFE5", cornerDp = 22).apply {
+                background = roundedBackground("#EFFFFA", "#BFEFE5", 22)
                 setPadding(dp(16), dp(12), dp(16), dp(12))
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -1189,17 +1182,17 @@ class MainActivity : AppCompatActivity() {
         trainingPlayTitleView =
             titleText("", 18f).apply {
                 gravity = Gravity.START
-                setTextColor(Color.parseColor("#FFF8E8"))
+                setTextColor(Color.parseColor("#096D65"))
             }
         trainingPlayBodyView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#E5C98A"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
                 setPadding(0, dp(8), 0, 0)
             }
         trainingPlayProgressView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFF3D3"))
+                setTextColor(Color.parseColor("#FF8A32"))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, dp(10), 0, 0)
@@ -1211,7 +1204,7 @@ class MainActivity : AppCompatActivity() {
         quietIconView =
             ImageView(this).apply {
                 setImageResource(android.R.drawable.ic_lock_silent_mode)
-                setColorFilter(Color.parseColor("#FFD060"))
+                setColorFilter(Color.parseColor("#10BDAA"))
                 layoutParams =
                     LinearLayout.LayoutParams(dp(40), dp(40)).apply {
                         gravity = Gravity.CENTER_HORIZONTAL
@@ -1232,7 +1225,7 @@ class MainActivity : AppCompatActivity() {
         countdownView =
             titleText("3", 40f).apply {
                 gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#FFD060"))
+                setTextColor(Color.parseColor("#FF8A32"))
                 setPadding(0, dp(6), 0, dp(2))
                 visibility = View.GONE
             }
@@ -1241,7 +1234,7 @@ class MainActivity : AppCompatActivity() {
         countView =
             titleText("0", 72f).apply {
                 gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor("#17343B"))
                 setPadding(0, dp(6), 0, dp(2))
                 visibility = View.GONE
             }
@@ -1250,7 +1243,7 @@ class MainActivity : AppCompatActivity() {
         remainingView =
             bodyText("").apply {
                 gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#FFB347"))
+                setTextColor(Color.parseColor("#FF8A32"))
                 setPadding(0, 0, 0, dp(12))
                 visibility = View.GONE
             }
@@ -1262,34 +1255,12 @@ class MainActivity : AppCompatActivity() {
             buildAiCoachRealtimeCard().apply {
                 visibility = View.GONE
             }
-
-        val actionRow =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                setPadding(0, 0, 0, dp(2))
-            }
-        startButton =
-            actionButton("", "#E07010").apply {
-                minHeight = dp(42)
-                setPadding(dp(14), dp(8), dp(14), dp(8))
-                setOnClickListener { startTraining() }
-            }
-        stopButton =
-            actionButton("", "#A73A54").apply {
-                minHeight = dp(42)
-                setPadding(dp(14), dp(8), dp(14), dp(8))
-                isEnabled = false
-                alpha = 0.5f
-                setOnClickListener { stopTraining(showStoppedState = true) }
-            }
-        actionRow.addView(startButton)
-        actionRow.addView(horizontalSpace(dp(12)))
-        actionRow.addView(stopButton)
-        trainingControlCard.addView(actionRow)
         trainingControlShell.addView(trainingControlCard)
+        pageTrainingContainer.addView(buildHomeHeroCard())
         pageTrainingContainer.addView(trainingControlShell)
-        pageTrainingContainer.addView(trainingHeroCard)
+        pageTrainingContainer.addView(buildHomeForceCard())
+        pageTrainingContainer.addView(buildHomeConnectionReportCard())
+        pageTrainingContainer.addView(buildHomeGoalAchievementCard())
         pageTrainingContainer.addView(aiCoachCard)
 
         reportTitleView = sectionTitle("")
@@ -1325,7 +1296,7 @@ class MainActivity : AppCompatActivity() {
         val profileHeroShell =
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                background = metallicBackground("#2C5B76", "#1A0C00", "#D9B870", 28)
+                background = roundedBackground("#EFFFFA", "#BFEFE5", 28)
                 setPadding(dp(20), dp(20), dp(20), dp(20))
             }
         val profileHeroRow =
@@ -1383,43 +1354,43 @@ class MainActivity : AppCompatActivity() {
         profileHeroBadgeView =
             badgeText(
                 text = "",
-                textColor = "#FFF5E6",
-                fillColor = "#153244",
+                textColor = "#096D65",
+                fillColor = "#DFFFF7",
             ).apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             }
         profileSummaryView =
             titleText("", 24f).apply {
                 gravity = Gravity.START
-                setTextColor(Color.parseColor("#FFF5E6"))
+                setTextColor(Color.parseColor("#17343B"))
             }
         profileMetaView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#B88A54"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, dp(4), 0, 0)
             }
         profileTierView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFD060"))
+                setTextColor(Color.parseColor("#0CA99A"))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 setPadding(0, dp(10), 0, 0)
             }
         profileStatsView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFF0C9"))
+                setTextColor(Color.parseColor("#17343B"))
                 setPadding(0, dp(14), 0, 0)
             }
         profileBadgesView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#B88A54"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, dp(12), 0, 0)
             }
         cloudStatusView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFD060"))
+                setTextColor(Color.parseColor("#0CA99A"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setPadding(dp(12), dp(8), dp(12), dp(8))
@@ -1431,10 +1402,10 @@ class MainActivity : AppCompatActivity() {
         profileHeroTagView =
             TextView(this).apply {
                 text = profileHeroTagText()
-                setTextColor(Color.parseColor("#140800"))
+                setTextColor(Color.parseColor("#096D65"))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                background = metallicBackground("#FFE8A8", "#C7932B", "#FFF2CD", 999)
+                background = roundedBackground("#DFFFF7", "#BFEFE5", 999)
                 setPadding(dp(12), dp(6), dp(12), dp(6))
             }
         profileHeroShell.addView(profileHeroTagView)
@@ -1448,11 +1419,11 @@ class MainActivity : AppCompatActivity() {
                 setPadding(0, dp(16), 0, 0)
             }
         editProfileButton =
-            compactActionButton("", "#16384A").apply {
+            compactActionButton("", "#10BDAA").apply {
                 setOnClickListener { showEditProfileDialog() }
             }
         refreshCloudButton =
-            compactActionButton("", "#E07010").apply {
+            compactActionButton("", "#FF8A32").apply {
                 setOnClickListener {
                     profileSwipe.isRefreshing = true
                     refreshCloudData(forceLeaderboard = true)
@@ -1462,7 +1433,7 @@ class MainActivity : AppCompatActivity() {
         profileActionRow.addView(horizontalSpace(dp(12)))
         profileActionRow.addView(refreshCloudButton)
         developerInfoButton =
-            compactActionButton("", "#16384A").apply {
+            compactActionButton("", "#10BDAA").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1504,10 +1475,10 @@ class MainActivity : AppCompatActivity() {
             }
         achievementsSummaryView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFF0C9"))
+                setTextColor(Color.parseColor("#557A7D"))
             }
         shareAchievementsButton =
-            compactActionButton("", "#16384A").apply {
+            compactActionButton("", "#10BDAA").apply {
                 setOnClickListener { shareAchievementsSummary() }
             }
         val achievementsHeaderRow =
@@ -1563,7 +1534,7 @@ class MainActivity : AppCompatActivity() {
             ).apply { visibility = View.GONE }
         historyView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFF0C9"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             }
         historyCard.addView(historyListRecycler)
@@ -1584,33 +1555,33 @@ class MainActivity : AppCompatActivity() {
         leaderboardDurationButton =
             RadioButton(this).apply {
                 id = View.generateViewId()
-                setTextColor(Color.WHITE)
                 isChecked = true
+                configureLeaderboardFilterButton(this)
             }
         leaderboardTotalHitsButton =
             RadioButton(this).apply {
                 id = View.generateViewId()
-                setTextColor(Color.WHITE)
+                configureLeaderboardFilterButton(this)
             }
         leaderboardPeakForceButton =
             RadioButton(this).apply {
                 id = View.generateViewId()
-                setTextColor(Color.WHITE)
+                configureLeaderboardFilterButton(this)
             }
         leaderboardAvgForceButton =
             RadioButton(this).apply {
                 id = View.generateViewId()
-                setTextColor(Color.WHITE)
+                configureLeaderboardFilterButton(this)
             }
         leaderboardCaloriesButton =
             RadioButton(this).apply {
                 id = View.generateViewId()
-                setTextColor(Color.WHITE)
+                configureLeaderboardFilterButton(this)
             }
         leaderboardFatButton =
             RadioButton(this).apply {
                 id = View.generateViewId()
-                setTextColor(Color.WHITE)
+                configureLeaderboardFilterButton(this)
             }
         leaderboardModeGroup.addView(leaderboardDurationButton)
         leaderboardModeGroup.addView(leaderboardTotalHitsButton)
@@ -1640,7 +1611,7 @@ class MainActivity : AppCompatActivity() {
             },
         )
         refreshLeaderboardButton =
-            compactActionButton("", "#16384A").apply {
+            compactActionButton("", "#10BDAA").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -1656,6 +1627,7 @@ class MainActivity : AppCompatActivity() {
         pageLeaderboardContainer.addView(refreshLeaderboardButton)
         leaderboardCard =
             surfaceCard().apply {
+                background = roundedBackground("#FFFFFF", "#BFEFE5", 24)
                 layoutParams =
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1680,23 +1652,23 @@ class MainActivity : AppCompatActivity() {
                 addItemDecoration(VerticalSpacingDecoration(dp(10)))
             }
         leaderboardMeCard =
-            detailCard(fillColor = "#0B1721", strokeColor = "#2A5C7B", cornerDp = 20).apply {
+            detailCard(fillColor = "#F7FFFD", strokeColor = "#CDEFE8", cornerDp = 20).apply {
                 setPadding(dp(16), dp(16), dp(16), dp(16))
             }
         leaderboardMeTitleView =
             bodyText("").apply {
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.parseColor("#FFB347"))
+                setTextColor(Color.parseColor("#0CA99A"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             }
         leaderboardMeView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFF5E6"))
+                setTextColor(Color.parseColor("#17343B"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setPadding(0, dp(8), 0, 0)
             }
         shareLeaderboardButton =
-            compactActionButton("", "#16384A").apply {
+            compactActionButton("", "#10BDAA").apply {
                 setOnClickListener { shareLeaderboardSummary() }
             }
         val leaderboardMeHeaderRow =
@@ -1714,7 +1686,7 @@ class MainActivity : AppCompatActivity() {
         leaderboardMeHeaderRow.addView(shareLeaderboardButton)
         leaderboardView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#FFF5E6"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             }
         leaderboardCard.addView(leaderboardPodiumContainer)
@@ -1739,6 +1711,18 @@ class MainActivity : AppCompatActivity() {
                         rightMargin = dp(14)
                         bottomMargin = dp(6)
                     }
+            },
+        )
+        root.addView(
+            ImageView(this).apply {
+                setImageResource(R.drawable.home_achievement_bg)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                alpha = 0.05f
+                layoutParams =
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
             },
         )
         root.addView(contentRoot)
@@ -2076,36 +2060,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildTrainingWatermarkPage(content: View): FrameLayout =
         FrameLayout(this).apply {
-            val palette = selectedPalette
             layoutParams =
                 FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
-            setBackgroundColor(Color.parseColor(palette.backgroundBottom))
+            setBackgroundColor(Color.parseColor("#F0FFFB"))
             addView(
                 ImageView(this@MainActivity).apply {
-                        setImageResource(R.drawable.training_center_watermark)
+                        setImageResource(R.drawable.home_achievement_bg)
                         scaleType = ImageView.ScaleType.CENTER_CROP
-                        alpha = 0.28f
-                    layoutParams =
-                        FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                        )
-                },
-            )
-            addView(
-                View(this@MainActivity).apply {
-                    background =
-                        GradientDrawable(
-                            GradientDrawable.Orientation.TOP_BOTTOM,
-                            intArrayOf(
-                                Color.parseColor("#F008111A"),
-                                Color.argb(184, Color.red(Color.parseColor(palette.backgroundTop)), Color.green(Color.parseColor(palette.backgroundTop)), Color.blue(Color.parseColor(palette.backgroundTop))),
-                                Color.argb(248, Color.red(Color.parseColor(palette.backgroundBottom)), Color.green(Color.parseColor(palette.backgroundBottom)), Color.blue(Color.parseColor(palette.backgroundBottom))),
-                            ),
-                        )
+                        alpha = 0.08f
                     layoutParams =
                         FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -2118,24 +2083,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun bottomNavBackground(): GradientDrawable =
         GradientDrawable().apply {
-            val palette = selectedPalette
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(28).toFloat()
-            colors =
-                intArrayOf(
-                    Color.parseColor(palette.surfaceTop),
-                    Color.parseColor(palette.surfaceBottom),
-                )
-            orientation = GradientDrawable.Orientation.TOP_BOTTOM
-            setStroke(dp(1), Color.parseColor(palette.stroke))
+            cornerRadius = dp(24).toFloat()
+            setColor(Color.parseColor("#FFFFFF"))
+            setStroke(dp(1), Color.parseColor("#DDF4EF"))
         }
 
-    private fun homePageIconRes(page: HomePage): Int =
+    private fun homePageIconRes(page: HomePage, selected: Boolean): Int =
         when (page) {
-            HomePage.TrainingCenter -> android.R.drawable.ic_media_play
-            HomePage.TrainingAchievements -> android.R.drawable.star_big_on
-            HomePage.Leaderboard -> android.R.drawable.ic_menu_sort_by_size
-            HomePage.Profile -> android.R.drawable.ic_menu_myplaces
+            HomePage.TrainingCenter -> if (selected) R.drawable.home_nav_training_selected else R.drawable.home_nav_training
+            HomePage.TrainingAchievements -> if (selected) R.drawable.home_nav_achievements_selected else R.drawable.home_nav_achievements
+            HomePage.Leaderboard -> if (selected) R.drawable.home_nav_leaderboard_selected else R.drawable.home_nav_leaderboard
+            HomePage.Profile -> if (selected) R.drawable.home_nav_profile_selected else R.drawable.home_nav_profile
         }
 
     private fun selectHomePage(page: HomePage) {
@@ -2191,27 +2150,18 @@ class MainActivity : AppCompatActivity() {
         button.translationY = if (selected) -dp(2).toFloat() else 0f
         button.scaleX = if (selected) 1.03f else 1.0f
         button.scaleY = if (selected) 1.03f else 1.0f
-        val iconTint =
-            if (!enabled) {
-                Color.parseColor(selectedPalette.textMuted)
-            } else if (selected) {
-                Color.parseColor(selectedPalette.buttonText)
-            } else {
-                Color.parseColor(selectedPalette.accentSoft)
-            }
         val icon =
-            ContextCompat.getDrawable(this, homePageIconRes(page))?.mutate()?.apply {
-                setTint(iconTint)
-                setBounds(0, 0, dp(21), dp(21))
+            ContextCompat.getDrawable(this, homePageIconRes(page, selected))?.mutate()?.apply {
+                setBounds(0, 0, dp(28), dp(28))
             }
         button.setCompoundDrawables(null, icon, null, null)
         if (selected) {
-            button.setTextColor(Color.parseColor(selectedPalette.buttonText))
-            button.background = roundedBackground(selectedPalette.accentSoft, selectedPalette.accentSoft, 24)
+            button.setTextColor(Color.parseColor("#09A99A"))
+            button.background = roundedBackground("#EFFFFA", "#BFEFE5", 22)
             button.elevation = dp(4).toFloat()
         } else {
-            button.setTextColor(Color.parseColor(selectedPalette.accentSoft))
-            button.background = roundedBackground(selectedPalette.surfaceBottom, selectedPalette.stroke, 24)
+            button.setTextColor(Color.parseColor("#6B7C80"))
+            button.background = roundedBackground("#FFFFFF", "#FFFFFF", 22)
             button.elevation = 0f
         }
     }
@@ -2337,6 +2287,7 @@ class MainActivity : AppCompatActivity() {
         setTrainingBusyUi(true)
         setActivationVisible(false)
         applyStaticTexts()
+        scrollRealtimeTrainingToTop()
 
         trainingJob =
             lifecycleScope.launch(Dispatchers.Main) {
@@ -2426,6 +2377,7 @@ class MainActivity : AppCompatActivity() {
                     bluetoothTrainingMode = null
                     trainingAcceptingPunches = false
                     trainingResting = false
+                    applyDeferredTrainingBatteryStatus()
                     updateBluetoothSettingsViews()
                 }
             }
@@ -2520,6 +2472,7 @@ class MainActivity : AppCompatActivity() {
                     "รอบ $round กำลังฝึก",
                 )
             statusView.setTextColor(Color.parseColor("#FFB347"))
+            scrollRealtimeTrainingToTop()
             scheduleRoundStartAiCoachCue(round, setup.rounds)
             val startMs = SystemClock.elapsedRealtime()
             while (SystemClock.elapsedRealtime() - startMs < workDurationMs) {
@@ -2643,10 +2596,13 @@ class MainActivity : AppCompatActivity() {
         bluetoothTrainingMode = null
         trainingAcceptingPunches = false
         trainingResting = false
+        applyDeferredTrainingBatteryStatus()
+        updateBluetoothSettingsViews()
         lastSpokenCountdown = null
         goSpoken = false
         clearDashboardCenterCue()
         if (showStoppedState) {
+            partialReport?.let { latestReport = it }
             setTrainingBusyUi(false)
             statusView.text = tr("training_stopped")
             statusView.setTextColor(Color.parseColor("#FFD060"))
@@ -2656,7 +2612,6 @@ class MainActivity : AppCompatActivity() {
             updateDashboardViews(selectedMode.durationSeconds * 1_000L)
             showCompletedForceStats()
             partialReport?.let { report ->
-                latestReport = report
                 renderReport(report)
                 renderTrainingHero()
                 syncTrainingReport(report)
@@ -3122,7 +3077,7 @@ class MainActivity : AppCompatActivity() {
     private fun aiCoachSpeechCooldownMs(key: String): Long =
         when {
             key.startsWith("round_start") -> 0L
-            key.startsWith("final_30") -> 18_000L
+            key.startsWith("final_10") || key.startsWith("final_30") -> 18_000L
             key == "tempo_up" -> 24_000L
             key == "power_burst" -> 28_000L
             key == "force_drop" -> 30_000L
@@ -3136,6 +3091,7 @@ class MainActivity : AppCompatActivity() {
         }
         val importantCue =
             key.startsWith("round_start") ||
+                key.startsWith("final_10") ||
                 key.startsWith("final_30") ||
                 key == "tempo_up" ||
                 key == "power_burst" ||
@@ -3337,22 +3293,22 @@ class MainActivity : AppCompatActivity() {
         if (trainingStartedElapsedMs <= 0L) {
             return
         }
-        if (remainingMs in 1L..30_000L) {
+        if (remainingMs in 1L..10_000L) {
             pushAiCoachCue(
-                key = "final_30_round_$currentTrainingRound",
+                key = "final_10_round_$currentTrainingRound",
                 message =
                     localText(
-                        "最后 30 秒！全力冲刺，把节奏顶住，拳不要飘。",
-                        "Final 30 seconds. Push hard, hold the rhythm, and keep punches clean.",
-                        "Dernières 30 secondes. Poussez fort, gardez le rythme et frappez propre.",
-                        "30 วินาทีสุดท้าย เร่งเต็มที่ คุมจังหวะและหมัดให้ชัด",
+                        "最后 10 秒！全力冲刺，把节奏顶住，拳不要飘。",
+                        "Final 10 seconds. Push hard, hold the rhythm, and keep punches clean.",
+                        "Dernières 10 secondes. Poussez fort, gardez le rythme et frappez propre.",
+                        "10 วินาทีสุดท้าย เร่งเต็มที่ คุมจังหวะและหมัดให้ชัด",
                     ),
                 meta =
                     localText(
-                        "触发原因：回合结束倒计时 30 秒",
-                        "Trigger: final 30 seconds",
-                        "Déclencheur : 30 secondes restantes",
-                        "สาเหตุ: เหลือ 30 วินาที",
+                        "触发原因：回合结束倒计时 10 秒",
+                        "Trigger: final 10 seconds",
+                        "Déclencheur : 10 secondes restantes",
+                        "สาเหตุ: เหลือ 10 วินาที",
                     ),
             )
         }
@@ -3363,6 +3319,41 @@ class MainActivity : AppCompatActivity() {
             return currentRoundRemainingMs.coerceIn(0L, currentRoundDurationMs)
         }
         return trainingSessionSetup.workSeconds * 1_000L
+    }
+
+    private fun scrollRealtimeTrainingToTop() {
+        val scrollView = trainingScrollView ?: return
+        if (!::realtimeDashboardCard.isInitialized) {
+            return
+        }
+        scrollView.post {
+            if (!scrollView.isShown || !realtimeDashboardCard.isShown) {
+                return@post
+            }
+            val scrollLocation = IntArray(2)
+            val cardLocation = IntArray(2)
+            scrollView.getLocationOnScreen(scrollLocation)
+            realtimeDashboardCard.getLocationOnScreen(cardLocation)
+            val targetY =
+                scrollView.scrollY +
+                    cardLocation[1] -
+                    scrollLocation[1] -
+                    dp(4)
+            scrollView.smoothScrollTo(0, targetY.coerceAtLeast(0))
+        }
+    }
+
+    private fun findScrollViewChild(root: ViewGroup): ScrollView? {
+        for (index in 0 until root.childCount) {
+            val child = root.getChildAt(index)
+            if (child is ScrollView) {
+                return child
+            }
+            if (child is ViewGroup) {
+                findScrollViewChild(child)?.let { return it }
+            }
+        }
+        return null
     }
 
     private fun currentEffectiveTrainingSeconds(): Int {
@@ -3434,13 +3425,28 @@ class MainActivity : AppCompatActivity() {
                     },
             color = dashboardCenterCueColor ?: timerColor,
         )
+        val report = latestReport
+        val useReportSnapshot =
+            report != null &&
+                (trainingJob?.isActive != true || trainingResting)
+        val displayHits = if (useReportSnapshot) report!!.totalHits else bluetoothTrainingCount
+        val displayBpm =
+            when {
+                useReportSnapshot && report!!.avgBpm > 0f -> report.avgBpm
+                trainingCurrentBpm > 0f -> trainingCurrentBpm
+                else -> 0f
+            }
         val calories =
-            caloriesForTraining(
-                bluetoothTrainingCount,
-                currentEffectiveTrainingSeconds(),
-                currentAverageTrainingForceN(),
-            )
-        val fat = fatGramsForCalories(calories)
+            if (useReportSnapshot) {
+                report!!.caloriesBurned
+            } else {
+                caloriesForTraining(
+                    bluetoothTrainingCount,
+                    currentEffectiveTrainingSeconds(),
+                    currentAverageTrainingForceN(),
+                )
+            }
+        val fat = if (useReportSnapshot) report!!.fatBurnedGrams else fatGramsForCalories(calories)
         val goalTarget = trainingGoalPresentationFor(selectedPlayMode).targetHits ?: 500
         dashboardRoundBadgeView.text =
             localText(
@@ -3449,8 +3455,8 @@ class MainActivity : AppCompatActivity() {
                 "Round $currentTrainingRound / $currentTrainingRoundCount",
                 "รอบ $currentTrainingRound / $currentTrainingRoundCount",
             )
-        dashboardPunchValueView.text = bluetoothTrainingCount.toString()
-        dashboardBpmValueView.text = if (trainingCurrentBpm > 0f) trainingCurrentBpm.roundToInt().toString() else "--"
+        dashboardPunchValueView.text = displayHits.toString()
+        dashboardBpmValueView.text = if (displayBpm > 0f) displayBpm.roundToInt().toString() else "--"
         dashboardCaloriesValueView.text = String.format(Locale.US, "%.1f", calories)
         dashboardFatValueView.text = String.format(Locale.US, "%.1f", fat)
         dashboardPeakValueView.text = forceDisplay(trainingPeakForceN)
@@ -3470,17 +3476,54 @@ class MainActivity : AppCompatActivity() {
             }
         dashboardGoalProgressView.text =
             localText(
-                "今日目标：$goalTarget 拳 | 已完成 $bluetoothTrainingCount 拳",
-                "Today: $goalTarget hits | Done $bluetoothTrainingCount hits",
-                "Aujourd'hui : $goalTarget coups | $bluetoothTrainingCount coups faits",
-                "วันนี้ $goalTarget หมัด | ทำแล้ว $bluetoothTrainingCount หมัด",
+                "今日目标：$goalTarget 拳 | 已完成 $displayHits 拳",
+                "Today: $goalTarget hits | Done $displayHits hits",
+                "Aujourd'hui : $goalTarget coups | $displayHits coups faits",
+                "วันนี้ $goalTarget หมัด | ทำแล้ว $displayHits หมัด",
             )
+        updateDashboardGoalProgressBar(displayHits, goalTarget)
+        refreshSecondaryHomeCardsThrottled()
         dashboardComboSummaryView.text =
             if (trainingComboCounts.isEmpty()) {
                 localText("连击识别等待第一拳。", "Combo recognition is waiting for the first hit.", "En attente du premier coup.", "รอหมัดแรก")
             } else {
                 trainingComboCounts.entries.joinToString("  ") { "${comboDisplayName(it.key)} ×${it.value}" }
             }
+    }
+
+    private fun refreshSecondaryHomeCardsThrottled(force: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && trainingJob?.isActive == true && now - lastSecondaryHomeRefreshElapsedMs < 5_000L) {
+            return
+        }
+        lastSecondaryHomeRefreshElapsedMs = now
+        renderHomeConnectionReportCard()
+        renderHomeGoalAchievementCard()
+    }
+
+    private fun updateDashboardGoalProgressBar(
+        completedHits: Int,
+        targetHits: Int,
+    ) {
+        if (!::dashboardGoalProgressTrackView.isInitialized || !::dashboardGoalProgressFillView.isInitialized) {
+            return
+        }
+        dashboardGoalProgressTrackView.post {
+            val trackWidth = dashboardGoalProgressTrackView.width
+            if (trackWidth <= 0) {
+                return@post
+            }
+            val progress = if (targetHits > 0) completedHits.toFloat() / targetHits.toFloat() else 0f
+            val fillWidth =
+                (trackWidth * progress.coerceIn(0f, 1f))
+                    .roundToInt()
+                    .let { if (completedHits > 0) it.coerceAtLeast(dp(8)) else it }
+            val params = dashboardGoalProgressFillView.layoutParams as FrameLayout.LayoutParams
+            if (params.width != fillWidth) {
+                params.width = fillWidth
+                dashboardGoalProgressFillView.layoutParams = params
+            }
+        }
     }
 
     private fun updateComboChips() {
@@ -3494,8 +3537,8 @@ class MainActivity : AppCompatActivity() {
             dashboardComboContainer.addView(
                 badgeText(
                     text = if (count > 0) "${comboDisplayName(combo)} ×$count" else comboDisplayName(combo),
-                    textColor = if (count > 0) selectedPalette.buttonText else selectedPalette.textSecondary,
-                    fillColor = if (count > 0) comboAccentFill(combo) else selectedPalette.cardAlt,
+                    textColor = if (count > 0) "#FFFFFF" else "#557A7D",
+                    fillColor = if (count > 0) comboAccentFill(combo) else "#F7FFFD",
                 ).apply {
                     (layoutParams as? LinearLayout.LayoutParams)?.rightMargin = dp(6)
                     alpha = if (count > 0) 1f else 0.64f
@@ -3506,11 +3549,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun comboAccentFill(combo: String): String =
         when (combo) {
-            "heavy_hit" -> selectedPalette.accentSoft
-            "combo" -> selectedPalette.accent
-            "triple_combo" -> selectedPalette.success
-            "power_burst" -> selectedPalette.accentHot
-            else -> selectedPalette.textSecondary
+            "heavy_hit" -> "#2DD4BF"
+            "combo" -> "#20B7A8"
+            "triple_combo" -> "#FFC15C"
+            "power_burst" -> "#FF7A45"
+            else -> "#6A8F92"
         }
 
     private fun comboDisplayName(combo: String): String =
@@ -4063,7 +4106,7 @@ class MainActivity : AppCompatActivity() {
         setTrainingBusyUi(false)
         setActivationVisible(authMessageKey != null)
         statusView.text = tr("ready")
-        statusView.setTextColor(Color.parseColor("#FFF0C9"))
+        statusView.setTextColor(Color.parseColor("#17343B"))
         countdownView.text = "3"
         countView.text = "0"
         remainingView.text = displayRemaining(selectedMode.durationSeconds * 1_000L)
@@ -4092,7 +4135,7 @@ class MainActivity : AppCompatActivity() {
         setActivationBusy(false)
         setActivationVisible(true)
         statusView.text = tr("activation_required")
-        statusView.setTextColor(Color.parseColor("#FFB347"))
+        statusView.setTextColor(Color.parseColor("#FF8A32"))
         countdownView.text = tr("lock_short")
         countView.text = "0"
         remainingView.text = displayRemaining(selectedMode.durationSeconds * 1_000L)
@@ -4131,9 +4174,10 @@ class MainActivity : AppCompatActivity() {
         val modeChip =
             badgeText(
                 roundReportBadgeText(report),
-                fillColor = "#17354A",
+                textColor = "#096D65",
+                fillColor = "#DFFFF7",
             )
-        val hitsChip = badgeText("${report.totalHits} ${tr("hits")}", fillColor = "#E07010")
+        val hitsChip = badgeText("${report.totalHits} ${tr("hits")}", textColor = "#FFFFFF", fillColor = "#FF8A32")
         val spacer =
             View(this).apply {
                 layoutParams =
@@ -4152,14 +4196,14 @@ class MainActivity : AppCompatActivity() {
                 roundReportTitleText(report),
                 22f,
             ).apply {
-                setTextColor(Color.parseColor("#FFF8E8"))
+                setTextColor(Color.parseColor("#17343B"))
                 setPadding(0, dp(14), 0, 0)
             }
         val summaryLine =
             bodyText(
                 trainingBattleReportSummary(report),
             ).apply {
-                setTextColor(Color.parseColor("#CAA26A"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setPadding(0, dp(6), 0, 0)
             }
         val metricsGrid =
@@ -4175,7 +4219,7 @@ class MainActivity : AppCompatActivity() {
             reportMetricCard(
                 label = localText("累计锻炼时间", "Total duration", "Durée totale", "เวลารวม"),
                 value = formatTrainingDuration(report.durationSeconds),
-                accentColor = "#00FF88",
+                accentColor = "#10BDAA",
             ).apply {
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -4191,7 +4235,7 @@ class MainActivity : AppCompatActivity() {
             reportMetricCard(
                 label = localText("累计击拳数", "Total punches", "Coups cumulés", "หมัดรวม"),
                 value = "${report.totalHits} ${tr("hits")}",
-                accentColor = "#40E090",
+                accentColor = "#16C8B5",
             ).apply {
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -4300,8 +4344,8 @@ class MainActivity : AppCompatActivity() {
         reportView.addView(metricsGrid)
         coachMessageForReport(report)?.takeIf { it.isNotBlank() }?.let { message ->
             reportView.addView(
-                detailCard(fillColor = "#241000", strokeColor = "#FFD060", cornerDp = 18).apply {
-                    background = metallicBackground("#2D2813", "#1A0C00", "#FFD060", 18)
+                detailCard(fillColor = "#FFF8EF", strokeColor = "#FFD3A1", cornerDp = 18).apply {
+                    background = roundedBackground("#FFF8EF", "#FFD3A1", 18)
                     layoutParams =
                         LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -4311,7 +4355,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     addView(
                         bodyText(message).apply {
-                            setTextColor(Color.parseColor("#FFF3D3"))
+                            setTextColor(Color.parseColor("#915012"))
                             setTypeface(Typeface.DEFAULT_BOLD)
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                         },
@@ -4320,6 +4364,8 @@ class MainActivity : AppCompatActivity() {
             )
         }
         addShareTrainingButtonToReport()
+        renderHomeConnectionReportCard()
+        renderHomeGoalAchievementCard()
     }
 
     private fun roundReportsSummaryCard(currentReport: TrainingReport): View? {
@@ -4331,7 +4377,7 @@ class MainActivity : AppCompatActivity() {
                 .filter { it.totalRounds == currentReport.totalRounds && it.completedRounds <= currentReport.completedRounds }
                 .sortedBy { it.completedRounds }
                 .ifEmpty { listOf(currentReport) }
-        return detailCard(fillColor = "#081A14", strokeColor = "#1E6C46", cornerDp = 18).apply {
+        return detailCard(fillColor = "#F7FFFD", strokeColor = "#CDEFE8", cornerDp = 18).apply {
             layoutParams =
                 LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -4341,7 +4387,7 @@ class MainActivity : AppCompatActivity() {
                 }
             addView(
                 bodyText(localText("回合累计战报", "Round Cumulative Reports", "Rapports cumulés", "รายงานสะสมรายรอบ")).apply {
-                    setTextColor(Color.parseColor("#DFFFF0"))
+                    setTextColor(Color.parseColor("#17343B"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 },
@@ -4349,7 +4395,7 @@ class MainActivity : AppCompatActivity() {
             reports.forEach { report ->
                 addView(
                     bodyText(roundReportCumulativeLine(report)).apply {
-                        setTextColor(Color.parseColor("#C8FFE0"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                         setPadding(0, dp(8), 0, 0)
                     },
@@ -5139,7 +5185,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#1A0C00"))
+        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#F0FFFB"))
     }
 
     private fun showDeveloperInfoDialog() {
@@ -5162,7 +5208,7 @@ class MainActivity : AppCompatActivity() {
 
         dialogRoot.addView(
             bodyText(developerInfoPageSubtitle()).apply {
-                setTextColor(Color.parseColor("#FFD88A"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, 0, 0, dp(12))
             },
@@ -5170,15 +5216,15 @@ class MainActivity : AppCompatActivity() {
 
         dialogRoot.addView(sectionLabel(developerCompanySectionTitle()))
         dialogRoot.addView(
-            detailCard(fillColor = "#0B1721", strokeColor = "#20384A").apply {
+            detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8").apply {
                 addView(
                     titleText(developerCompanyName(), 18f).apply {
-                        setTextColor(Color.parseColor("#FFF8E8"))
+                        setTextColor(Color.parseColor("#17343B"))
                     },
                 )
                 addView(
                     bodyText(developerCompanyDescription()).apply {
-                        setTextColor(Color.parseColor("#FFD88A"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setPadding(0, dp(8), 0, 0)
                     },
                 )
@@ -5188,16 +5234,16 @@ class MainActivity : AppCompatActivity() {
         dialogRoot.addView(spacer(dp(12)))
         dialogRoot.addView(sectionLabel(developerContactSectionTitle()))
         dialogRoot.addView(
-            detailCard(fillColor = "#0B1721", strokeColor = "#20384A").apply {
+            detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8").apply {
                 addView(
                     bodyText(developerEmailLabel()).apply {
-                        setTextColor(Color.parseColor("#B88A54"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setTypeface(Typeface.DEFAULT_BOLD)
                     },
                 )
                 addView(
                     titleText(DEVELOPER_EMAIL, 18f).apply {
-                        setTextColor(Color.parseColor("#FFB347"))
+                        setTextColor(Color.parseColor("#FF8A32"))
                         setPadding(0, dp(8), 0, 0)
                     },
                 )
@@ -5219,21 +5265,21 @@ class MainActivity : AppCompatActivity() {
         dialogRoot.addView(spacer(dp(12)))
         dialogRoot.addView(sectionLabel(developerExtrasSectionTitle()))
         dialogRoot.addView(
-            detailCard(fillColor = "#0B1721", strokeColor = "#20384A").apply {
+            detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8").apply {
                 addView(
                     bodyText("${developerVersionLabel()}: ${displayAppVersion()}").apply {
-                        setTextColor(Color.parseColor("#FFF0C9"))
+                        setTextColor(Color.parseColor("#17343B"))
                         setTypeface(Typeface.DEFAULT_BOLD)
                     },
                 )
                 addView(
                     bodyText(developerDocumentHint()).apply {
-                        setTextColor(Color.parseColor("#B88A54"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setPadding(0, dp(10), 0, 0)
                     },
                 )
                 addView(
-                    compactActionButton(privacyPolicyEntryLabel(), "#16384A").apply {
+                    compactActionButton(privacyPolicyEntryLabel(), "#10BDAA").apply {
                         layoutParams =
                             LinearLayout.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -5250,7 +5296,7 @@ class MainActivity : AppCompatActivity() {
                     },
                 )
                 addView(
-                    compactActionButton(userAgreementEntryLabel(), "#1F3B52").apply {
+                    compactActionButton(userAgreementEntryLabel(), "#10BDAA").apply {
                         layoutParams =
                             LinearLayout.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -5276,7 +5322,7 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton(closeLabel(), null)
                 .create()
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#1A0C00"))
+        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#F0FFFB"))
         dialog.window?.setLayout(
             (resources.displayMetrics.widthPixels * 0.94f).toInt(),
             (resources.displayMetrics.heightPixels * 0.88f).toInt(),
@@ -5294,7 +5340,7 @@ class MainActivity : AppCompatActivity() {
             }
         val body =
             bodyText(content).apply {
-                setTextColor(Color.parseColor("#FFF0C9"))
+                setTextColor(Color.parseColor("#17343B"))
                 setLineSpacing(dp(4).toFloat(), 1.15f)
                 setPadding(dp(20), dp(18), dp(20), dp(12))
             }
@@ -5312,7 +5358,7 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton(closeLabel(), null)
                 .create()
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#1A0C00"))
+        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#F0FFFB"))
         dialog.window?.setLayout(
             (resources.displayMetrics.widthPixels * 0.94f).toInt(),
             (resources.displayMetrics.heightPixels * 0.88f).toInt(),
@@ -5333,9 +5379,9 @@ class MainActivity : AppCompatActivity() {
         profileStatsView.text = buildProfileStatsOverview()
         profileBadgesView.text = buildRecentBadgeSummary()
         refreshProfileAvatar()
-        cloudStatusView.setTextColor(cloudStatusColor)
+        cloudStatusView.setTextColor(Color.parseColor("#096D65"))
         cloudStatusView.text = currentCloudStatusMessage().ifBlank { tr("cloud_sync_idle") }
-        cloudStatusView.background = chipBackground(cloudStatusColor)
+        cloudStatusView.background = roundedBackground("#DFFFF7", "#BFEFE5", 999)
         renderAchievements()
         renderHistoryCards()
         renderLeaderboard()
@@ -5415,9 +5461,11 @@ class MainActivity : AppCompatActivity() {
                 latestReport != null || stats != null -> trainingReportLeaderboardLine()
                 else -> currentCloudStatusMessage().ifBlank { tr("cloud_sync_idle") }
             }
-        trainingHeroCard.background = heroBackground("#008840")
+        trainingHeroCard.background = roundedBackground("#F3FFFC", "#C9F0E9", 24)
         shareTrainingButton.alpha = if (latestReport != null) 1.0f else 0.72f
         shareTrainingButton.isEnabled = latestReport != null
+        renderHomeConnectionReportCard()
+        renderHomeGoalAchievementCard()
     }
 
     private fun trainingPlayModeForCheckedId(checkedId: Int): TrainingPlayMode =
@@ -5445,6 +5493,33 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    private fun configureLeaderboardFilterButton(button: RadioButton) {
+        button.includeFontPadding = false
+        button.minHeight = dp(36)
+        button.minimumHeight = dp(36)
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
+        button.setTextColor(Color.parseColor("#17343B"))
+        button.setPadding(dp(8), dp(6), dp(12), dp(6))
+        button.buttonTintList =
+            ColorStateList(
+                arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf(-android.R.attr.state_checked),
+                ),
+                intArrayOf(
+                    Color.parseColor("#10BDAA"),
+                    Color.parseColor("#8CCDC4"),
+                ),
+            )
+        button.layoutParams =
+            RadioGroup.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                rightMargin = dp(6)
+            }
+    }
+
     private fun refreshModeButtonStyles() {
         if (!::mode30Button.isInitialized || !::modeDailyButton.isInitialized) {
             return
@@ -5455,18 +5530,18 @@ class MainActivity : AppCompatActivity() {
                 Triple(mode60Button, TrainingPlayMode.Classic60, "#FFB347"),
                 Triple(modeBurst10Button, TrainingPlayMode.Burst10, "#FFD060"),
                 Triple(modeBurst15Button, TrainingPlayMode.Burst15, "#FF9A30"),
-                Triple(modeLevelButton, TrainingPlayMode.LevelChallenge, "#C084FC"),
+                Triple(modeLevelButton, TrainingPlayMode.LevelChallenge, "#10BDAA"),
                 Triple(modeDailyButton, TrainingPlayMode.DailyChallenge, "#E07010"),
             )
         items.forEach { (button, playMode, accentColor) ->
             val selected = selectedPlayMode == playMode
-            button.setTextColor(Color.parseColor(if (selected) "#FFF8E8" else "#E5C98A"))
+            button.setTextColor(Color.parseColor(if (selected) "#FFFFFF" else "#557A7D"))
             button.text = coloredModeLabel(playMode, accentColor)
             button.setTypeface(if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT)
             button.background =
                 roundedBackground(
-                    fillColor = if (selected) "#173247" else "#0A1721",
-                    strokeColor = if (selected) accentColor else "#1B3344",
+                    fillColor = if (selected) "#10BDAA" else "#FFFFFF",
+                    strokeColor = if (selected) "#10BDAA" else "#CDEFE8",
                     cornerDp = 18,
                 )
             button.alpha = if (trainingJob?.isActive == true) 0.62f else 1.0f
@@ -5612,7 +5687,7 @@ class MainActivity : AppCompatActivity() {
                         "Atteignez l'objectif pour débloquer le niveau suivant et progresser régulièrement.",
                         "ทำให้ถึงเป้าหมายเพื่อปลดล็อกด่านถัดไป และเปลี่ยนการฝึกให้เป็นเส้นทางเติบโต",
                     ),
-                    accentColor = "#C084FC",
+                    accentColor = "#10BDAA",
                     targetHits = level.targetHits,
                 )
 
@@ -6146,8 +6221,8 @@ class MainActivity : AppCompatActivity() {
             imageUri = currentAvatarImageUri(),
         )
         profileHeroBadgeView.text = tierLabelForLevel(profile?.currentTier ?: cloudTier?.level ?: 1)
-        profileHeroBadgeView.background = metallicBackground("#FFE8A8", "#B68026", "#FFF3D2", 999)
-        profileHeroBadgeView.setTextColor(Color.parseColor("#140800"))
+        profileHeroBadgeView.background = roundedBackground("#DFFFF7", "#BFEFE5", 999)
+        profileHeroBadgeView.setTextColor(Color.parseColor("#096D65"))
     }
 
     private fun currentAvatarImageUri(): Uri? =
@@ -6223,6 +6298,7 @@ class MainActivity : AppCompatActivity() {
             )
             shareAchievementsButton.alpha = 0.72f
             shareAchievementsButton.isEnabled = false
+            renderHomeGoalAchievementCard()
             return
         }
         shareAchievementsButton.alpha = 1.0f
@@ -6247,8 +6323,8 @@ class MainActivity : AppCompatActivity() {
                 recentRow.addView(
                     badgeText(
                         text = achievementDisplayName(item.key),
-                        textColor = "#FFF5E6",
-                        fillColor = "#16384A",
+                        textColor = "#096D65",
+                        fillColor = "#DFFFF7",
                     ).apply {
                         layoutParams =
                             LinearLayout.LayoutParams(
@@ -6270,7 +6346,7 @@ class MainActivity : AppCompatActivity() {
         achievementGroupSpecs().forEachIndexed { groupIndex, group ->
             val groupItems = group.second.mapNotNull(itemMap::get)
             val unlockedInGroup = groupItems.count { it.unlocked }
-            val groupCard = detailCard(fillColor = "#0D1822", strokeColor = "#264558", cornerDp = 22)
+            val groupCard = detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8", cornerDp = 22)
             val groupHeader =
                 LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -6289,8 +6365,8 @@ class MainActivity : AppCompatActivity() {
             val headerBadge =
                 badgeText(
                     text = "$unlockedInGroup/${groupItems.size}",
-                    textColor = "#FFF8E8",
-                    fillColor = "#173649",
+                    textColor = "#096D65",
+                    fillColor = "#DFFFF7",
                 ).apply {
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 }
@@ -6333,6 +6409,7 @@ class MainActivity : AppCompatActivity() {
                 achievementsGridContainer.addView(spacer(dp(14)))
             }
         }
+        renderHomeGoalAchievementCard()
     }
 
     private fun achievementGroupSpecs(): List<Pair<String, List<String>>> =
@@ -6380,29 +6457,29 @@ class MainActivity : AppCompatActivity() {
         unlockedCount: Int,
         totalCount: Int,
     ): LinearLayout =
-        detailCard(fillColor = "#102533", strokeColor = "#2B5870", cornerDp = 22).apply {
+        detailCard(fillColor = "#EFFFFA", strokeColor = "#BFEFE5", cornerDp = 22).apply {
             addView(
                 badgeText(
                     text = localText("当前段位", "Current Tier", "Rang actuel", "ระดับปัจจุบัน"),
-                    textColor = "#140800",
-                    fillColor = "#FFD060",
+                    textColor = "#096D65",
+                    fillColor = "#DFFFF7",
                 ),
             )
             addView(
                 titleText(tierLabelForKey(tier.key), 22f).apply {
                     setPadding(0, dp(12), 0, 0)
-                    setTextColor(Color.parseColor("#FFF8E8"))
+                    setTextColor(Color.parseColor("#17343B"))
                 },
             )
             addView(
                 bodyText(achievementsSubtitleText(unlockedCount, totalCount)).apply {
-                    setTextColor(Color.parseColor("#FFF0C9"))
+                    setTextColor(Color.parseColor("#557A7D"))
                     setPadding(0, dp(6), 0, 0)
                 },
             )
             addView(
                 bodyText(tierHeroProgressText(tier)).apply {
-                    setTextColor(Color.parseColor("#B88A54"))
+                    setTextColor(Color.parseColor("#0CA99A"))
                     setPadding(0, dp(10), 0, 0)
                 },
             )
@@ -6454,10 +6531,10 @@ class MainActivity : AppCompatActivity() {
             leaderboardListRecycler.visibility = View.GONE
             leaderboardRowAdapter.submitList(emptyList())
             leaderboardMeCard.visibility = View.VISIBLE
-            leaderboardMeCard.background = metallicBackground("#163246", "#0A141C", "#FF9A30", 22)
+            leaderboardMeCard.background = roundedBackground("#EFFFFA", "#BFEFE5", 22)
             shareLeaderboardButton.alpha = 0.72f
             shareLeaderboardButton.isEnabled = false
-            leaderboardMeTitleView.setTextColor(Color.parseColor("#FF9A30"))
+            leaderboardMeTitleView.setTextColor(Color.parseColor("#096D65"))
             leaderboardMeTitleView.text =
                 localText("榜单竞技", "Leaderboard Arena", "Arène du classement", "สนามจัดอันดับ")
             leaderboardMeView.text = ""
@@ -6518,7 +6595,7 @@ class MainActivity : AppCompatActivity() {
         leaderboardRowAdapter.submitList(others)
 
         leaderboardMeCard.visibility = View.VISIBLE
-        leaderboardMeCard.background = metallicBackground("#21485F", leaderboardAccentFill(leaderboardBoard), boardAccent, 22)
+        leaderboardMeCard.background = roundedBackground(leaderboardAccentFill(leaderboardBoard), boardAccent, 22)
         leaderboardMeTitleView.setTextColor(Color.parseColor(boardAccent))
         leaderboardMeTitleView.text = "${tr("leaderboard_me").uppercase(localeForLanguage())} | ${leaderboardBoardLabel(leaderboardBoard)}"
         leaderboardMeView.text =
@@ -6811,17 +6888,17 @@ class MainActivity : AppCompatActivity() {
         message: String,
         accentColor: String = "#FF9A30",
     ): LinearLayout =
-        detailCard(fillColor = "#0D1822", strokeColor = accentColor, cornerDp = 22).apply {
-            background = metallicBackground("#163246", "#0A141C", accentColor, 22)
+        detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8", cornerDp = 22).apply {
+            background = roundedBackground("#FFFFFF", "#CDEFE8", 22)
             gravity = Gravity.CENTER_HORIZONTAL
             addView(
                 TextView(this@MainActivity).apply {
                     text = badge
                     gravity = Gravity.CENTER
                     setTypeface(Typeface.DEFAULT_BOLD)
-                    setTextColor(Color.parseColor("#140800"))
+                    setTextColor(Color.WHITE)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                    background = metallicBackground("#BCEEFF", accentColor, "#E8FBFF", 999)
+                    background = roundedBackground(accentColor, accentColor, 999)
                     setPadding(dp(12), dp(6), dp(12), dp(6))
                 },
             )
@@ -6834,7 +6911,7 @@ class MainActivity : AppCompatActivity() {
             addView(
                 bodyText(message).apply {
                     gravity = Gravity.CENTER
-                    setTextColor(Color.parseColor("#B7CFE0"))
+                    setTextColor(Color.parseColor("#557A7D"))
                     setPadding(dp(4), dp(8), dp(4), dp(4))
                 },
             )
@@ -6856,6 +6933,8 @@ class MainActivity : AppCompatActivity() {
                 accentColor = "#FF9A30",
             ),
         )
+        renderHomeConnectionReportCard()
+        renderHomeGoalAchievementCard()
     }
 
     private fun reportMetricCard(
@@ -6863,50 +6942,616 @@ class MainActivity : AppCompatActivity() {
         value: String,
         accentColor: String,
     ): LinearLayout =
-        detailCard(fillColor = "#0B1721", strokeColor = accentColor, cornerDp = 18).apply {
+        detailCard(fillColor = "#FFFFFF", strokeColor = accentColor, cornerDp = 18).apply {
             setPadding(dp(14), dp(12), dp(14), dp(12))
             addView(
                 bodyText(label).apply {
-                    setTextColor(Color.parseColor("#B88A54"))
+                    setTextColor(Color.parseColor("#557A7D"))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 },
             )
             addView(
                 titleText(value, 18f).apply {
-                    setTextColor(Color.parseColor("#FFF8E8"))
+                    setTextColor(Color.parseColor("#17343B"))
                     setPadding(0, dp(8), 0, 0)
                 },
             )
         }
 
+    private fun vividAssetColorFilter(
+        saturation: Float = 1.12f,
+        contrast: Float = 1.04f,
+        brightness: Float = -2f,
+    ): ColorMatrixColorFilter {
+        val saturationMatrix = ColorMatrix().apply {
+            setSaturation(saturation)
+        }
+        val contrastMatrix =
+            ColorMatrix(
+                floatArrayOf(
+                    contrast, 0f, 0f, 0f, brightness,
+                    0f, contrast, 0f, 0f, brightness,
+                    0f, 0f, contrast, 0f, brightness,
+                    0f, 0f, 0f, 1f, 0f,
+                ),
+            )
+        saturationMatrix.postConcat(contrastMatrix)
+        return ColorMatrixColorFilter(saturationMatrix)
+    }
+
+    private fun buildHomeHeroCard(): FrameLayout =
+        FrameLayout(this).apply {
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(300),
+                ).apply {
+                    bottomMargin = dp(10)
+                }
+            background = roundedBackground("#E9FFFA", "#C8F0E8", 24)
+            clipToOutline = true
+            outlineProvider =
+                object : ViewOutlineProvider() {
+                    override fun getOutline(view: View, outline: Outline) {
+                        outline.setRoundRect(0, 0, view.width, view.height, dp(24).toFloat())
+                    }
+                }
+            elevation = dp(3).toFloat()
+            addView(
+                ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.home_banner)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    alpha = 1f
+                    val saturationMatrix = ColorMatrix().apply {
+                        setSaturation(1.18f)
+                    }
+                    val contrastMatrix =
+                        ColorMatrix(
+                            floatArrayOf(
+                                1.06f, 0f, 0f, 0f, -3f,
+                                0f, 1.06f, 0f, 0f, -3f,
+                                0f, 0f, 1.06f, 0f, -3f,
+                                0f, 0f, 0f, 1f, 0f,
+                            ),
+                        )
+                    saturationMatrix.postConcat(contrastMatrix)
+                    colorFilter = ColorMatrixColorFilter(saturationMatrix)
+                    layoutParams =
+                        FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                        )
+                },
+            )
+            addView(
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.START
+                    setPadding(dp(24), dp(24), dp(18), dp(18))
+                    layoutParams =
+                        FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                        )
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text =
+                                SpannableString("HitRise").apply {
+                                    setSpan(
+                                        ForegroundColorSpan(Color.parseColor("#07A998")),
+                                        3,
+                                        length,
+                                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                                    )
+                                }
+                            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC))
+                            setTextColor(Color.parseColor("#17343B"))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 25.5f)
+                            includeFontPadding = false
+                        },
+                    )
+                    addView(
+                        bodyText(localText("家庭健身 · 燃脂拳击", "Home fitness · fat-burning boxing", "Fitness maison · boxe brûle-graisse", "ฟิตเนสที่บ้าน · มวยเผาผลาญ")).apply {
+                            setTextColor(Color.parseColor("#4C7478"))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
+                            setPadding(0, dp(6), 0, 0)
+                        },
+                    )
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            val headline =
+                                localText(
+                                    "10分钟\n轻松暴汗！",
+                                    "10 minutes\nSweat easy!",
+                                    "10 minutes\nTranspirez vite !",
+                                    "10 นาที\nเหงื่อออกง่าย!",
+                                )
+                            text =
+                                SpannableString(headline).apply {
+                                    val breakIndex = headline.indexOf('\n').takeIf { it >= 0 } ?: headline.length
+                                    setSpan(
+                                        ForegroundColorSpan(Color.parseColor("#07A998")),
+                                        0,
+                                        breakIndex,
+                                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                                    )
+                                    if (breakIndex + 1 < headline.length) {
+                                        setSpan(
+                                            ForegroundColorSpan(Color.parseColor("#050A0B")),
+                                            breakIndex + 1,
+                                            headline.length,
+                                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                                        )
+                                    }
+                                }
+                            gravity = Gravity.START
+                            setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 31f)
+                            setLineSpacing(dp(2).toFloat(), 1.0f)
+                            includeFontPadding = false
+                            setPadding(0, dp(37), 0, 0)
+                        },
+                    )
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = localText("健身 | 减压 | 燃脂", "Fitness | Stress relief | Fat burn", "Fitness | Décompression | Brûle-graisse", "ฟิต | คลายเครียด | เผาผลาญ")
+                            setTextColor(Color.parseColor("#17343B"))
+                            setTypeface(Typeface.DEFAULT_BOLD)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                            setPadding(dp(5), dp(62), 0, 0)
+                        },
+                    )
+                },
+            )
+            addView(
+                settingsButton.apply {
+                    layoutParams =
+                        FrameLayout.LayoutParams(dp(31), dp(31), Gravity.TOP or Gravity.END).apply {
+                            topMargin = dp(24)
+                            rightMargin = dp(12)
+                        }
+                },
+            )
+        }
+
+    private fun buildHomeForceCard(): LinearLayout =
+        detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8", cornerDp = 20).apply {
+            background = roundedBackground("#FFFFFF", "#CDEFE8", 20)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = dp(10)
+                    bottomMargin = dp(10)
+                }
+            addView(
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(
+                        sectionLabel(localText("击打力度", "Punch force", "Force de frappe", "แรงหมัด")).apply {
+                            setTextColor(Color.parseColor("#17343B"))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                            layoutParams =
+                                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                        },
+                    )
+                    addView(dashboardPeakTagView)
+                },
+            )
+            addView(
+                waveformView.apply {
+                    layoutParams =
+                        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(118)).apply {
+                            topMargin = dp(6)
+                        }
+                    background = roundedBackground("#FFFFFF", "#FFFFFF", 12)
+                    setPadding(dp(8), dp(6), dp(8), dp(6))
+                },
+            )
+            addView(
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(8), 0, 0)
+                    addView(homeForceLegendChip(localText("轻击", "Light", "Léger", "เบา"), "#45DCC8", marginRight = dp(8)))
+                    addView(homeForceLegendChip(localText("中击", "Medium", "Moyen", "กลาง"), "#9BE5C4", marginRight = dp(8)))
+                    addView(homeForceLegendChip(localText("重拳", "Heavy", "Fort", "หนัก"), "#FFD060", marginRight = dp(8)))
+                    addView(homeForceLegendChip(localText("爆发", "Burst", "Explosion", "ระเบิด"), "#FF7A45"))
+                },
+            )
+            addView(
+                dashboardForceSummaryView.apply {
+                    layoutParams =
+                        LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            topMargin = dp(8)
+                        }
+                },
+            )
+        }
+
+    private fun homeForceLegendChip(
+        label: String,
+        fillColor: String,
+        marginRight: Int = 0,
+    ): TextView =
+        bodyText(label).apply {
+            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#17343B"))
+            setTypeface(Typeface.DEFAULT_BOLD)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            setPadding(dp(14), dp(6), dp(14), dp(6))
+            background = roundedBackground(fillColor, fillColor, 999)
+            layoutParams =
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    rightMargin = marginRight
+                }
+        }
+
+    private fun buildHomeConnectionReportCard(): FrameLayout =
+        FrameLayout(this).apply {
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(170),
+                ).apply {
+                    topMargin = dp(10)
+                    bottomMargin = dp(10)
+                }
+            background = roundedBackground("#F3FFFC", "#CDEFE8", 20)
+            clipToOutline = true
+            outlineProvider =
+                object : ViewOutlineProvider() {
+                    override fun getOutline(view: View, outline: Outline) {
+                        outline.setRoundRect(0, 0, view.width, view.height, dp(20).toFloat())
+                    }
+                }
+            addView(
+                ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.home_report_bg)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    colorFilter = vividAssetColorFilter(saturation = 1.12f, contrast = 1.03f, brightness = -2f)
+                    alpha = 0.96f
+                    layoutParams =
+                        FrameLayout.LayoutParams(dp(150), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END or Gravity.CENTER_VERTICAL)
+                },
+            )
+            val content =
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(16), dp(14), dp(16), dp(14))
+                    layoutParams =
+                        FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                        )
+                }
+            content.addView(
+                sectionLabel(localText("连接状态 / 最新战报", "Connection / Latest report", "Connexion / Dernier rapport", "สถานะ / รายงานล่าสุด")).apply {
+                    setTextColor(Color.parseColor("#17343B"))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                },
+            )
+            homeConnectionStatusView =
+                bodyText("").apply {
+                    setTextColor(Color.parseColor("#557A7D"))
+                    setTypeface(Typeface.DEFAULT_BOLD)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                    textScaleX = 0.94f
+                    includeFontPadding = false
+                    setSingleLine(true)
+                    maxLines = 1
+                    setPadding(0, dp(4), dp(44), dp(8))
+                }
+            content.addView(homeConnectionStatusView)
+            homeReportHitsValueView = homeV3MetricValue("--")
+            homeReportPeakValueView = homeV3MetricValue("--")
+            homeReportAvgValueView = homeV3MetricValue("--")
+            content.addView(
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(0, dp(6), dp(28), 0)
+                    addView(homeV3MiniMetric(localText("本次拳数", "Hits", "Coups", "หมัด"), homeReportHitsValueView, dp(8)))
+                    addView(homeV3MiniMetric(localText("最大力度", "Peak", "Max", "สูงสุด"), homeReportPeakValueView, dp(8)))
+                    addView(homeV3MiniMetric(localText("平均力度", "Avg", "Moy.", "เฉลี่ย"), homeReportAvgValueView))
+                },
+            )
+            addView(content)
+            renderHomeConnectionReportCard()
+        }
+
+    private fun buildHomeGoalAchievementCard(): FrameLayout =
+        FrameLayout(this).apply {
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(172),
+                ).apply {
+                    topMargin = dp(10)
+                    bottomMargin = dp(10)
+                }
+            background = roundedBackground("#F3FFFC", "#CDEFE8", 20)
+            clipToOutline = true
+            outlineProvider =
+                object : ViewOutlineProvider() {
+                    override fun getOutline(view: View, outline: Outline) {
+                        outline.setRoundRect(0, 0, view.width, view.height, dp(20).toFloat())
+                    }
+                }
+            addView(
+                ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.home_achievement_bg)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    colorFilter = vividAssetColorFilter(saturation = 1.12f, contrast = 1.03f, brightness = -2f)
+                    alpha = 0.98f
+                    layoutParams =
+                        FrameLayout.LayoutParams(dp(200), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END or Gravity.CENTER_VERTICAL)
+                },
+            )
+            addView(
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(16), dp(14), dp(16), dp(14))
+                    layoutParams =
+                        FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                        )
+                    addView(
+                        sectionLabel(localText("目标与成就", "Goals & achievements", "Objectifs & succès", "เป้าหมายและเหรียญ")).apply {
+                            setTextColor(Color.parseColor("#17343B"))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                        },
+                    )
+                    addView(
+                        LinearLayout(this@MainActivity).apply {
+                            orientation = LinearLayout.VERTICAL
+                            gravity = Gravity.CENTER_VERTICAL
+                            setPadding(dp(14), dp(10), dp(14), dp(10))
+                            background = roundedBackground("#FFFFFF", "#BDEFE6", 16)
+                            layoutParams =
+                                LinearLayout.LayoutParams(dp(140), dp(86)).apply {
+                                    topMargin = dp(12)
+                                }
+                            addView(
+                                bodyText(localText("今日已完成", "Today done", "Aujourd'hui", "วันนี้")).apply {
+                                    setTextColor(Color.parseColor("#7FA0A3"))
+                                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                                },
+                            )
+                            homeGoalPercentView =
+                                titleText("0%", 30f).apply {
+                                    gravity = Gravity.START
+                                    setTextColor(Color.parseColor("#10BDAA"))
+                                    includeFontPadding = false
+                                    setPadding(0, dp(4), 0, 0)
+                                }
+                            addView(homeGoalPercentView)
+                        },
+                    )
+                    homeGoalNextBadgeView =
+                        bodyText("").apply {
+                            setTextColor(Color.parseColor("#096D65"))
+                            setTypeface(Typeface.DEFAULT_BOLD)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                            gravity = Gravity.CENTER
+                            setPadding(dp(12), dp(7), dp(12), dp(7))
+                            background = roundedBackground("#DFFFF7", "#DFFFF7", 999)
+                            layoutParams =
+                                LinearLayout.LayoutParams(dp(188), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                                    topMargin = dp(12)
+                                }
+                        }
+                    addView(homeGoalNextBadgeView)
+                },
+            )
+            renderHomeGoalAchievementCard()
+        }
+
+    private fun homeV3MetricValue(initial: String): TextView =
+        titleText(initial, 18f).apply {
+            gravity = Gravity.START
+            setTextColor(Color.parseColor("#17343B"))
+            includeFontPadding = false
+            setSingleLine(true)
+            maxLines = 1
+            textScaleX = 0.96f
+            setPadding(0, dp(4), 0, 0)
+        }
+
+    private fun homeV3MiniMetric(
+        label: String,
+        valueView: TextView,
+        marginRight: Int = 0,
+    ): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(9), dp(8), dp(9))
+            background = roundedBackground("#FFFFFF", "#E0F3EF", 12)
+            layoutParams =
+                LinearLayout.LayoutParams(0, dp(72), 1f).apply {
+                    rightMargin = marginRight
+                }
+            addView(
+                bodyText(label).apply {
+                    setTextColor(Color.parseColor("#7FA0A3"))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                    includeFontPadding = false
+                    setSingleLine(true)
+                    maxLines = 1
+                },
+            )
+            addView(valueView)
+        }
+
+    private fun renderHomeConnectionReportCard() {
+        if (!::homeConnectionStatusView.isInitialized) {
+            return
+        }
+        val connectedDevice = bluetoothConnectedDevice
+        homeConnectionStatusView.text =
+            connectedDevice?.let { device ->
+                localText(
+                    "${device.name}·电量 ${currentBluetoothBatteryText()}·已连接",
+                    "${device.name}·Battery ${currentBluetoothBatteryText()}·Connected",
+                    "${device.name}·Batterie ${currentBluetoothBatteryText()}·Connecté",
+                    "${device.name}·แบต ${currentBluetoothBatteryText()}·เชื่อมต่อแล้ว",
+                )
+            } ?: localText(
+                "没有连接蓝牙设备",
+                "No Bluetooth device connected",
+                "Aucun appareil Bluetooth connecté",
+                "ยังไม่ได้เชื่อมต่อบลูทูธ",
+            )
+        val report = latestReport
+        val showLive = trainingJob?.isActive == true || bluetoothTrainingCount > 0
+        val hits = if (showLive) bluetoothTrainingCount else report?.totalHits ?: 0
+        val peakForce = if (showLive || trainingPeakForceN > 0f) trainingPeakForceN else report?.peakForceN ?: 0f
+        val avgForce = if (showLive || currentAverageTrainingForceN() > 0f) currentAverageTrainingForceN() else report?.avgForceN ?: 0f
+        homeReportHitsValueView.text = hits.toString()
+        homeReportPeakValueView.text = if (peakForce > 0f) forceDisplay(peakForce) else "--"
+        homeReportAvgValueView.text = if (avgForce > 0f) forceDisplay(avgForce) else "--"
+    }
+
+    private fun renderHomeGoalAchievementCard() {
+        if (!::homeGoalPercentView.isInitialized) {
+            return
+        }
+        val target = trainingGoalPresentationFor(selectedPlayMode).targetHits ?: 500
+        val completed =
+            when {
+                trainingJob?.isActive == true || bluetoothTrainingCount > 0 -> bluetoothTrainingCount
+                latestReport != null -> latestReport!!.totalHits
+                else -> 0
+            }
+        val percent = if (target > 0) ((completed.toFloat() / target.toFloat()) * 100f).roundToInt().coerceIn(0, 999) else 0
+        homeGoalPercentView.text = "$percent%"
+        val nextLocked = cloudAchievements.filterNot { it.unlocked }.sortedBy { it.sortOrder }.firstOrNull()
+        homeGoalNextBadgeView.text =
+            nextLocked?.let {
+                localText(
+                    "下一枚徽章：${achievementDisplayName(it.key)}",
+                    "Next badge: ${achievementDisplayName(it.key)}",
+                    "Prochain badge : ${achievementDisplayName(it.key)}",
+                    "เหรียญถัดไป: ${achievementDisplayName(it.key)}",
+                )
+            } ?: localText(
+                "全部徽章已解锁",
+                "All badges unlocked",
+                "Tous les badges sont débloqués",
+                "ปลดล็อกครบแล้ว",
+            )
+    }
+
     private fun buildRealtimeDashboardCard(): LinearLayout {
-        val palette = selectedPalette
+        val cardFill = "#FFFFFF"
+        val cardStroke = "#CDEFE8"
+        val cardAlt = "#F7FFFD"
+        val textPrimary = "#17343B"
+        val textSecondary = "#557A7D"
+        val textMuted = "#7FA0A3"
+        val mint = "#16C8B5"
+        val mintSoft = "#DFFFF7"
+        val orange = "#FF8A32"
+        val orangeSoft = "#FFE0BA"
         fun metricValueView(initial: String): TextView =
-            titleText(initial, 20f).apply {
-                setTextColor(Color.parseColor(palette.textPrimary))
+            titleText(initial, 23f).apply {
+                setTextColor(Color.parseColor(textPrimary))
                 gravity = Gravity.CENTER
-                setPadding(0, dp(2), 0, 0)
+                includeFontPadding = false
+                setSingleLine(true)
+                maxLines = 1
+                setPadding(0, 0, 0, 0)
             }
 
-        fun metricTile(label: String, valueView: TextView, unit: String = ""): LinearLayout =
+        fun metricTile(
+            iconRes: Int,
+            label: String,
+            valueView: TextView,
+            unit: String = "",
+        ): LinearLayout =
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                background = roundedBackground(palette.cardAlt, palette.stroke, 12)
-                setPadding(dp(8), dp(9), dp(8), dp(9))
-                addView(valueView)
+                gravity = Gravity.CENTER_VERTICAL
+                background = roundedBackground(cardAlt, "#DDF3EF", 14)
+                elevation = dp(2).toFloat()
+                setPadding(dp(8), dp(10), dp(5), dp(10))
+                valueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 23f)
+                valueView.textScaleX = 1f
+                val compactLabel = label.length >= 4
                 addView(
-                    bodyText(
-                        if (unit.isBlank()) {
-                            label
-                        } else {
-                            "$label  $unit"
-                        },
-                    ).apply {
-                        gravity = Gravity.CENTER
-                        setTextColor(Color.parseColor(palette.textMuted))
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                        setPadding(0, dp(3), 0, 0)
+                    LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        addView(
+                            ImageView(this@MainActivity).apply {
+                                setImageResource(iconRes)
+                                adjustViewBounds = true
+                                layoutParams =
+                                    LinearLayout.LayoutParams(dp(if (compactLabel) 21 else 24), dp(if (compactLabel) 21 else 24)).apply {
+                                        rightMargin = dp(if (compactLabel) 3 else 5)
+                                    }
+                            },
+                        )
+                        addView(
+                            bodyText(label).apply {
+                                gravity = Gravity.CENTER_VERTICAL
+                                setTextColor(Color.parseColor(textSecondary))
+                                setTextSize(TypedValue.COMPLEX_UNIT_SP, if (compactLabel) 9.2f else 10.5f)
+                                textScaleX = if (compactLabel) 0.92f else 1f
+                                includeFontPadding = false
+                                setSingleLine(true)
+                                maxLines = 1
+                            },
+                        )
+                    },
+                )
+                addView(
+                    LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.VERTICAL
+                        gravity = Gravity.CENTER_HORIZONTAL
+                        setPadding(0, dp(7), 0, 0)
+                        layoutParams =
+                            LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                            )
+                        addView(
+                            valueView.apply {
+                                layoutParams =
+                                    LinearLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    ).apply {
+                                        gravity = Gravity.CENTER_HORIZONTAL
+                                    }
+                            },
+                        )
+                        if (unit.isNotBlank()) {
+                            addView(
+                                bodyText(unit).apply {
+                                    setTextColor(Color.parseColor(textMuted))
+                                    setTextSize(TypedValue.COMPLEX_UNIT_SP, if (unit.length >= 3) 9f else 9.5f)
+                                    includeFontPadding = false
+                                    setSingleLine(true)
+                                    maxLines = 1
+                                    gravity = Gravity.CENTER
+                                    setPadding(0, dp(1), 0, 0)
+                                    layoutParams =
+                                        LinearLayout.LayoutParams(
+                                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                                        ).apply {
+                                            gravity = Gravity.CENTER_HORIZONTAL
+                                        }
+                                },
+                            )
+                        }
                     },
                 )
             }
@@ -6919,12 +7564,30 @@ class MainActivity : AppCompatActivity() {
                 addView(
                     bodyText(title).apply {
                         setTypeface(Typeface.DEFAULT_BOLD)
-                        setTextColor(Color.parseColor(palette.textSecondary))
+                        setTextColor(Color.parseColor(textSecondary))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                         layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                     },
                 )
                 tagView?.let { addView(it) }
+            }
+
+        fun sideTrainingButton(label: String, fillColor: String, strokeColor: String): Button =
+            Button(this).apply {
+                text = label
+                setTextColor(Color.WHITE)
+                setTypeface(Typeface.DEFAULT_BOLD)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                isAllCaps = false
+                minWidth = 0
+                minimumWidth = 0
+                minHeight = dp(46)
+                minimumHeight = dp(46)
+                includeFontPadding = false
+                setPadding(dp(8), 0, dp(8), 0)
+                background = roundedBackground(fillColor, strokeColor, 999)
+                elevation = dp(3).toFloat()
+                applyRippleOverlay()
             }
 
         dashboardPunchValueView = metricValueView("0")
@@ -6934,53 +7597,53 @@ class MainActivity : AppCompatActivity() {
         dashboardPeakValueView = metricValueView("-- N")
         dashboardRhythmValueView = metricValueView("--")
         dashboardRoundBadgeView =
-            badgeText(localText("第 1 回合", "Round 1", "Round 1", "รอบ 1"), textColor = palette.buttonText, fillColor = palette.accentSoft)
+            badgeText(localText("第 1 回合", "Round 1", "Round 1", "รอบ 1"), textColor = "#096D65", fillColor = mintSoft)
         dashboardPeakTagView =
-            badgeText(localText("峰值 -- N", "Peak -- N", "Pic -- N", "สูงสุด -- N"), textColor = palette.textPrimary, fillColor = palette.accentHot)
+            badgeText(localText("峰值 -- N", "Peak -- N", "Pic -- N", "สูงสุด -- N"), textColor = "#F06B22", fillColor = orangeSoft)
         dashboardGoalProgressView =
             bodyText(localText("今日目标：500 拳 | 已完成 0 拳", "Today: 500 hits | Done 0 hits", "Aujourd'hui : 500 coups | 0 coups faits", "วันนี้ 500 หมัด | ทำแล้ว 0 หมัด")).apply {
-                setTextColor(Color.parseColor(palette.accentHot))
+                setTextColor(Color.parseColor(textPrimary))
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                setShadowLayer(8f, 0f, 0f, Color.parseColor(palette.backgroundBottom))
-                gravity = Gravity.CENTER
-                setPadding(0, dp(10), 0, dp(2))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                includeFontPadding = false
+                setPadding(0, 0, 0, 0)
             }
         timerRingView =
             CircularTimerView(this).apply {
                 setPalette(
-                    trackColor = Color.parseColor(palette.cardAlt),
-                    captionColor = Color.parseColor(palette.textMuted),
-                    centerColor = Color.parseColor(palette.textPrimary),
+                    trackColor = Color.parseColor("#DFF8F2"),
+                    captionColor = Color.parseColor(textMuted),
+                    centerColor = Color.parseColor(textPrimary),
                 )
             }
         waveformView =
             PunchWaveformView(this).apply {
                 setPalette(
-                    guideColor = Color.parseColor(palette.stroke),
-                    labelColor = Color.parseColor(palette.textSecondary),
-                    lowColor = Color.parseColor(palette.forceLow),
-                    midColor = Color.parseColor(palette.forceMid),
-                    highColor = Color.parseColor(palette.forceHigh),
+                    guideColor = Color.parseColor("#D5E9E5"),
+                    labelColor = Color.parseColor(textSecondary),
+                    lowColor = Color.parseColor("#45DCC8"),
+                    midColor = Color.parseColor("#FFD060"),
+                    highColor = Color.parseColor("#FF7A45"),
                 )
             }
         refreshWaveformLocalizedLabels()
         dashboardForceSummaryView =
             bodyText("").apply {
                 visibility = View.GONE
-                setTextColor(Color.parseColor(palette.textSecondary))
+                setTextColor(Color.parseColor(textSecondary))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
                 gravity = Gravity.CENTER
                 setPadding(dp(10), dp(8), dp(10), dp(8))
-                background = roundedBackground(palette.cardAlt, palette.stroke, 12)
+                background = roundedBackground(cardAlt, "#E0F3EF", 12)
             }
         dashboardTrainingSettingsButton =
             LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
+                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
                 setPadding(dp(8), dp(5), dp(8), dp(5))
-                background = roundedBackground(palette.cardAlt, palette.stroke, 14)
+                background = roundedBackground("#FFFFFF", "#D7F0EA", 999)
                 isClickable = true
                 isFocusable = true
                 applyRippleOverlay()
@@ -6997,16 +7660,18 @@ class MainActivity : AppCompatActivity() {
                 }
                 addView(
                     ImageView(this@MainActivity).apply {
-                        setImageResource(R.drawable.ic_training_settings)
-                        setColorFilter(Color.parseColor(palette.textPrimary))
-                        layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
+                        setImageResource(R.drawable.home_icon_settings)
+                        layoutParams =
+                            LinearLayout.LayoutParams(dp(18), dp(18)).apply {
+                                rightMargin = dp(4)
+                            }
                     },
                 )
                 addView(
                     bodyText(localText("训练设置", "Settings", "Réglages", "ตั้งค่า")).apply {
-                        setTextColor(Color.parseColor(palette.textPrimary))
+                        setTextColor(Color.parseColor(textPrimary))
                         setTypeface(Typeface.DEFAULT_BOLD)
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                         gravity = Gravity.CENTER
                     },
                 )
@@ -7018,13 +7683,13 @@ class MainActivity : AppCompatActivity() {
             }
         dashboardComboSummaryView =
             bodyText("").apply {
-                setTextColor(Color.parseColor(palette.textSecondary))
+                setTextColor(Color.parseColor(textSecondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
                 setPadding(0, dp(7), 0, 0)
             }
 
-        return detailCard(fillColor = palette.card, strokeColor = palette.stroke, cornerDp = 22).apply {
-            background = roundedBackground(palette.card, palette.stroke, 22)
+        return detailCard(fillColor = cardFill, strokeColor = cardStroke, cornerDp = 24).apply {
+            background = roundedBackground(cardFill, cardStroke, 24)
             setPadding(dp(14), dp(12), dp(14), dp(14))
             layoutParams =
                 LinearLayout.LayoutParams(
@@ -7035,7 +7700,9 @@ class MainActivity : AppCompatActivity() {
                     bottomMargin = dp(10)
                 }
             addView(
-                FrameLayout(this@MainActivity).apply {
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
                     layoutParams =
                         LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -7043,46 +7710,85 @@ class MainActivity : AppCompatActivity() {
                         )
                     addView(
                         sectionLabel(localText("实时训练", "Live Training", "Entraînement live", "ฝึกสด")).apply {
-                            setTextColor(Color.parseColor(palette.textPrimary))
+                            setTextColor(Color.parseColor(textPrimary))
                             textSize = 16f
                             layoutParams =
-                                FrameLayout.LayoutParams(
+                                LinearLayout.LayoutParams(
+                                    0,
                                     ViewGroup.LayoutParams.WRAP_CONTENT,
-                                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                                    Gravity.START or Gravity.CENTER_VERTICAL,
-                                )
+                                    1f,
+                                ).apply { gravity = Gravity.CENTER_VERTICAL }
                         },
                     )
                     addView(
                         dashboardRoundBadgeView.apply {
                             layoutParams =
-                                FrameLayout.LayoutParams(
+                                LinearLayout.LayoutParams(
                                     ViewGroup.LayoutParams.WRAP_CONTENT,
                                     ViewGroup.LayoutParams.WRAP_CONTENT,
-                                    Gravity.CENTER,
-                                )
+                                ).apply {
+                                    gravity = Gravity.CENTER
+                                    leftMargin = dp(6)
+                                    rightMargin = dp(6)
+                                }
                         },
                     )
                     addView(
                         dashboardTrainingSettingsButton.apply {
                             layoutParams =
-                                FrameLayout.LayoutParams(
-                                    dp(74),
-                                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                                    Gravity.END or Gravity.CENTER_VERTICAL,
-                                )
+                                LinearLayout.LayoutParams(dp(96), dp(38)).apply {
+                                    gravity = Gravity.CENTER_VERTICAL
+                                }
                         },
                     )
                 },
             )
+            startButton =
+                sideTrainingButton(localText("开始", "Start", "Démarrer", "เริ่ม"), mint, "#4CE0D2").apply {
+                    setOnClickListener { startTraining() }
+                }
+            stopButton =
+                sideTrainingButton(localText("结束", "End", "Terminer", "จบ"), orange, "#FFC47D").apply {
+                    isEnabled = false
+                    alpha = 0.5f
+                    setOnClickListener { stopTraining(showStoppedState = true) }
+                }
             addView(
-                timerRingView.apply {
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(12), 0, dp(8))
                     layoutParams =
-                        LinearLayout.LayoutParams(dp(132), dp(132)).apply {
-                            gravity = Gravity.CENTER_HORIZONTAL
-                            topMargin = dp(6)
-                            bottomMargin = dp(8)
-                        }
+                        LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        )
+                    addView(
+                        startButton.apply {
+                            layoutParams =
+                                LinearLayout.LayoutParams(0, dp(46), 1f).apply {
+                                    rightMargin = dp(8)
+                                    gravity = Gravity.CENTER_VERTICAL
+                                }
+                        },
+                    )
+                    addView(
+                        timerRingView.apply {
+                            layoutParams =
+                                LinearLayout.LayoutParams(dp(156), dp(156)).apply {
+                                    gravity = Gravity.CENTER_VERTICAL
+                                }
+                        },
+                    )
+                    addView(
+                        stopButton.apply {
+                            layoutParams =
+                                LinearLayout.LayoutParams(0, dp(46), 1f).apply {
+                                    leftMargin = dp(8)
+                                    gravity = Gravity.CENTER_VERTICAL
+                                }
+                        },
+                    )
                 },
             )
             val metricsRow =
@@ -7091,44 +7797,54 @@ class MainActivity : AppCompatActivity() {
                     weightSum = 4f
                 }
             metricsRow.addView(
-                metricTile(localText("总击打数", "Total hits", "Total coups", "หมัดรวม"), dashboardPunchValueView).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(7) }
+                metricTile(R.drawable.home_metric_hits, localText("拳数", "Hits", "Coups", "หมัด"), dashboardPunchValueView, localText("次", "", "", "")).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, dp(104), 1f).apply { rightMargin = dp(7) }
                 },
             )
             metricsRow.addView(
-                metricTile("BPM", dashboardBpmValueView).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(7) }
+                metricTile(R.drawable.home_metric_bpm, "BPM", dashboardBpmValueView).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, dp(104), 1f).apply { rightMargin = dp(7) }
                 },
             )
             metricsRow.addView(
-                metricTile(localText("卡路里", "Calories", "Calories", "แคลอรี"), dashboardCaloriesValueView, "kcal").apply {
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(7) }
+                metricTile(R.drawable.home_metric_calories, localText("卡路里", "Calories", "Calories", "แคลอรี"), dashboardCaloriesValueView, "Kcal").apply {
+                    layoutParams = LinearLayout.LayoutParams(0, dp(104), 1f).apply { rightMargin = dp(7) }
                 },
             )
             metricsRow.addView(
-                metricTile(localText("等效燃脂", "Equivalent fat", "Graisse équiv.", "ไขมันเทียบเท่า"), dashboardFatValueView, "g").apply {
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                metricTile(R.drawable.home_metric_fat, localText("等效燃脂", "Eq. fat", "Graisse", "ไขมัน"), dashboardFatValueView, "g").apply {
+                    layoutParams = LinearLayout.LayoutParams(0, dp(104), 1f)
                 },
             )
             addView(metricsRow)
-            addView(dashboardGoalProgressView)
-            addView(sectionHeader(localText("击打力度", "Punch force", "Force de frappe", "แรงหมัด"), dashboardPeakTagView))
             addView(
-                waveformView.apply {
-                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(72))
-                    background = roundedBackground(palette.cardAlt, palette.stroke, 12)
-                    setPadding(dp(8), dp(8), dp(8), dp(8))
-                },
-            )
-            addView(
-                dashboardForceSummaryView.apply {
-                    layoutParams =
-                        LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ).apply {
-                            topMargin = dp(8)
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(6), dp(10), dp(6), 0)
+                    addView(
+                        dashboardGoalProgressView.apply {
+                            layoutParams =
+                                LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ).apply {
+                                    rightMargin = dp(8)
+                                }
+                        },
+                    )
+                    dashboardGoalProgressFillView =
+                        View(this@MainActivity).apply {
+                            background = roundedBackground(mint, mint, 999)
+                            layoutParams = FrameLayout.LayoutParams(0, dp(10), Gravity.START or Gravity.CENTER_VERTICAL)
                         }
+                    dashboardGoalProgressTrackView =
+                        FrameLayout(this@MainActivity).apply {
+                            background = roundedBackground("#DFF4EF", "#DFF4EF", 999)
+                            layoutParams = LinearLayout.LayoutParams(0, dp(10), 1f)
+                            addView(dashboardGoalProgressFillView)
+                        }
+                    addView(dashboardGoalProgressTrackView)
                 },
             )
             addView(sectionHeader(localText("连击识别", "Combo recognition", "Combos détectés", "ตรวจจับคอมโบ")))
@@ -7146,7 +7862,7 @@ class MainActivity : AppCompatActivity() {
     private fun buildAiCoachRealtimeCard(): LinearLayout {
         fun voiceBar(widthDp: Int, heightDp: Int): View =
             View(this).apply {
-                background = roundedBackground("#8EA6B9", "#8EA6B9", 999)
+                background = roundedBackground("#10BDAA", "#10BDAA", 999)
                 alpha = 0.42f
                 layoutParams =
                     LinearLayout.LayoutParams(dp(widthDp), dp(heightDp)).apply {
@@ -7159,10 +7875,10 @@ class MainActivity : AppCompatActivity() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                background = roundedBackground("#111A22", "#243241", 12)
+                background = roundedBackground("#FFFFFF", "#D7F0EA", 12)
                 setPadding(dp(9), dp(7), dp(9), dp(7))
                 addView(
-                    badgeText(trigger, textColor = "#FFF8E8", fillColor = fill).apply {
+                    badgeText(trigger, textColor = "#FFFFFF", fillColor = fill).apply {
                         layoutParams =
                             LinearLayout.LayoutParams(
                                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -7174,7 +7890,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 addView(
                     bodyText(message).apply {
-                        setTextColor(Color.parseColor("#D9E6EF"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                         layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                     },
@@ -7198,16 +7914,16 @@ class MainActivity : AppCompatActivity() {
             }
 
         aiCoachStatusView =
-            badgeText(localText("待命", "Ready", "Prêt", "พร้อม"), textColor = "#B5D4F4", fillColor = "#042C53")
+            badgeText(localText("待命", "Ready", "Prêt", "พร้อม"), textColor = "#096D65", fillColor = "#DFFFF7")
         aiCoachMessageView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#F5FBFF"))
+                setTextColor(Color.parseColor("#17343B"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                 setLineSpacing(0f, 1.35f)
             }
         aiCoachMetaView =
             bodyText("").apply {
-                setTextColor(Color.parseColor("#8EA6B9"))
+                setTextColor(Color.parseColor("#7FA0A3"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
                 setPadding(0, dp(4), 0, 0)
             }
@@ -7221,8 +7937,8 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-        return detailCard(fillColor = "#10131C", strokeColor = "#3E356B", cornerDp = 22).apply {
-            background = roundedBackground("#10131C", "#3E356B", 22)
+        return detailCard(fillColor = "#FFFFFF", strokeColor = "#BFEFE5", cornerDp = 22).apply {
+            background = roundedBackground("#FFFFFF", "#BFEFE5", 22)
             setPadding(dp(14), dp(13), dp(14), dp(14))
             layoutParams =
                 LinearLayout.LayoutParams(
@@ -7237,7 +7953,7 @@ class MainActivity : AppCompatActivity() {
                     gravity = Gravity.CENTER_VERTICAL
                     addView(
                         sectionLabel(localText("AI 教练实时指导", "AI Live Coach", "Coach IA live", "โค้ช AI สด")).apply {
-                            setTextColor(Color.parseColor("#E7D7FF"))
+                            setTextColor(Color.parseColor("#096D65"))
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                         },
                     )
@@ -7247,7 +7963,7 @@ class MainActivity : AppCompatActivity() {
             addView(
                 LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.VERTICAL
-                    background = roundedBackground("#171C29", "#2A3243", 14)
+                    background = roundedBackground("#F7FFFD", "#D7F0EA", 14)
                     setPadding(dp(11), dp(11), dp(11), dp(11))
                     addView(
                         LinearLayout(this@MainActivity).apply {
@@ -7258,9 +7974,9 @@ class MainActivity : AppCompatActivity() {
                                     text = "AI"
                                     gravity = Gravity.CENTER
                                     setTypeface(Typeface.DEFAULT_BOLD)
-                                    setTextColor(Color.parseColor("#B5D4F4"))
+                                    setTextColor(Color.WHITE)
                                     textSize = 12f
-                                    background = roundedBackground("#042C53", "#185FA5", 999)
+                                    background = roundedBackground("#10BDAA", "#8BEDE2", 999)
                                     layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply { rightMargin = dp(10) }
                                 },
                             )
@@ -7287,29 +8003,29 @@ class MainActivity : AppCompatActivity() {
                                 localText("BPM 低于目标", "Low BPM", "BPM bas", "BPM ต่ำ"),
                                 localText("加快节奏，短一点、快一点，跟上节拍！", "Pick up the pace, shorter and faster, stay on beat.", "Accélérez, plus court et plus vite.", "เร่งจังหวะ สั้นและเร็วขึ้น"),
                                 localText("触发原因：BPM 低于目标", "Trigger: BPM below target", "Déclencheur : BPM bas", "สาเหตุ: BPM ต่ำกว่าเป้า"),
-                                "#042C53",
-                                "#378ADD",
+                                "#10BDAA",
+                                "#096D65",
                             ),
                             arrayOf(
                                 localText("连续命中 10 拳", "10-hit streak", "10 coups", "ต่อเนื่อง 10"),
                                 localText("漂亮！保持这个状态，再来一组！", "Great. Keep this state and give me one more set.", "Très bien, encore une série.", "เยี่ยม รักษาจังหวะแล้วต่ออีกชุด"),
                                 localText("触发原因：连续命中", "Trigger: hit streak", "Déclencheur : série de coups", "สาเหตุ: หมัดต่อเนื่อง"),
-                                "#04342C",
-                                "#0F6E56",
+                                "#16C8B5",
+                                "#096D65",
                             ),
                             arrayOf(
                                 localText("力度骤降", "Force drop", "Baisse force", "แรงตก"),
                                 localText("注意力度，手腕锁住，拳面打实。", "Watch the force, lock the wrist and land clean.", "Force : verrouillez le poignet.", "ระวังแรง ล็อกข้อมือแล้วออกหมัดให้แน่น"),
                                 localText("触发原因：力度低于近期均值", "Trigger: force below recent average", "Déclencheur : force sous moyenne", "สาเหตุ: แรงต่ำกว่าค่าเฉลี่ย"),
-                                "#412402",
-                                "#BA7517",
+                                "#FF8A32",
+                                "#B65A18",
                             ),
                             arrayOf(
-                                localText("最后 30 秒", "Final 30s", "30 s restantes", "30 วิสุดท้าย"),
-                                localText("最后 30 秒，全力冲刺，把节奏顶住。", "Final 30 seconds, push hard and hold the rhythm.", "Dernières 30 s, poussez fort.", "30 วิสุดท้าย เร่งเต็มที่"),
+                                localText("最后 10 秒", "Final 10s", "10 s restantes", "10 วิสุดท้าย"),
+                                localText("最后 10 秒，全力冲刺，把节奏顶住。", "Final 10 seconds, push hard and hold the rhythm.", "Dernières 10 s, poussez fort.", "10 วิสุดท้าย เร่งเต็มที่"),
                                 localText("触发原因：回合结束倒计时", "Trigger: round ending", "Déclencheur : fin de round", "สาเหตุ: ใกล้จบรอบ"),
-                                "#26215C",
-                                "#C084FC",
+                                "#E65A4F",
+                                "#B9433C",
                             ),
                         )
                     cues.forEachIndexed { index, cue ->
@@ -7338,7 +8054,18 @@ class MainActivity : AppCompatActivity() {
             RadioButton(this).apply {
                 id = View.generateViewId()
                 text = label
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor("#17343B"))
+                buttonTintList =
+                    ColorStateList(
+                        arrayOf(
+                            intArrayOf(android.R.attr.state_checked),
+                            intArrayOf(-android.R.attr.state_checked),
+                        ),
+                        intArrayOf(
+                            Color.parseColor("#10BDAA"),
+                            Color.parseColor("#8CCDC4"),
+                        ),
+                    )
                 minHeight = dp(40)
                 setPadding(dp(8), dp(6), dp(8), dp(6))
             }
@@ -7354,8 +8081,8 @@ class MainActivity : AppCompatActivity() {
         soundStreetButton = optionButton(localText("街头", "Street", "Rue", "สตรีท"))
 
         val card =
-            detailCard(fillColor = "#0B1721", strokeColor = "#C084FC", cornerDp = 22).apply {
-                background = metallicBackground("#211B3A", "#080914", "#C084FC", 22)
+            detailCard(fillColor = "#FFFFFF", strokeColor = "#BFEFE5", cornerDp = 22).apply {
+                background = roundedBackground("#FFFFFF", "#BFEFE5", 22)
                 setPadding(dp(14), dp(14), dp(14), dp(14))
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -7366,12 +8093,12 @@ class MainActivity : AppCompatActivity() {
                     }
                 addView(
                     sectionLabel(localText("音乐节拍 & 沉浸模式", "Music Beat & Immersion", "Tempo & immersion", "จังหวะเพลง")).apply {
-                        setTextColor(Color.parseColor("#E7D7FF"))
+                        setTextColor(Color.parseColor("#096D65"))
                     },
                 )
                 addView(
                     bodyText(localText("训练时自动播放鼓点音床、跟拍评分与击打音效。", "Auto drum groove, rhythm scoring, and hit sounds during training.", "Groove batterie, score rythme et sons de frappe pendant l'entraînement.", "เปิดจังหวะกลอง คะแนนจังหวะ และเสียงหมัดตอนฝึก")).apply {
-                        setTextColor(Color.parseColor("#D8C8F0"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                         setPadding(0, dp(6), 0, dp(8))
                     },
@@ -7498,6 +8225,8 @@ class MainActivity : AppCompatActivity() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(18), dp(12), dp(18), dp(8))
+                background = settingsDialogPanelBackground()
+                elevation = dp(6).toFloat()
             }
         lateinit var render: () -> Unit
 
@@ -7506,13 +8235,14 @@ class MainActivity : AppCompatActivity() {
                 val selected = pending.workMinutes == setup.workMinutes && pending.restHalfMinutes == setup.restHalfMinutes && pending.rounds == setup.rounds
                 gravity = Gravity.CENTER
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.parseColor(if (selected) selectedPalette.buttonText else selectedPalette.textSecondary))
+                setTextColor(Color.parseColor(if (selected) "#FFFFFF" else "#12333A"))
                 background =
-                    roundedBackground(
-                        if (selected) selectedPalette.accentSoft else selectedPalette.card,
-                        if (selected) selectedPalette.accentHot else selectedPalette.stroke,
-                        14,
-                    )
+                    if (selected) {
+                        metallicBackground("#68F1E5", "#10BDAA", "#C9FFF8", 16)
+                    } else {
+                        roundedBackground("#FFFFFF", "#BDEFE6", 16)
+                    }
+                elevation = if (selected) dp(4).toFloat() else dp(2).toFloat()
                 setPadding(dp(8), dp(9), dp(8), dp(9))
                 setOnClickListener {
                     pending =
@@ -7526,11 +8256,12 @@ class MainActivity : AppCompatActivity() {
             }
 
         fun stepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit): LinearLayout =
-            detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.stroke, cornerDp = 14).apply {
+            detailCard(fillColor = "#FFFFFF", strokeColor = "#BDEFE6", cornerDp = 16).apply {
+                elevation = dp(2).toFloat()
                 setPadding(dp(10), dp(8), dp(10), dp(8))
                 addView(
                     bodyText(label).apply {
-                        setTextColor(Color.parseColor(selectedPalette.textMuted))
+                        setTextColor(Color.parseColor("#456F73"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                     },
                 )
@@ -7539,7 +8270,8 @@ class MainActivity : AppCompatActivity() {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
                         addView(
-                            compactActionButton("-", selectedPalette.surfaceTop).apply {
+                            compactActionButton("-", "#F4FFFC").apply {
+                                applySettingsNeutralButtonChrome(this)
                                 setOnClickListener { onMinus() }
                             },
                         )
@@ -7547,13 +8279,14 @@ class MainActivity : AppCompatActivity() {
                             bodyText(value).apply {
                                 gravity = Gravity.CENTER
                                 setTypeface(Typeface.DEFAULT_BOLD)
-                                setTextColor(Color.parseColor(selectedPalette.textPrimary))
+                                setTextColor(Color.parseColor("#12333A"))
                                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             },
                         )
                         addView(
-                            compactActionButton("+", selectedPalette.surfaceTop).apply {
+                            compactActionButton("+", "#F4FFFC").apply {
+                                applySettingsNeutralButtonChrome(this)
                                 setOnClickListener { onPlus() }
                             },
                         )
@@ -7563,10 +8296,14 @@ class MainActivity : AppCompatActivity() {
 
         fun modeCard(title: String, subtitle: String, mode: TrainingRhythmMode): LinearLayout =
             detailCard(
-                fillColor = if (pending.rhythmMode == mode) selectedPalette.accentSoft else selectedPalette.card,
-                strokeColor = if (pending.rhythmMode == mode) selectedPalette.accentHot else selectedPalette.stroke,
-                cornerDp = 14,
+                fillColor = if (pending.rhythmMode == mode) "#10BDAA" else "#FFFFFF",
+                strokeColor = if (pending.rhythmMode == mode) "#C9FFF8" else "#BDEFE6",
+                cornerDp = 16,
             ).apply {
+                if (pending.rhythmMode == mode) {
+                    background = metallicBackground("#68F1E5", "#10BDAA", "#C9FFF8", 16)
+                }
+                elevation = if (pending.rhythmMode == mode) dp(4).toFloat() else dp(2).toFloat()
                 setPadding(dp(11), dp(10), dp(11), dp(10))
                 setOnClickListener {
                     pending = pending.copy(rhythmMode = mode)
@@ -7575,12 +8312,12 @@ class MainActivity : AppCompatActivity() {
                 addView(
                     bodyText(title).apply {
                         setTypeface(Typeface.DEFAULT_BOLD)
-                        setTextColor(Color.parseColor(if (pending.rhythmMode == mode) selectedPalette.buttonText else selectedPalette.textPrimary))
+                        setTextColor(Color.parseColor(if (pending.rhythmMode == mode) "#FFFFFF" else "#12333A"))
                     },
                 )
                 addView(
                     bodyText(subtitle).apply {
-                        setTextColor(Color.parseColor(if (pending.rhythmMode == mode) selectedPalette.buttonText else selectedPalette.textMuted))
+                        setTextColor(Color.parseColor(if (pending.rhythmMode == mode) "#EFFFFA" else "#456F73"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
                         setPadding(0, dp(3), 0, 0)
                     },
@@ -7597,11 +8334,12 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         localText("自由模式下 BPM 仅作为参考节拍，不参与评分。", "In free mode BPM is only a reference metronome.", "En mode libre, BPM sert de référence.", "โหมดอิสระ BPM เป็นข้อมูลอ้างอิง")
                     },
-                    accentColor = selectedPalette.accentSoft,
+                    accentColor = "#10BDAA",
                 ),
             )
             root.addView(
-                detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.stroke, cornerDp = 14).apply {
+                detailCard(fillColor = "#FFFFFF", strokeColor = "#BDEFE6", cornerDp = 16).apply {
+                    elevation = dp(2).toFloat()
                     alpha = if (pending.rhythmMode == TrainingRhythmMode.Rhythm) 1f else 0.58f
                     setPadding(dp(12), dp(10), dp(12), dp(10))
                     addView(
@@ -7609,7 +8347,8 @@ class MainActivity : AppCompatActivity() {
                             orientation = LinearLayout.HORIZONTAL
                             gravity = Gravity.CENTER_VERTICAL
                             addView(
-                                compactActionButton("-", selectedPalette.surfaceTop).apply {
+                                compactActionButton("-", "#F4FFFC").apply {
+                                    applySettingsNeutralButtonChrome(this)
                                     setOnClickListener {
                                         pending = pending.copy(bpm = (pending.bpm - 5).coerceAtLeast(40))
                                         render()
@@ -7638,7 +8377,8 @@ class MainActivity : AppCompatActivity() {
                                 },
                             )
                             addView(
-                                compactActionButton("+", selectedPalette.surfaceTop).apply {
+                                compactActionButton("+", "#F4FFFC").apply {
+                                    applySettingsNeutralButtonChrome(this)
                                     setOnClickListener {
                                         pending = pending.copy(bpm = (pending.bpm + 5).coerceAtMost(140))
                                         render()
@@ -7649,7 +8389,7 @@ class MainActivity : AppCompatActivity() {
                                 bodyText("${pending.bpm}\nBPM").apply {
                                     gravity = Gravity.CENTER
                                     setTypeface(Typeface.DEFAULT_BOLD)
-                                    setTextColor(Color.parseColor(selectedPalette.textPrimary))
+                                    setTextColor(Color.parseColor("#12333A"))
                                     setPadding(dp(10), 0, 0, 0)
                                 },
                             )
@@ -7671,13 +8411,14 @@ class MainActivity : AppCompatActivity() {
                                         gravity = Gravity.CENTER
                                         setTypeface(Typeface.DEFAULT_BOLD)
                                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                                        setTextColor(Color.parseColor(if (pending.bpm == value) selectedPalette.buttonText else selectedPalette.textSecondary))
+                                        setTextColor(Color.parseColor(if (pending.bpm == value) "#FFFFFF" else "#12333A"))
                                         background =
-                                            roundedBackground(
-                                                if (pending.bpm == value) selectedPalette.accentSoft else selectedPalette.surfaceBottom,
-                                                selectedPalette.stroke,
-                                                12,
-                                            )
+                                            if (pending.bpm == value) {
+                                                metallicBackground("#68F1E5", "#10BDAA", "#C9FFF8", 12)
+                                            } else {
+                                                roundedBackground("#F4FFFC", "#BDEFE6", 12)
+                                            }
+                                        elevation = if (pending.bpm == value) dp(3).toFloat() else dp(1).toFloat()
                                         setPadding(dp(4), dp(5), dp(4), dp(5))
                                         setOnClickListener {
                                             pending = pending.copy(bpm = value)
@@ -7713,7 +8454,13 @@ class MainActivity : AppCompatActivity() {
 
         render = {
             root.removeAllViews()
-            root.addView(settingsSectionHeader(localText("回合预设", "Round presets", "Préréglages", "พรีเซ็ตรอบ"), localText("选择一个常用结构，也可以继续微调。", "Choose a structure, then fine tune.", "Choisissez puis ajustez.", "เลือกแล้วปรับต่อได้"), selectedPalette.accentSoft))
+            root.addView(
+                settingsDialogTitleBlock(
+                    title = localText("训练设置", "Training Settings", "Réglages", "ตั้งค่าการฝึก"),
+                    subtitle = localText("设置回合、休息、训练方式和节拍速度。", "Set rounds, rest, training mode, and tempo.", "Réglez les rounds, le repos, le mode et le tempo.", "ตั้งค่ารอบ พัก โหมด และจังหวะ"),
+                ),
+            )
+            root.addView(settingsSectionHeader(localText("回合预设", "Round presets", "Préréglages", "พรีเซ็ตรอบ"), localText("选择一个常用结构，也可以继续微调。", "Choose a structure, then fine tune.", "Choisissez puis ajustez.", "เลือกแล้วปรับต่อได้"), "#10BDAA"))
             root.addView(
                 LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
@@ -7764,7 +8511,7 @@ class MainActivity : AppCompatActivity() {
                     pending = pending.copy(rounds = (pending.rounds + 1).coerceAtMost(10)); render()
                 }).apply { (layoutParams as? LinearLayout.LayoutParams)?.topMargin = dp(8) },
             )
-            root.addView(settingsSectionHeader(localText("训练方式", "Training mode", "Mode", "โหมดฝึก"), localText("自由模式不计算节拍分；跟拍模式启用 Perfect/Good/Miss。", "Free mode skips beat scoring; beat mode enables Perfect/Good/Miss.", "Libre sans score; tempo avec score.", "อิสระไม่ให้คะแนนจังหวะ"), selectedPalette.accentSoft))
+            root.addView(settingsSectionHeader(localText("训练方式", "Training mode", "Mode", "โหมดฝึก"), localText("自由模式不计算节拍分；跟拍模式启用 Perfect/Good/Miss。", "Free mode skips beat scoring; beat mode enables Perfect/Good/Miss.", "Libre sans score; tempo avec score.", "อิสระไม่ให้คะแนนจังหวะ"), "#10BDAA"))
             root.addView(
                 LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -7774,11 +8521,12 @@ class MainActivity : AppCompatActivity() {
             )
             renderBpmSection()
             root.addView(
-                detailCard(fillColor = selectedPalette.cardAlt, strokeColor = selectedPalette.accentHot, cornerDp = 14).apply {
+                detailCard(fillColor = "#FFF8EF", strokeColor = "#FFB86A", cornerDp = 16).apply {
+                    elevation = dp(3).toFloat()
                     setPadding(dp(12), dp(10), dp(12), dp(10))
                     addView(
                         bodyText(summaryText()).apply {
-                            setTextColor(Color.parseColor(if (pending.totalEstimatedSeconds > 3600) selectedPalette.warning else selectedPalette.textPrimary))
+                            setTextColor(Color.parseColor(if (pending.totalEstimatedSeconds > 3600) "#D06B00" else "#12333A"))
                             setTypeface(Typeface.DEFAULT_BOLD)
                         },
                     )
@@ -7789,13 +8537,15 @@ class MainActivity : AppCompatActivity() {
         render()
         val dialog =
             AlertDialog.Builder(this)
-                .setTitle(localText("训练设置", "Training Settings", "Réglages", "ตั้งค่าการฝึก"))
                 .setView(ScrollView(this).apply { addView(root) })
                 .setNegativeButton(tr("cancel"), null)
                 .setNeutralButton(localText("重置", "Reset", "Réinitialiser", "รีเซ็ต"), null)
                 .setPositiveButton(tr("save"), null)
                 .create()
         dialog.setOnShowListener {
+            applySettingsNeutralButtonChrome(dialog.getButton(AlertDialog.BUTTON_NEGATIVE))
+            applySettingsNeutralButtonChrome(dialog.getButton(AlertDialog.BUTTON_NEUTRAL))
+            applySettingsButtonChrome(dialog.getButton(AlertDialog.BUTTON_POSITIVE))
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 pending = TrainingSessionSetup()
                 render()
@@ -7806,7 +8556,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor(selectedPalette.backgroundBottom))
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     }
 
     private fun applyTrainingSessionSetup(setup: TrainingSessionSetup) {
@@ -7882,11 +8632,26 @@ class MainActivity : AppCompatActivity() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(18), dp(12), dp(18), dp(8))
+                background = settingsDialogPanelBackground()
+                elevation = dp(6).toFloat()
             }
 
+        dialogRoot.addView(
+            settingsDialogTitleBlock(
+                title = settingsDialogTitle(),
+                subtitle =
+                    localText(
+                        "连接 SENBALL# 设备，并选择 APP 显示语言。",
+                        "Connect the SENBALL# device and choose the app language.",
+                        "Connectez l'appareil SENBALL# et choisissez la langue.",
+                        "เชื่อมต่ออุปกรณ์ SENBALL# และเลือกภาษาแอป",
+                    ),
+            ),
+        )
         dialogRoot.addView(createBluetoothSettingsPanel())
         val languageCard =
-            detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.stroke, cornerDp = 20).apply {
+            detailCard(fillColor = "#FFFFFF", strokeColor = "#BDEFE6", cornerDp = 20).apply {
+                elevation = dp(3).toFloat()
                 setPadding(dp(14), dp(13), dp(14), dp(12))
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -7897,7 +8662,7 @@ class MainActivity : AppCompatActivity() {
                     settingsSectionHeader(
                         title = tr("language"),
                         subtitle = tr("language_helper"),
-                        accentColor = selectedPalette.accentSoft,
+                        accentColor = "#10BDAA",
                     ),
                 )
             }
@@ -7911,29 +8676,32 @@ class MainActivity : AppCompatActivity() {
                 id = View.generateViewId()
                 text = tr("language_chinese")
                 isChecked = selectedLanguage == AppLanguage.Chinese
-                setTextColor(Color.parseColor(selectedPalette.textPrimary))
+                styleSettingsRadioButton(this)
             }
         val enOption =
             RadioButton(this).apply {
                 id = View.generateViewId()
                 text = tr("language_english")
                 isChecked = selectedLanguage == AppLanguage.English
-                setTextColor(Color.parseColor(selectedPalette.textPrimary))
+                styleSettingsRadioButton(this)
             }
         val frOption =
             RadioButton(this).apply {
                 id = View.generateViewId()
                 text = tr("language_french")
                 isChecked = selectedLanguage == AppLanguage.French
-                setTextColor(Color.parseColor(selectedPalette.textPrimary))
+                styleSettingsRadioButton(this)
             }
         val thOption =
             RadioButton(this).apply {
                 id = View.generateViewId()
                 text = tr("language_thai")
                 isChecked = selectedLanguage == AppLanguage.Thai
-                setTextColor(Color.parseColor(selectedPalette.textPrimary))
+                styleSettingsRadioButton(this)
             }
+        languageGroup.setOnCheckedChangeListener { _, _ ->
+            listOf(zhOption, enOption, frOption, thOption).forEach(::styleSettingsRadioButton)
+        }
         languageGroup.addView(zhOption)
         languageGroup.addView(enOption)
         languageGroup.addView(frOption)
@@ -8088,7 +8856,6 @@ class MainActivity : AppCompatActivity() {
 
         val dialog =
             AlertDialog.Builder(this)
-                .setTitle(settingsDialogTitle())
                 .setView(
                     ScrollView(this).apply {
                         addView(dialogRoot)
@@ -8098,6 +8865,8 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton(tr("save"), null)
                 .create()
         dialog.setOnShowListener {
+            applySettingsNeutralButtonChrome(dialog.getButton(AlertDialog.BUTTON_NEGATIVE))
+            applySettingsButtonChrome(dialog.getButton(AlertDialog.BUTTON_POSITIVE))
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 applyLanguageAndSensitivitySettings(
                     language =
@@ -8120,7 +8889,7 @@ class MainActivity : AppCompatActivity() {
             bluetoothDisconnectButton = null
         }
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor(selectedPalette.backgroundBottom))
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.window?.let { window ->
             val attributes = window.attributes
             attributes.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
@@ -8131,7 +8900,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createBluetoothSettingsPanel(): LinearLayout =
-        detailCard(fillColor = selectedPalette.card, strokeColor = selectedPalette.strokeStrong, cornerDp = 20).apply {
+        detailCard(fillColor = "#FFFFFF", strokeColor = "#BDEFE6", cornerDp = 20).apply {
+            elevation = dp(3).toFloat()
             setPadding(dp(14), dp(13), dp(14), dp(14))
             layoutParams =
                 LinearLayout.LayoutParams(
@@ -8143,14 +8913,16 @@ class MainActivity : AppCompatActivity() {
                 settingsSectionHeader(
                     title = bluetoothSectionTitle(),
                     subtitle = bluetoothSectionSubtitle(),
-                    accentColor = selectedPalette.accentSoft,
+                    accentColor = "#10BDAA",
                 ),
             )
             bluetoothStatusView =
                 bodyText(bluetoothStatusMessage).apply {
-                    setTextColor(Color.parseColor(selectedPalette.textSecondary))
+                    setTextColor(Color.parseColor("#12333A"))
+                    setTypeface(Typeface.DEFAULT_BOLD)
                     setPadding(dp(12), dp(10), dp(12), dp(10))
-                    background = roundedBackground(selectedPalette.cardAlt, selectedPalette.stroke, 16)
+                    background = roundedBackground("#F4FFFC", "#BDEFE6", 16)
+                    elevation = dp(2).toFloat()
                     layoutParams =
                         LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -8166,6 +8938,7 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         compactActionButton(bluetoothScanLabel(), selectedPalette.button).apply {
                             bluetoothScanButton = this
+                            applySettingsButtonChrome(this)
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
                                 runWithBluetoothPermissions {
@@ -8176,8 +8949,9 @@ class MainActivity : AppCompatActivity() {
                     )
                     addView(horizontalSpace(dp(8)))
                     addView(
-                        compactActionButton(bluetoothConnectLabel(), selectedPalette.surfaceTop).apply {
+                        compactActionButton(bluetoothConnectLabel(), "#F4FFFC").apply {
                             bluetoothConnectButton = this
+                            applySettingsNeutralButtonChrome(this)
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
                                 runWithBluetoothPermissions {
@@ -8197,6 +8971,7 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         compactActionButton(bluetoothDisconnectLabel(), selectedPalette.danger).apply {
                             bluetoothDisconnectButton = this
+                            applySettingsButtonChrome(this, fillColor = "#E65A4F", highlightColor = "#FFB4A6", strokeColor = "#FFD2C9")
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
                                 runWithBluetoothPermissions {
@@ -8222,18 +8997,111 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             addView(
                 sectionLabel(title).apply {
-                    setTextColor(Color.parseColor(accentColor))
+                    setTextColor(Color.parseColor(readableSettingsAccent(accentColor)))
                     setPadding(0, 0, 0, dp(4))
                 },
             )
             addView(
                 bodyText(subtitle).apply {
-                    setTextColor(Color.parseColor(selectedPalette.textSecondary))
+                    setTextColor(Color.parseColor("#456F73"))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     setPadding(0, 0, 0, dp(2))
                 },
             )
         }
+
+    private fun settingsDialogPanelBackground(): GradientDrawable =
+        GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                Color.parseColor("#F7FFFC"),
+                Color.parseColor("#EFFFFA"),
+            ),
+        ).apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(24).toFloat()
+            setStroke(dp(1), Color.parseColor("#AEEDE4"))
+        }
+
+    private fun settingsDialogTitleBlock(title: String, subtitle: String): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(2), dp(2), dp(2), dp(14))
+            addView(
+                sectionLabel(title).apply {
+                    setTextColor(Color.parseColor("#12333A"))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+                    setTypeface(Typeface.DEFAULT_BOLD)
+                },
+            )
+            addView(
+                bodyText(subtitle).apply {
+                    setTextColor(Color.parseColor("#456F73"))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
+                    setPadding(0, dp(4), 0, 0)
+                },
+            )
+        }
+
+    private fun readableSettingsAccent(accentColor: String): String {
+        fun luminance(hex: String): Double {
+            val color = Color.parseColor(hex)
+            return (0.299 * Color.red(color)) + (0.587 * Color.green(color)) + (0.114 * Color.blue(color))
+        }
+        val first = if (luminance(accentColor) > 180.0) selectedPalette.accent else accentColor
+        val second = if (luminance(first) > 180.0) selectedPalette.accentHot else first
+        return if (luminance(second) > 180.0) "#12333A" else second
+    }
+
+    private fun applySettingsButtonChrome(
+        button: Button?,
+        fillColor: String = "#10BDAA",
+        textColor: String = "#FFFFFF",
+        highlightColor: String = "#68F1E5",
+        strokeColor: String = "#BFFFF7",
+    ) {
+        button ?: return
+        button.setTextColor(Color.parseColor(textColor))
+        button.background = metallicBackground(highlightColor, fillColor, strokeColor, 999)
+        button.setTypeface(Typeface.DEFAULT_BOLD)
+        button.isAllCaps = false
+        button.minHeight = dp(42)
+        button.elevation = dp(5).toFloat()
+        button.translationZ = dp(1).toFloat()
+        button.setPadding(dp(16), dp(10), dp(16), dp(10))
+    }
+
+    private fun applySettingsNeutralButtonChrome(button: Button?) {
+        applySettingsButtonChrome(
+            button = button,
+            fillColor = "#F4FFFC",
+            textColor = "#12333A",
+            highlightColor = "#FFFFFF",
+            strokeColor = "#BDEFE6",
+        )
+    }
+
+    private fun styleSettingsRadioButton(button: RadioButton) {
+        val selected = button.isChecked
+        button.setTextColor(Color.parseColor(if (selected) "#FFFFFF" else "#12333A"))
+        button.setTypeface(Typeface.DEFAULT_BOLD)
+        button.buttonTintList = ColorStateList.valueOf(Color.parseColor(if (selected) "#FFFFFF" else "#10BDAA"))
+        button.background =
+            if (selected) {
+                metallicBackground("#68F1E5", "#10BDAA", "#C9FFF8", 16)
+            } else {
+                roundedBackground("#FFFFFF", "#BDEFE6", 16)
+            }
+        button.elevation = if (selected) dp(4).toFloat() else dp(2).toFloat()
+        button.setPadding(dp(12), dp(10), dp(12), dp(10))
+        button.layoutParams =
+            RadioGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                bottomMargin = dp(8)
+            }
+    }
 
     private fun paletteSettingTitle(): String =
         localText("配色选择", "Color Theme", "Thème couleur", "ธีมสี")
@@ -8446,9 +9314,27 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun updateBluetoothSettingsViewsFromTelemetry(force: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && trainingJob?.isActive == true && now - lastBluetoothSettingsRefreshElapsedMs < 5_000L) {
+            return
+        }
+        lastBluetoothSettingsRefreshElapsedMs = now
+        updateBluetoothSettingsViews()
+    }
+
+    private fun applyDeferredTrainingBatteryStatus() {
+        val batteryRaw = deferredTrainingBatteryRaw ?: return
+        deferredTrainingBatteryRaw = null
+        bluetoothBatteryRaw = batteryRaw
+        bluetoothBatteryText = bluetoothBatteryDisplayText(batteryRaw)
+    }
+
     private fun updateBluetoothSettingsViews() {
+        lastBluetoothSettingsRefreshElapsedMs = SystemClock.elapsedRealtime()
         updateHeaderBluetoothStatus()
         updateBluetoothActionButtons()
+        renderHomeConnectionReportCard()
         val batteryDisplay = currentBluetoothBatteryText()
         bluetoothStatusView?.text =
             buildString {
@@ -8466,8 +9352,9 @@ class MainActivity : AppCompatActivity() {
             if (visibleDevices.isEmpty()) {
                 list.addView(
                     bodyText(bluetoothNoDeviceText()).apply {
-                        setTextColor(Color.parseColor(selectedPalette.textMuted))
+                        setTextColor(Color.parseColor("#456F73"))
                         setPadding(dp(10), dp(8), dp(10), dp(8))
+                        background = roundedBackground("#F4FFFC", "#BDEFE6", 14)
                     },
                 )
             } else {
@@ -8477,14 +9364,16 @@ class MainActivity : AppCompatActivity() {
                             bluetoothConnectedDevice?.matchesBluetoothDevice(device) == true
                     list.addView(
                         bodyText("${device.name}\n${device.address} | ${device.transportLabel()} | RSSI ${device.rssi}").apply {
-                            setTextColor(Color.parseColor(if (selected) selectedPalette.buttonText else selectedPalette.textSecondary))
+                            setTextColor(Color.parseColor(if (selected) "#FFFFFF" else "#12333A"))
+                            setTypeface(Typeface.DEFAULT_BOLD)
                             setPadding(dp(12), dp(9), dp(12), dp(9))
                             background =
-                                roundedBackground(
-                                    if (selected) selectedPalette.accentSoft else selectedPalette.cardAlt,
-                                    if (selected) selectedPalette.accentHot else selectedPalette.stroke,
-                                    14,
-                                )
+                                if (selected) {
+                                    metallicBackground("#68F1E5", "#10BDAA", "#C9FFF8", 14)
+                                } else {
+                                    roundedBackground("#F4FFFC", "#BDEFE6", 14)
+                                }
+                            elevation = if (selected) dp(4).toFloat() else dp(2).toFloat()
                             setOnClickListener {
                                 selectedBluetoothDevice = device
                                 bluetoothStatusMessage = bluetoothDeviceSelectedText(device.name)
@@ -8670,7 +9559,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 .create()
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#1A0C00"))
+        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#F0FFFB"))
     }
 
     private fun scheduleTrainingBluetoothReconnect() {
@@ -9093,7 +9982,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         dialog.show()
-        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#1A0C00"))
+        dialog.window?.decorView?.setBackgroundColor(Color.parseColor("#F0FFFB"))
     }
 
     private fun renderCloudSoundEffectSettings(
@@ -9982,7 +10871,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun posterRoot(
         accentColor: String,
-        secondaryAccent: String = "#17384B",
+        secondaryAccent: String = "#BDEFE6",
     ): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -9992,9 +10881,9 @@ class MainActivity : AppCompatActivity() {
                 GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     intArrayOf(
-                        Color.parseColor("#140800"),
-                        Color.parseColor("#1A0C00"),
-                        Color.parseColor("#071019"),
+                        Color.parseColor("#E9FFF9"),
+                        Color.parseColor("#F7FFFD"),
+                        Color.parseColor("#FFFFFF"),
                     ),
                 ).apply {
                     shape = GradientDrawable.RECTANGLE
@@ -10004,7 +10893,7 @@ class MainActivity : AppCompatActivity() {
             addView(
                 TextView(this@MainActivity).apply {
                     text = "HITRISE"
-                    setTextColor(Color.parseColor("#FFF0BF"))
+                    setTextColor(Color.parseColor("#17343B"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     letterSpacing = 0.08f
@@ -10021,18 +10910,18 @@ class MainActivity : AppCompatActivity() {
                             bottomMargin = dp(20)
                         }
                     background = roundedBackground(secondaryAccent, secondaryAccent, 999)
-                    alpha = 0.55f
+                    alpha = 0.92f
                 },
             )
         }
 
     private fun posterSectionCard(
         accentColor: String,
-        fillColor: String = "#0D1822",
+        fillColor: String = "#FFFFFF",
         strokeColor: String = accentColor,
     ): LinearLayout =
         detailCard(fillColor = fillColor, strokeColor = strokeColor, cornerDp = 26).apply {
-            background = metallicBackground("#152B39", fillColor, strokeColor, 26)
+            background = metallicBackground("#FFFFFF", fillColor, strokeColor, 26)
         }
 
     private fun posterMetricCard(
@@ -10040,18 +10929,18 @@ class MainActivity : AppCompatActivity() {
         value: String,
         accentColor: String,
     ): LinearLayout =
-        detailCard(fillColor = "#0B1720", strokeColor = accentColor, cornerDp = 18).apply {
+        detailCard(fillColor = "#F7FFFD", strokeColor = accentColor, cornerDp = 18).apply {
             setPadding(dp(16), dp(14), dp(16), dp(14))
             addView(
                 bodyText(label).apply {
-                    setTextColor(Color.parseColor("#B88A54"))
+                    setTextColor(Color.parseColor("#557A7D"))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 },
             )
             addView(
                 titleText(value, 19f).apply {
                     gravity = Gravity.START
-                    setTextColor(Color.parseColor("#FFF8E8"))
+                    setTextColor(Color.parseColor("#17343B"))
                     setPadding(0, dp(8), 0, 0)
                 },
             )
@@ -10062,7 +10951,7 @@ class MainActivity : AppCompatActivity() {
         subline: String,
         accentColor: String,
     ): LinearLayout =
-        posterSectionCard(accentColor = accentColor, fillColor = "#0A141C", strokeColor = "#294558").apply {
+        posterSectionCard(accentColor = accentColor, fillColor = "#F3FFFC", strokeColor = "#CDEFE8").apply {
             val row =
                 LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -10102,7 +10991,7 @@ class MainActivity : AppCompatActivity() {
                 imageView = avatarImage,
                 fallbackView = avatarFallback,
                 seedText = nickname,
-                colorHex = cloudProfile?.avatarColor ?: "#2A5C7B",
+                colorHex = cloudProfile?.avatarColor ?: "#16C8B5",
                 imageUri = currentAvatarImageUri(),
             )
             avatarShell.addView(avatarImage)
@@ -10122,12 +11011,12 @@ class MainActivity : AppCompatActivity() {
             textColumn.addView(
                 titleText(nickname, 20f).apply {
                     gravity = Gravity.START
-                    setTextColor(Color.parseColor("#FFF8E8"))
+                    setTextColor(Color.parseColor("#17343B"))
                 },
             )
             textColumn.addView(
                 bodyText(subline).apply {
-                    setTextColor(Color.parseColor("#C9A46A"))
+                    setTextColor(Color.parseColor("#557A7D"))
                     setPadding(0, dp(6), 0, 0)
                 },
             )
@@ -10186,20 +11075,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildTrainingPosterBitmap(report: TrainingReport): Bitmap {
-        val accentColor = "#FF9A30"
+        val accentColor = "#16C8B5"
         val root = posterRoot(accentColor)
         root.addView(
             TextView(this).apply {
                 text = localText("训练战报", "TRAINING REPORT", "RAPPORT", "รายงานการฝึก")
-                setTextColor(Color.parseColor("#140800"))
+                setTextColor(Color.WHITE)
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                background = metallicBackground("#BCEEFF", accentColor, "#FFF8E8", 999)
+                background = metallicBackground("#62E5D8", accentColor, "#DFFFF7", 999)
                 setPadding(dp(14), dp(7), dp(14), dp(7))
             },
         )
         root.addView(
-            posterSectionCard(accentColor = accentColor, fillColor = "#1A0C00", strokeColor = accentColor).apply {
+            posterSectionCard(accentColor = accentColor, fillColor = "#FFFFFF", strokeColor = "#BDEFE6").apply {
                 val heroRow =
                     LinearLayout(this@MainActivity).apply {
                         orientation = LinearLayout.VERTICAL
@@ -10221,20 +11110,20 @@ class MainActivity : AppCompatActivity() {
                     }
                 leftColumn.addView(
                     bodyText(localText("本次训练成绩", "SESSION RESULT", "RÉSULTAT", "ผลการฝึก")).apply {
-                        setTextColor(Color.parseColor("#B88A54"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     },
                 )
                 leftColumn.addView(
                     titleText(localText("训练战报", "Training Report", "Rapport entraînement", "รายงานการฝึก"), 30f).apply {
                         gravity = Gravity.START
-                        setTextColor(Color.parseColor("#FFF8E8"))
+                        setTextColor(Color.parseColor("#17343B"))
                         setPadding(0, dp(10), 0, 0)
                     },
                 )
                 leftColumn.addView(
                     bodyText(trainingBattleReportSummary(report)).apply {
-                        setTextColor(Color.parseColor("#FFE49A"))
+                        setTextColor(Color.parseColor("#096D65"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                         setLineSpacing(dp(2).toFloat(), 1.0f)
                         setPadding(0, dp(8), 0, 0)
@@ -10242,7 +11131,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 leftColumn.addView(
                     bodyText(formatReportEndedTime(report.endedAtEpochMs)).apply {
-                        setTextColor(Color.parseColor("#B88A54"))
+                        setTextColor(Color.parseColor("#7FA0A3"))
                         setPadding(0, dp(12), 0, 0)
                     },
                 )
@@ -10253,12 +11142,12 @@ class MainActivity : AppCompatActivity() {
                                 gravity = Gravity.CENTER_HORIZONTAL
                                 topMargin = dp(18)
                             }
-                        background = metallicBackground("#214159", "#0A131B", "#D9F2FF", 999)
+                        background = metallicBackground("#DFFFF7", "#F7FFFD", "#BDEFE6", 999)
                         addView(
                             FrameLayout(this@MainActivity).apply {
                                 layoutParams =
                                     FrameLayout.LayoutParams(dp(166), dp(166), Gravity.CENTER)
-                                background = metallicBackground("#FF9A30", "#1A0C00", "#E7FBFF", 999)
+                                background = metallicBackground("#35D8CB", "#16C8B5", "#E7FBFF", 999)
                                 addView(
                                     LinearLayout(this@MainActivity).apply {
                                         orientation = LinearLayout.VERTICAL
@@ -10271,7 +11160,7 @@ class MainActivity : AppCompatActivity() {
                                         addView(
                                             bodyText(localText("拳数", "PUNCHES", "COUPS", "หมัด")).apply {
                                                 gravity = Gravity.CENTER
-                                                setTextColor(Color.parseColor("#FFF0BF"))
+                                                setTextColor(Color.parseColor("#EFFFFA"))
                                                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                                             },
                                         )
@@ -10285,7 +11174,7 @@ class MainActivity : AppCompatActivity() {
                                         addView(
                                             bodyText(tr("hits")).apply {
                                                 gravity = Gravity.CENTER
-                                                setTextColor(Color.parseColor("#FFF8E8"))
+                                                setTextColor(Color.parseColor("#EFFFFA"))
                                                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                                             },
                                         )
@@ -10310,8 +11199,8 @@ class MainActivity : AppCompatActivity() {
                 statusRow.addView(
                     badgeText(
                         text = formatTrainingDuration(report.durationSeconds),
-                        textColor = "#001A08",
-                        fillColor = "#80FFB0",
+                        textColor = "#096D65",
+                        fillColor = "#DFFFF7",
                     ).apply {
                         setPadding(dp(12), dp(6), dp(12), dp(6))
                     },
@@ -10319,8 +11208,8 @@ class MainActivity : AppCompatActivity() {
                 statusRow.addView(
                     badgeText(
                         text = localText("最大力度 ${forceDisplay(report.peakForceN)}", "Peak ${forceDisplay(report.peakForceN)}", "Max ${forceDisplay(report.peakForceN)}", "สูงสุด ${forceDisplay(report.peakForceN)}"),
-                        textColor = "#FFF8E8",
-                        fillColor = "#7A1F24",
+                        textColor = "#FFFFFF",
+                        fillColor = "#FF8A32",
                     ).apply {
                         (layoutParams as? LinearLayout.LayoutParams)?.leftMargin = dp(10)
                         setPadding(dp(12), dp(6), dp(12), dp(6))
@@ -10348,14 +11237,14 @@ class MainActivity : AppCompatActivity() {
             posterMetricCard(
                 localText("累计锻炼时间", "Total duration", "Durée totale", "เวลารวม"),
                 formatTrainingDuration(report.durationSeconds),
-                "#00FF88",
+                "#16C8B5",
             ).apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(10) }
             },
         )
         metricsRow1.addView(
-            posterMetricCard(localText("累计击拳数", "Total punches", "Coups cumulés", "หมัดรวม"), "${report.totalHits} ${tr("hits")}", "#40E090").apply {
+            posterMetricCard(localText("累计击拳数", "Total punches", "Coups cumulés", "หมัดรวม"), "${report.totalHits} ${tr("hits")}", "#16C8B5").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             },
@@ -10371,13 +11260,13 @@ class MainActivity : AppCompatActivity() {
                     ).apply { topMargin = dp(10) }
             }
         metricsRow2.addView(
-            posterMetricCard(localText("最大力度", "Peak force", "Force max", "แรงสูงสุด"), forceDisplay(report.peakForceN), "#E24B4A").apply {
+            posterMetricCard(localText("最大力度", "Peak force", "Force max", "แรงสูงสุด"), forceDisplay(report.peakForceN), "#FF8A32").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(10) }
             },
         )
         metricsRow2.addView(
-            posterMetricCard(localText("平均力度", "Avg force", "Force moy.", "แรงเฉลี่ย"), forceDisplay(report.avgForceN), "#A7F3D0").apply {
+            posterMetricCard(localText("平均力度", "Avg force", "Force moy.", "แรงเฉลี่ย"), forceDisplay(report.avgForceN), "#9BE5C4").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             },
@@ -10409,7 +11298,7 @@ class MainActivity : AppCompatActivity() {
             posterIdentityCard(
                 nickname = cloudProfile?.nickname.orEmpty().ifBlank { "Fighter" },
                 subline = localText("成果已同步到六项榜单", "Synced to six leaderboard metrics", "Synchronisé avec 6 classements", "ซิงก์กับอันดับ 6 รายการ"),
-                accentColor = "#244458",
+                accentColor = "#16C8B5",
             ).apply {
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -10427,20 +11316,21 @@ class MainActivity : AppCompatActivity() {
         val badgeName = recent?.let { achievementDisplayName(it.key) } ?: currentTierShareLabel()
         val badgeCode = recent?.let { achievementBadgeCode(it.key) } ?: "TIER"
         val unlockedCount = cloudAchievements.count { it.unlocked }
-        val accentColor = recent?.let { achievementAccentColor(it.key) } ?: "#D8B76A"
-        val root = posterRoot(accentColor, "#224357")
+        val accentColor = "#16C8B5"
+        val honorAccent = recent?.let { achievementAccentColor(it.key) } ?: "#FFD060"
+        val root = posterRoot(accentColor, "#BDEFE6")
         root.addView(
             TextView(this).apply {
                 text = localText("新徽章解锁", "NEW HONOR", "NOUVEL HONNEUR", "เกียรติยศใหม่")
-                setTextColor(Color.parseColor("#140800"))
+                setTextColor(Color.WHITE)
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                background = metallicBackground("#FFE8A8", accentColor, "#FFF5D8", 999)
+                background = metallicBackground("#62E5D8", accentColor, "#DFFFF7", 999)
                 setPadding(dp(14), dp(7), dp(14), dp(7))
             },
         )
         root.addView(
-            posterSectionCard(accentColor = accentColor, fillColor = "#0F1820", strokeColor = accentColor).apply {
+            posterSectionCard(accentColor = accentColor, fillColor = "#FFFFFF", strokeColor = "#BDEFE6").apply {
                 gravity = Gravity.CENTER_HORIZONTAL
                 addView(
                     LinearLayout(this@MainActivity).apply {
@@ -10459,18 +11349,18 @@ class MainActivity : AppCompatActivity() {
                         ribbonRow.addView(
                             View(this@MainActivity).apply {
                                 layoutParams = LinearLayout.LayoutParams(dp(40), dp(92)).apply { rightMargin = dp(14) }
-                                background = metallicBackground("#466A89", "#1A2F40", "#8FD8FF", 16)
+                                background = metallicBackground("#DFFFF7", "#BDEFE6", accentColor, 16)
                             },
                         )
                         ribbonRow.addView(
                             FrameLayout(this@MainActivity).apply {
                                 layoutParams = LinearLayout.LayoutParams(dp(188), dp(188))
-                                background = metallicBackground("#2A3A49", "#0B1318", accentColor, 999)
+                                background = metallicBackground("#F7FFFD", "#EFFFFA", accentColor, 999)
                                 addView(
                                     FrameLayout(this@MainActivity).apply {
                                         layoutParams =
                                             FrameLayout.LayoutParams(dp(152), dp(152), Gravity.CENTER)
-                                        background = metallicBackground("#FFE8A8", accentColor, "#FFF5D8", 999)
+                                        background = metallicBackground("#FFF8E6", honorAccent, "#FFFFFF", 999)
                                         addView(
                                             LinearLayout(this@MainActivity).apply {
                                                 orientation = LinearLayout.VERTICAL
@@ -10483,14 +11373,14 @@ class MainActivity : AppCompatActivity() {
                                                 addView(
                                                     bodyText("BADGE").apply {
                                                         gravity = Gravity.CENTER
-                                                        setTextColor(Color.parseColor("#7A5A1F"))
+                                                        setTextColor(Color.parseColor("#096D65"))
                                                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                                                     },
                                                 )
                                                 addView(
                                                     titleText(badgeCode, 30f).apply {
                                                         gravity = Gravity.CENTER
-                                                        setTextColor(Color.parseColor("#4A3510"))
+                                                        setTextColor(Color.parseColor("#17343B"))
                                                         setPadding(0, dp(6), 0, 0)
                                                     },
                                                 )
@@ -10503,15 +11393,15 @@ class MainActivity : AppCompatActivity() {
                         ribbonRow.addView(
                             View(this@MainActivity).apply {
                                 layoutParams = LinearLayout.LayoutParams(dp(40), dp(92)).apply { leftMargin = dp(14) }
-                                background = metallicBackground("#466A89", "#1A2F40", "#8FD8FF", 16)
+                                background = metallicBackground("#DFFFF7", "#BDEFE6", accentColor, 16)
                             },
                         )
                         addView(ribbonRow)
                         addView(
                             badgeText(
                                 text = localText("荣誉馆珍藏", "HONOR VAULT", "GALERIE D'HONNEUR", "หอเกียรติยศ"),
-                                textColor = "#140800",
-                                fillColor = "#D8B76A",
+                                textColor = "#096D65",
+                                fillColor = "#DFFFF7",
                             ).apply {
                                 (layoutParams as? LinearLayout.LayoutParams)?.topMargin = dp(16)
                                 setPadding(dp(12), dp(6), dp(12), dp(6))
@@ -10522,27 +11412,28 @@ class MainActivity : AppCompatActivity() {
                 addView(
                     titleText(badgeName, 28f).apply {
                         gravity = Gravity.CENTER
-                        setTextColor(Color.parseColor("#FFF8E7"))
+                        setTextColor(Color.parseColor("#17343B"))
                         setPadding(0, dp(18), 0, 0)
                     },
                 )
                 addView(
                     bodyText(localText("当前段位：${currentTierShareLabel()}", "Current tier: ${currentTierShareLabel()}", "Rang actuel : ${currentTierShareLabel()}", "ระดับปัจจุบัน: ${currentTierShareLabel()}")).apply {
                         gravity = Gravity.CENTER
-                        setTextColor(Color.parseColor("#FFF0C9"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setPadding(0, dp(10), 0, 0)
                     },
                 )
                 addView(
                     bodyText(localText("已解锁徽章：$unlockedCount / ${cloudAchievements.size}", "Unlocked badges: $unlockedCount / ${cloudAchievements.size}", "Badges débloqués : $unlockedCount / ${cloudAchievements.size}", "เหรียญที่ปลดล็อก: $unlockedCount / ${cloudAchievements.size}")).apply {
                         gravity = Gravity.CENTER
-                        setTextColor(Color.parseColor("#FFD88A"))
+                        setTextColor(Color.parseColor("#096D65"))
                         setPadding(0, dp(8), 0, 0)
                     },
                 )
                 if (nextLocked != null) {
                     addView(
-                        detailCard(fillColor = "#12202B", strokeColor = "#38546B", cornerDp = 18).apply {
+                        detailCard(fillColor = "#F7FFFD", strokeColor = "#CDEFE8", cornerDp = 18).apply {
+                            background = roundedBackground("#F7FFFD", "#CDEFE8", 18)
                             setPadding(dp(16), dp(14), dp(16), dp(14))
                             layoutParams =
                                 LinearLayout.LayoutParams(
@@ -10551,20 +11442,20 @@ class MainActivity : AppCompatActivity() {
                                 ).apply { topMargin = dp(16) }
                             addView(
                                 bodyText(localText("下一枚目标", "NEXT TARGET", "PROCHAIN OBJECTIF", "เป้าหมายถัดไป")).apply {
-                                    setTextColor(Color.parseColor("#B88A54"))
+                                    setTextColor(Color.parseColor("#557A7D"))
                                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                                 },
                             )
                             addView(
                                 titleText(achievementDisplayName(nextLocked.key), 18f).apply {
                                     gravity = Gravity.START
-                                    setTextColor(Color.parseColor("#FFF8E8"))
+                                    setTextColor(Color.parseColor("#17343B"))
                                     setPadding(0, dp(8), 0, 0)
                                 },
                             )
                             addView(
                                 bodyText("${nextLocked.progress}/${nextLocked.goal}").apply {
-                                    setTextColor(Color.parseColor("#FFD88A"))
+                                    setTextColor(Color.parseColor("#096D65"))
                                     setPadding(0, dp(8), 0, 0)
                                 },
                             )
@@ -10598,20 +11489,20 @@ class MainActivity : AppCompatActivity() {
     private fun buildLeaderboardPosterBitmap(): Bitmap {
         val me = leaderboardResult?.me
         val topThree = leaderboardResult?.top?.take(3).orEmpty()
-        val accentColor = leaderboardAccentColor(leaderboardBoard)
-        val root = posterRoot(accentColor, leaderboardAccentFill(leaderboardBoard))
+        val accentColor = "#16C8B5"
+        val root = posterRoot(accentColor, "#BDEFE6")
         root.addView(
             TextView(this).apply {
                 text = leaderboardBoardLabel(leaderboardBoard)
-                setTextColor(Color.parseColor("#140800"))
+                setTextColor(Color.WHITE)
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                background = metallicBackground("#BCEEFF", accentColor, "#FFF8E8", 999)
+                background = metallicBackground("#62E5D8", accentColor, "#DFFFF7", 999)
                 setPadding(dp(14), dp(7), dp(14), dp(7))
             },
         )
         root.addView(
-            posterSectionCard(accentColor = accentColor, fillColor = "#0E1821", strokeColor = accentColor).apply {
+            posterSectionCard(accentColor = accentColor, fillColor = "#FFFFFF", strokeColor = "#BDEFE6").apply {
                 val heroRow =
                     LinearLayout(this@MainActivity).apply {
                         orientation = LinearLayout.HORIZONTAL
@@ -10629,34 +11520,34 @@ class MainActivity : AppCompatActivity() {
                     }
                 rankBlock.addView(
                     bodyText(localText("当前排名", "CURRENT RANK", "RANG ACTUEL", "อันดับปัจจุบัน")).apply {
-                        setTextColor(Color.parseColor("#B88A54"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     },
                 )
                 rankBlock.addView(
                     titleText(me?.let { "NO.${it.rank}" } ?: "NO.--", 42f).apply {
                         gravity = Gravity.START
-                        setTextColor(Color.parseColor("#FFF8E8"))
+                        setTextColor(Color.parseColor("#17343B"))
                         setPadding(0, dp(10), 0, 0)
                     },
                 )
                 rankBlock.addView(
                     bodyText(me?.let { leaderboardPrimaryValueText(it) } ?: localText("准备冲榜", "Ready to climb", "Prêt à monter", "พร้อมไต่อันดับ")).apply {
-                        setTextColor(Color.parseColor("#FFF0BF"))
+                        setTextColor(Color.parseColor("#096D65"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                         setPadding(0, dp(8), 0, 0)
                     },
                 )
                 rankBlock.addView(
                     bodyText(currentTierShareLabel()).apply {
-                        setTextColor(Color.parseColor("#D8B76A"))
+                        setTextColor(Color.parseColor("#FF8A32"))
                         setPadding(0, dp(10), 0, 0)
                     },
                 )
                 val trophySeal =
                     FrameLayout(this@MainActivity).apply {
                         layoutParams = LinearLayout.LayoutParams(dp(174), dp(174))
-                        background = metallicBackground("#284455", "#0D1821", accentColor, 999)
+                        background = metallicBackground("#DFFFF7", "#16C8B5", "#E7FBFF", 999)
                         addView(
                             LinearLayout(this@MainActivity).apply {
                                 orientation = LinearLayout.VERTICAL
@@ -10669,7 +11560,7 @@ class MainActivity : AppCompatActivity() {
                                 addView(
                                     bodyText("RANK").apply {
                                         gravity = Gravity.CENTER
-                                        setTextColor(Color.parseColor("#FFD88A"))
+                                        setTextColor(Color.parseColor("#EFFFFA"))
                                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                                     },
                                 )
@@ -10683,7 +11574,7 @@ class MainActivity : AppCompatActivity() {
                                 addView(
                                     bodyText(leaderboardBoardLabel(leaderboardBoard)).apply {
                                         gravity = Gravity.CENTER
-                                        setTextColor(Color.parseColor("#FFF0C9"))
+                                        setTextColor(Color.parseColor("#EFFFFA"))
                                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                                     },
                                 )
@@ -10716,11 +11607,11 @@ class MainActivity : AppCompatActivity() {
                 val podiumAccent =
                     when (entry.rank) {
                         1 -> "#F2C14E"
-                        2 -> "#FFF0C9"
-                        else -> "#D39A6A"
+                        2 -> "#16C8B5"
+                        else -> "#FF8A32"
                     }
                 podiumRow.addView(
-                    detailCard(fillColor = "#0D1924", strokeColor = podiumAccent, cornerDp = 22).apply {
+                    detailCard(fillColor = "#F7FFFD", strokeColor = podiumAccent, cornerDp = 22).apply {
                         layoutParams =
                             LinearLayout.LayoutParams(
                                 0,
@@ -10730,11 +11621,11 @@ class MainActivity : AppCompatActivity() {
                         background =
                             metallicBackground(
                                 when (entry.rank) {
-                                    1 -> "#4A3A16"
-                                    2 -> "#35414B"
-                                    else -> "#4B3428"
+                                    1 -> "#FFF8E6"
+                                    2 -> "#DFFFF7"
+                                    else -> "#FFF0E2"
                                 },
-                                "#0D1924",
+                                "#FFFFFF",
                                 podiumAccent,
                                 22,
                             )
@@ -10746,7 +11637,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         gravity = Gravity.CENTER_HORIZONTAL
                         addView(
-                            badgeText("TOP ${entry.rank}", textColor = "#140800", fillColor = podiumAccent).apply {
+                            badgeText("TOP ${entry.rank}", textColor = if (entry.rank == 2) "#096D65" else "#17343B", fillColor = podiumAccent).apply {
                                 setPadding(dp(12), dp(6), dp(12), dp(6))
                             },
                         )
@@ -10754,11 +11645,11 @@ class MainActivity : AppCompatActivity() {
                             titleText(entry.nickname, if (entry.rank == 1) 22f else 18f).apply {
                                 gravity = Gravity.CENTER
                                 setPadding(0, dp(16), 0, 0)
-                                setTextColor(Color.parseColor("#FFF8E8"))
+                                setTextColor(Color.parseColor("#17343B"))
                             },
                         )
                         addView(
-                            badgeText(tierLabelForKey(entry.tierKey), textColor = "#FFF5E6", fillColor = "#17384B").apply {
+                            badgeText(tierLabelForKey(entry.tierKey), textColor = "#096D65", fillColor = "#DFFFF7").apply {
                                 (layoutParams as? LinearLayout.LayoutParams)?.topMargin = dp(8)
                                 setPadding(dp(10), dp(5), dp(10), dp(5))
                             },
@@ -10773,14 +11664,14 @@ class MainActivity : AppCompatActivity() {
                         addView(
                             bodyText(leaderboardBoardLabel(leaderboardBoard)).apply {
                                 gravity = Gravity.CENTER
-                                setTextColor(Color.parseColor("#C9A46A"))
+                                setTextColor(Color.parseColor("#557A7D"))
                                 setPadding(0, dp(4), 0, 0)
                             },
                         )
                         addView(
                             bodyText(leaderboardSecondaryValueText(entry)).apply {
                                 gravity = Gravity.CENTER
-                                setTextColor(Color.parseColor("#B88A54"))
+                                setTextColor(Color.parseColor("#7FA0A3"))
                                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                                 setPadding(0, dp(10), 0, 0)
                             },
@@ -11262,7 +12153,7 @@ class MainActivity : AppCompatActivity() {
             text.contains("回合开始") || text.contains("Round") ->
                 "Round starts. Settle your breathing, punch short, and bring the guard back."
             text.contains("最后") || text.contains("Final") ->
-                "Final 30 seconds. Push hard, hold the rhythm, and keep punches clean."
+                "Final 10 seconds. Push hard, hold the rhythm, and keep punches clean."
             text.contains("节奏") || text.contains("pace", ignoreCase = true) || text.contains("BPM") ->
                 "Pick up the pace. Shorten the punch and recover faster."
             text.contains("力度") || text.contains("force", ignoreCase = true) ->
@@ -11665,6 +12556,31 @@ class MainActivity : AppCompatActivity() {
             else -> key
         }
 
+    private fun achievementBadgeCompactName(key: String): String =
+        when (key) {
+            "duration_5m" -> localText("60 分钟", "60 min", "60 min", "60 นาที")
+            "duration_15m" -> localText("300 分钟", "300 min", "300 min", "300 นาที")
+            "duration_30m" -> localText("600 分钟", "600 min", "600 min", "600 นาที")
+            "duration_60m" -> localText("2000 分钟", "2000 min", "2000 min", "2000 นาที")
+            "peak_force_50" -> "500N"
+            "peak_force_100" -> "1000N"
+            "peak_force_150" -> "1300N"
+            "peak_force_200" -> "1600N"
+            "avg_force_30" -> "500N"
+            "avg_force_60" -> "800N"
+            "avg_force_90" -> "1000N"
+            "avg_force_120" -> "1200N"
+            "calories_30" -> "500 kcal"
+            "calories_100" -> "1000 kcal"
+            "calories_300" -> "2000 kcal"
+            "calories_600" -> "4000 kcal"
+            "fat_5" -> "100g"
+            "fat_15" -> "500g"
+            "fat_40" -> "1000g"
+            "fat_80" -> "2000g"
+            else -> achievementDisplayName(key)
+        }
+
     private fun achievementBadgeCode(key: String): String =
         when (key) {
             "duration_5m" -> "60M"
@@ -11734,13 +12650,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun achievementAccentColor(key: String): String =
         when {
-            key.startsWith("duration_") -> "#00FF88"
-            key.startsWith("hits_") -> "#40E090"
-            key.startsWith("peak_force_") -> "#E24B4A"
-            key.startsWith("avg_force_") -> "#A7F3D0"
-            key.startsWith("calories_") -> "#FFD060"
-            key.startsWith("fat_") -> "#00FFCC"
-            else -> "#00FF88"
+            key.startsWith("duration_") -> "#10BDAA"
+            key.startsWith("hits_") -> "#16C8B5"
+            key.startsWith("peak_force_") -> "#E65A4F"
+            key.startsWith("avg_force_") -> "#2CB7A4"
+            key.startsWith("calories_") -> "#FF8A32"
+            key.startsWith("fat_") -> "#00BFA8"
+            else -> "#10BDAA"
         }
 
     private data class MetallicPalette(
@@ -11806,7 +12722,7 @@ class MainActivity : AppCompatActivity() {
                     setPadding(dp(10), dp(8), dp(10), dp(8))
                 }
             val titleView =
-                bodyText(achievementDisplayName(item.key)).apply {
+                bodyText(achievementBadgeCompactName(item.key)).apply {
                     setTextColor(Color.parseColor("#FFF5E6"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setPadding(0, dp(10), 0, 0)
@@ -12251,35 +13167,49 @@ class MainActivity : AppCompatActivity() {
 
     private fun podiumAccentForRank(rank: Int): String =
         when (rank) {
-            1 -> "#FFD060"
-            2 -> "#A9C6D8"
-            3 -> "#E3A36B"
-            else -> "#FFB347"
+            1 -> "#FFB84D"
+            2 -> "#8FB4C8"
+            3 -> "#D99662"
+            else -> "#10BDAA"
+        }
+
+    private fun podiumFillForRank(rank: Int): String =
+        when (rank) {
+            1 -> "#FFF8E7"
+            2 -> "#F4FAFC"
+            3 -> "#FFF1E7"
+            else -> "#F7FFFD"
+        }
+
+    private fun podiumChipTextForRank(rank: Int): String =
+        when (rank) {
+            1 -> "#17343B"
+            else -> "#FFFFFF"
         }
 
     private fun leaderboardAccentColor(board: LeaderboardBoard = leaderboardBoard): String =
         when (board) {
-            LeaderboardBoard.TrainingDuration -> "#00FF88"
-            LeaderboardBoard.TotalHits -> "#40E090"
-            LeaderboardBoard.PeakForce -> "#E24B4A"
-            LeaderboardBoard.AvgForce -> "#A7F3D0"
-            LeaderboardBoard.Calories -> "#FFD060"
-            LeaderboardBoard.FatBurned -> "#00FFCC"
+            LeaderboardBoard.TrainingDuration -> "#10BDAA"
+            LeaderboardBoard.TotalHits -> "#16C8B5"
+            LeaderboardBoard.PeakForce -> "#E65A4F"
+            LeaderboardBoard.AvgForce -> "#2CB7A4"
+            LeaderboardBoard.Calories -> "#FF8A32"
+            LeaderboardBoard.FatBurned -> "#00BFA8"
         }
 
     private fun leaderboardAccentFill(board: LeaderboardBoard = leaderboardBoard): String =
         when (board) {
-            LeaderboardBoard.TrainingDuration -> "#062016"
-            LeaderboardBoard.TotalHits -> "#082218"
-            LeaderboardBoard.PeakForce -> "#2A1112"
-            LeaderboardBoard.AvgForce -> "#0A241A"
-            LeaderboardBoard.Calories -> "#2B2412"
-            LeaderboardBoard.FatBurned -> "#05221E"
+            LeaderboardBoard.TrainingDuration -> "#DFFFF7"
+            LeaderboardBoard.TotalHits -> "#E5FBF7"
+            LeaderboardBoard.PeakForce -> "#FFEDE9"
+            LeaderboardBoard.AvgForce -> "#E7FAF5"
+            LeaderboardBoard.Calories -> "#FFF2DD"
+            LeaderboardBoard.FatBurned -> "#E0FFF8"
         }
 
     private fun sanitizeAvatarColor(colorHex: String?): String {
         val normalized = colorHex?.trim().orEmpty()
-        return if (normalized.matches(Regex("^#[0-9A-Fa-f]{6}$"))) normalized.uppercase(Locale.US) else "#008840"
+        return if (normalized.matches(Regex("^#[0-9A-Fa-f]{6}$"))) normalized.uppercase(Locale.US) else "#10BDAA"
     }
 
     private fun avatarBackground(colorHex: String): GradientDrawable =
@@ -12351,14 +13281,14 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun historySessionCard(item: CloudTrainingHistoryItem): LinearLayout {
-        val card = detailCard(fillColor = "#0B1721", strokeColor = "#20384A")
+        val card = detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8")
         val header =
             LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-        val modeChip = badgeText(displayModeLabel(secondsToMode(item.modeSeconds)), fillColor = "#17354A")
-        val hitsChip = badgeText("${item.totalHits} ${tr("hits")}", fillColor = "#E07010")
+        val modeChip = badgeText(displayModeLabel(secondsToMode(item.modeSeconds)), textColor = "#096D65", fillColor = "#DFFFF7")
+        val hitsChip = badgeText("${item.totalHits} ${tr("hits")}", textColor = "#FFFFFF", fillColor = "#FF8A32")
         val headerSpacer =
             View(this).apply {
                 layoutParams =
@@ -12375,7 +13305,7 @@ class MainActivity : AppCompatActivity() {
         val titleLine =
             bodyText(formatHistoryTime(item.endedAt ?: item.startedAt)).apply {
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.parseColor("#FFF8E8"))
+                setTextColor(Color.parseColor("#17343B"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                 setPadding(0, dp(12), 0, 0)
             }
@@ -12388,14 +13318,14 @@ class MainActivity : AppCompatActivity() {
         val avgChip =
             badgeText(
                 text = String.format(Locale.US, "%.2f %s", item.averageFrequency, tr("hits_per_second")),
-                textColor = "#FFF0C9",
-                fillColor = "#123246",
+                textColor = "#096D65",
+                fillColor = "#DFFFF7",
             )
         val burstChip =
             badgeText(
                 text = "${tr("best_burst")}: ${item.bestBurstCount}",
-                textColor = "#FFD060",
-                fillColor = "#2B2412",
+                textColor = "#9A560F",
+                fillColor = "#FFF2DD",
             ).apply {
                 layoutParams =
                     LinearLayout.LayoutParams(
@@ -12411,8 +13341,7 @@ class MainActivity : AppCompatActivity() {
             bodyText(
                 "${localText("锻炼时间", "Duration", "Durée", "เวลา")}: ${formatTrainingDuration(item.durationSeconds)}  |  ${localText("最大力度", "Peak", "Max", "สูงสุด")}: ${forceDisplay(item.peakForceN)}  |  ${localText("平均力度", "Avg", "Moy.", "เฉลี่ย")}: ${forceDisplay(item.avgForceN)}\n${tr("calories_burned")}: ${formatCalories(item.caloriesBurned)}  |  ${tr("fat_burned")}: ${formatFatGrams(item.fatBurnedGrams)}",
             ).apply {
-                setTextColor(Color.parseColor("#FFF0C9"))
-                setTextColor(Color.parseColor("#B88A54"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, dp(8), 0, 0)
             }
@@ -12423,7 +13352,7 @@ class MainActivity : AppCompatActivity() {
         if (item.roundReports.isNotEmpty()) {
             card.addView(
                 bodyText(localText("云端回合明细", "Cloud round details", "Détails des rounds", "รายละเอียดรอบบนคลาวด์")).apply {
-                    setTextColor(Color.parseColor("#DFFFF0"))
+                    setTextColor(Color.parseColor("#17343B"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     setPadding(0, dp(10), 0, 0)
@@ -12439,7 +13368,7 @@ class MainActivity : AppCompatActivity() {
                             "รอบ ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} หมัด | รวม ${round.cumulativeHits} | ${formatCalories(round.cumulativeCaloriesBurned)} | ไขมันเทียบเท่า ${formatFatGrams(round.cumulativeFatBurnedGrams)}",
                         ),
                     ).apply {
-                        setTextColor(Color.parseColor("#BFE6D0"))
+                        setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                         setPadding(0, dp(6), 0, 0)
                     },
@@ -12468,7 +13397,7 @@ class MainActivity : AppCompatActivity() {
                     topMargin = if (elevated) 0 else dp(18)
                 }
             addView(
-                detailCard(fillColor = "#0D1924", strokeColor = accentColor, cornerDp = 22).apply {
+                detailCard(fillColor = "#FFFFFF", strokeColor = accentColor, cornerDp = 22).apply {
                     minimumHeight = if (elevated) dp(176) else dp(148)
                     gravity = Gravity.CENTER_HORIZONTAL
                     addView(
@@ -12491,14 +13420,14 @@ class MainActivity : AppCompatActivity() {
                         titleText(entry.nickname, if (elevated) 20f else 18f).apply {
                             gravity = Gravity.CENTER
                             setPadding(0, dp(6), 0, 0)
-                            setTextColor(Color.parseColor("#FFF8E8"))
+                            setTextColor(Color.parseColor("#17343B"))
                         },
                     )
                     addView(
                         badgeText(
                             text = tierLabelForKey(entry.tierKey),
-                            textColor = "#FFF5E6",
-                            fillColor = "#16384A",
+                            textColor = "#096D65",
+                            fillColor = "#DFFFF7",
                         ).apply {
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                             setPadding(dp(10), dp(5), dp(10), dp(5))
@@ -12507,8 +13436,8 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         badgeText(
                             text = leaderboardBoardLabel(leaderboardBoard),
-                            textColor = "#FFF0C9",
-                            fillColor = "#102738",
+                            textColor = "#557A7D",
+                            fillColor = "#F0F8F6",
                         ).apply {
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                             setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -12526,7 +13455,7 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         bodyText(leaderboardSecondaryValueText(entry)).apply {
                             gravity = Gravity.CENTER
-                            setTextColor(Color.parseColor("#C9A46A"))
+                            setTextColor(Color.parseColor("#557A7D"))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                             setPadding(0, dp(8), 0, 0)
                         },
@@ -12553,7 +13482,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun leaderboardRowCard(entry: CloudLeaderboardEntry): LinearLayout {
         val accentColor = leaderboardAccentColor(leaderboardBoard)
-        val card = detailCard(fillColor = "#0C1822", strokeColor = "#1C3344")
+        val card = detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8")
         val row =
             LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -12585,11 +13514,11 @@ class MainActivity : AppCompatActivity() {
         content.addView(
             bodyText(entry.nickname).apply {
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.parseColor("#FFF5E6"))
+                setTextColor(Color.parseColor("#17343B"))
             },
         )
         content.addView(
-            badgeText(tierLabelForKey(entry.tierKey), textColor = "#FFF0C9", fillColor = leaderboardAccentFill(leaderboardBoard)).apply {
+            badgeText(tierLabelForKey(entry.tierKey), textColor = "#096D65", fillColor = "#DFFFF7").apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                 setPadding(dp(8), dp(4), dp(8), dp(4))
             },
@@ -12598,13 +13527,13 @@ class MainActivity : AppCompatActivity() {
             bodyText(
                 "${leaderboardPrimaryValueText(entry)} | ${leaderboardSecondaryValueText(entry)}",
             ).apply {
-                setTextColor(Color.parseColor("#B88A54"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, dp(4), 0, 0)
             },
         )
         val serialBadge =
-            badgeText(entry.serialMasked, textColor = "#FFF0C9", fillColor = "#132635").apply {
+            badgeText(entry.serialMasked, textColor = "#557A7D", fillColor = "#F0F8F6").apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             }
         row.addView(rankView)
@@ -12619,15 +13548,15 @@ class MainActivity : AppCompatActivity() {
         unlockedCount: Int,
         totalCount: Int,
     ): LinearLayout =
-        detailCard(fillColor = "#0F1820", strokeColor = "#D4B16B", cornerDp = 24).apply {
-            background = metallicBackground("#224B63", "#0D1A23", "#D8B97A", 24)
+        detailCard(fillColor = "#EFFFFA", strokeColor = "#BFEFE5", cornerDp = 24).apply {
+            background = roundedBackground("#EFFFFA", "#BFEFE5", 24)
             addView(
                 TextView(this@MainActivity).apply {
                     text = localText("荣誉段位", "Honor Tier", "Rang d'honneur", "ระดับเกียรติยศ")
-                    setTextColor(Color.parseColor("#140800"))
+                    setTextColor(Color.parseColor("#096D65"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                    background = metallicBackground("#FFE8A8", "#C7932B", "#FFF2CD", 999)
+                    background = roundedBackground("#DFFFF7", "#BFEFE5", 999)
                     setPadding(dp(12), dp(6), dp(12), dp(6))
                 },
             )
@@ -12635,18 +13564,18 @@ class MainActivity : AppCompatActivity() {
                 titleText(tierLabelForKey(tier.key), 24f).apply {
                     gravity = Gravity.START
                     setPadding(0, dp(14), 0, 0)
-                    setTextColor(Color.parseColor("#FFF8E7"))
+                    setTextColor(Color.parseColor("#17343B"))
                 },
             )
             addView(
                 bodyText(achievementsSubtitleText(unlockedCount, totalCount)).apply {
-                    setTextColor(Color.parseColor("#FFF0C9"))
+                    setTextColor(Color.parseColor("#557A7D"))
                     setPadding(0, dp(6), 0, 0)
                 },
             )
             addView(
                 bodyText(tierHeroProgressText(tier)).apply {
-                    setTextColor(Color.parseColor("#A7C8DD"))
+                    setTextColor(Color.parseColor("#0CA99A"))
                     setPadding(0, dp(10), 0, 0)
                 },
             )
@@ -12658,29 +13587,14 @@ class MainActivity : AppCompatActivity() {
         val palette = achievementMetalPalette(item.key, unlocked)
         val badgeImageRes = achievementBadgeImageRes(item.key)
         val progressFraction = if (item.goal > 0) item.progress.toFloat() / item.goal.toFloat() else 0f
-        return detailCard(fillColor = "#0C1822", strokeColor = if (unlocked) palette.stroke else "#233A4B", cornerDp = 20).apply {
-            background =
-                GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(
-                        Color.parseColor(if (unlocked) "#13202A" else "#0D1822"),
-                        Color.parseColor(if (unlocked) "#0A1218" else "#140800"),
-                    ),
-                ).apply {
-                    shape = GradientDrawable.RECTANGLE
-                    cornerRadius = dp(20).toFloat()
-                    setStroke(dp(1), Color.parseColor(if (unlocked) palette.stroke else "#24384A"))
-                }
-            val topRow =
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                }
+        return detailCard(fillColor = "#FFFFFF", strokeColor = if (unlocked) palette.stroke else "#D6ECE8", cornerDp = 20).apply {
+            background = roundedBackground(if (unlocked) "#F8FFFC" else "#F4F8F7", if (unlocked) palette.stroke else "#D6ECE8", 20)
             val medal =
                 FrameLayout(this@MainActivity).apply {
                     layoutParams =
-                        LinearLayout.LayoutParams(dp(56), dp(56)).apply {
-                            rightMargin = dp(12)
+                        LinearLayout.LayoutParams(dp(76), dp(76)).apply {
+                            gravity = Gravity.CENTER_HORIZONTAL
+                            topMargin = dp(10)
                         }
                     background =
                         if (badgeImageRes == null) {
@@ -12692,8 +13606,8 @@ class MainActivity : AppCompatActivity() {
                             )
                         } else {
                             roundedBackground(
-                                if (unlocked) "#09131C" else "#101B24",
-                                if (unlocked) palette.stroke else "#314755",
+                                if (unlocked) "#10252D" else "#DCE9E6",
+                                if (unlocked) palette.stroke else "#D6ECE8",
                                 999,
                             )
                         }
@@ -12704,7 +13618,8 @@ class MainActivity : AppCompatActivity() {
                             ImageView(this@MainActivity).apply {
                                 setImageResource(badgeImageRes)
                                 scaleType = ImageView.ScaleType.CENTER_CROP
-                                alpha = if (unlocked) 1f else 0.42f
+                                alpha = if (unlocked) 1f else 0.7f
+                                colorFilter = vividAssetColorFilter()
                                 contentDescription = achievementDisplayName(item.key)
                                 outlineProvider =
                                     object : ViewOutlineProvider() {
@@ -12737,23 +13652,16 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 }
-            val titleColumn =
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams =
-                        LinearLayout.LayoutParams(
-                            0,
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                            1.0f,
-                        )
-                }
-            titleColumn.addView(
-                bodyText(achievementDisplayName(item.key)).apply {
-                    setTextColor(Color.parseColor("#FFF5E6"))
+            addView(
+                bodyText(achievementBadgeCompactName(item.key)).apply {
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.parseColor("#17343B"))
                     setTypeface(Typeface.DEFAULT_BOLD)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                    includeFontPadding = false
                 },
             )
-            titleColumn.addView(
+            addView(
                 bodyText(
                     if (unlocked) {
                         localText("已解锁", "Unlocked", "Débloqué", "ปลดล็อกแล้ว")
@@ -12761,19 +13669,19 @@ class MainActivity : AppCompatActivity() {
                         localText("成长中", "In Progress", "En progression", "กำลังพัฒนา")
                     },
                 ).apply {
-                    setTextColor(Color.parseColor(if (unlocked) palette.stroke else "#B88A54"))
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.parseColor(if (unlocked) palette.stroke else "#7FA0A3"))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                    setPadding(0, dp(4), 0, 0)
+                    setPadding(0, dp(5), 0, 0)
                 },
             )
-            topRow.addView(medal)
-            topRow.addView(titleColumn)
+            addView(medal)
 
             val progressBar =
                 LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.HORIZONTAL
                     minimumHeight = dp(8)
-                    background = roundedBackground("#0F1C27", "#1B3446", 999)
+                    background = roundedBackground("#E7F5F1", "#D6ECE8", 999)
                     layoutParams =
                         LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -12814,11 +13722,10 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 }
-            addView(topRow)
             addView(progressBar)
             addView(
                 bodyText(achievementProgressText(item)).apply {
-                    setTextColor(if (unlocked) Color.parseColor(accentColor) else Color.parseColor("#CAA26A"))
+                    setTextColor(if (unlocked) Color.parseColor(accentColor) else Color.parseColor("#557A7D"))
                     setPadding(0, dp(8), 0, 0)
                 },
             )
@@ -12844,15 +13751,10 @@ class MainActivity : AppCompatActivity() {
                     topMargin = if (elevated) 0 else dp(18)
                 }
             addView(
-                detailCard(fillColor = "#0D1924", strokeColor = accentColor, cornerDp = 24).apply {
+                detailCard(fillColor = "#FFFFFF", strokeColor = accentColor, cornerDp = 24).apply {
                     background =
-                        metallicBackground(
-                            when (entry.rank) {
-                                1 -> "#4A3A16"
-                                2 -> "#35414B"
-                                else -> "#4B3428"
-                            },
-                            "#0D1924",
+                        roundedBackground(
+                            podiumFillForRank(entry.rank),
                             accentColor,
                             24,
                         )
@@ -12861,20 +13763,10 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         TextView(this@MainActivity).apply {
                             text = "TOP ${entry.rank}"
-                            setTextColor(Color.parseColor("#140800"))
+                            setTextColor(Color.parseColor(podiumChipTextForRank(entry.rank)))
                             setTypeface(Typeface.DEFAULT_BOLD)
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                            background =
-                                metallicBackground(
-                                    when (entry.rank) {
-                                        1 -> "#FFE7A1"
-                                        2 -> "#E3EBF1"
-                                        else -> "#F1C19A"
-                                    },
-                                    accentColor,
-                                    "#FFF5DA",
-                                    999,
-                                )
+                            background = roundedBackground(accentColor, accentColor, 999)
                             setPadding(dp(12), dp(6), dp(12), dp(6))
                         },
                     )
@@ -12891,14 +13783,14 @@ class MainActivity : AppCompatActivity() {
                         titleText(entry.nickname, if (elevated) 20f else 18f).apply {
                             gravity = Gravity.CENTER
                             setPadding(0, dp(8), 0, 0)
-                            setTextColor(Color.parseColor("#FFF8E8"))
+                            setTextColor(Color.parseColor("#17343B"))
                         },
                     )
                     addView(
                         badgeText(
                             text = tierLabelForKey(entry.tierKey),
-                            textColor = "#FFF5E6",
-                            fillColor = "#17384B",
+                            textColor = "#096D65",
+                            fillColor = "#DFFFF7",
                         ).apply {
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                             setPadding(dp(10), dp(5), dp(10), dp(5))
@@ -12916,7 +13808,7 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         bodyText(leaderboardSecondaryValueText(entry)).apply {
                             gravity = Gravity.CENTER
-                            setTextColor(Color.parseColor("#C9A46A"))
+                            setTextColor(Color.parseColor("#557A7D"))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                             setPadding(0, dp(8), 0, 0)
                         },
@@ -12936,38 +13828,29 @@ class MainActivity : AppCompatActivity() {
                         ).apply {
                             topMargin = dp(10)
                         }
-                    background = metallicBackground("#2A4B5E", accentColor, accentColor, 18)
+                    background = roundedBackground(accentColor, accentColor, 18)
                 },
             )
         }
 
     private fun leaderboardRowCardPremium(entry: CloudLeaderboardEntry): LinearLayout {
         val accentColor = leaderboardAccentColor(leaderboardBoard)
-        val card = detailCard(fillColor = "#0C1822", strokeColor = "#27485B", cornerDp = 20)
-        card.background = metallicBackground("#162733", "#0B1720", "#244458", 20)
+        val card = detailCard(fillColor = "#FFFFFF", strokeColor = "#CDEFE8", cornerDp = 20)
+        card.background = roundedBackground("#FFFFFF", "#D7F0EA", 20)
         val row =
             LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-        val accentBar =
-            View(this).apply {
-                layoutParams =
-                    LinearLayout.LayoutParams(dp(6), dp(54)).apply {
-                        rightMargin = dp(12)
-                    }
-                background = metallicBackground(accentColor, "#17384B", accentColor, 999)
-            }
         val rankView =
             bodyText(rankLabel(entry.rank)).apply {
+                gravity = Gravity.CENTER
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.parseColor(accentColor))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                setTextColor(Color.WHITE)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                background = roundedBackground(accentColor, accentColor, 999)
                 layoutParams =
-                    LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ).apply {
+                    LinearLayout.LayoutParams(dp(42), dp(42)).apply {
                         rightMargin = dp(12)
                     }
             }
@@ -12984,12 +13867,12 @@ class MainActivity : AppCompatActivity() {
         content.addView(
             bodyText(entry.nickname).apply {
                 setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.parseColor("#FFF5E6"))
+                setTextColor(Color.parseColor("#17343B"))
             },
         )
         content.addView(
             bodyText("${leaderboardPrimaryValueText(entry)} | ${leaderboardSecondaryValueText(entry)}").apply {
-                setTextColor(Color.parseColor("#B88A54"))
+                setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, dp(4), 0, 0)
             },
@@ -12998,20 +13881,26 @@ class MainActivity : AppCompatActivity() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.END
+                layoutParams =
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ).apply {
+                        leftMargin = dp(10)
+                    }
             }
         sideColumn.addView(
-            badgeText(tierLabelForKey(entry.tierKey), textColor = "#FFF0C9", fillColor = leaderboardAccentFill(leaderboardBoard)).apply {
+            badgeText(tierLabelForKey(entry.tierKey), textColor = "#096D65", fillColor = "#DFFFF7").apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                 setPadding(dp(8), dp(4), dp(8), dp(4))
             },
         )
         sideColumn.addView(
-            badgeText(entry.serialMasked, textColor = "#FFF0C9", fillColor = "#132635").apply {
+            badgeText(entry.serialMasked, textColor = "#557A7D", fillColor = "#F0F8F6").apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 (layoutParams as? LinearLayout.LayoutParams)?.topMargin = dp(6)
             },
         )
-        row.addView(accentBar)
         row.addView(rankView)
         row.addView(content)
         row.addView(sideColumn)
@@ -13054,7 +13943,7 @@ class MainActivity : AppCompatActivity() {
     ): TextView =
         TextView(this).apply {
             this.text = text
-            setTextColor(Color.parseColor(selectedPalette.textPrimary))
+            setTextColor(Color.parseColor("#17343B"))
             gravity = Gravity.CENTER_HORIZONTAL
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
@@ -13064,7 +13953,7 @@ class MainActivity : AppCompatActivity() {
     private fun sectionTitle(text: String): TextView =
         bodyText(text).apply {
             setTypeface(Typeface.DEFAULT_BOLD)
-            setTextColor(Color.parseColor(selectedPalette.textPrimary))
+            setTextColor(Color.parseColor("#17343B"))
             setPadding(0, dp(10), 0, dp(8))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 21f)
             letterSpacing = 0.01f
@@ -13072,7 +13961,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun sectionSubtitle(text: String): TextView =
         bodyText(text).apply {
-            setTextColor(Color.parseColor(selectedPalette.textMuted))
+            setTextColor(Color.parseColor("#557A7D"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
             setPadding(0, 0, 0, dp(12))
         }
@@ -13080,7 +13969,7 @@ class MainActivity : AppCompatActivity() {
     private fun sectionLabel(text: String): TextView =
         bodyText(text).apply {
             setTypeface(Typeface.DEFAULT_BOLD)
-            setTextColor(Color.parseColor(selectedPalette.textPrimary))
+            setTextColor(Color.parseColor("#17343B"))
             setPadding(0, 0, 0, dp(6))
         }
 
@@ -13102,7 +13991,7 @@ class MainActivity : AppCompatActivity() {
     private fun bodyText(text: String): TextView =
         TextView(this).apply {
             this.text = text
-            setTextColor(Color.parseColor(selectedPalette.textSecondary))
+            setTextColor(Color.parseColor("#557A7D"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f)
             setLineSpacing(0f, 1.18f)
         }
@@ -13117,16 +14006,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun surfaceCardBackground(): GradientDrawable =
         GradientDrawable().apply {
-            val palette = selectedPalette
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dp(24).toFloat()
-            colors =
-                intArrayOf(
-                    Color.parseColor(palette.surfaceTop),
-                    Color.parseColor(palette.surfaceBottom),
-                )
-            orientation = GradientDrawable.Orientation.TOP_BOTTOM
-            setStroke(dp(1), Color.parseColor(palette.stroke))
+            setColor(Color.parseColor("#FFFFFF"))
+            setStroke(dp(1), Color.parseColor("#CDEFE8"))
         }
 
     private fun chipBackground(accentColor: Int): GradientDrawable =
@@ -13165,7 +14048,10 @@ class MainActivity : AppCompatActivity() {
     ): Button =
         Button(this).apply {
             this.text = text
-            setTextColor(Color.parseColor(if (color.equals(selectedPalette.button, ignoreCase = true) || color.equals(selectedPalette.accentSoft, ignoreCase = true)) selectedPalette.buttonText else selectedPalette.textPrimary))
+            val useLightText =
+                listOf("#10BDAA", "#16C8B5", "#FF8A32", "#E07010", selectedPalette.button, selectedPalette.accentSoft)
+                    .any { color.equals(it, ignoreCase = true) }
+            setTextColor(Color.parseColor(if (useLightText) "#FFFFFF" else "#17343B"))
             background = roundedBackground(color, selectedPalette.textSecondary, 20)
             setTypeface(Typeface.DEFAULT_BOLD)
             minWidth = 0
