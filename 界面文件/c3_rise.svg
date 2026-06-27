@@ -1,0 +1,50 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#37DDC8"/>
+      <stop offset="0.6" stop-color="#15B6A1"/>
+      <stop offset="1" stop-color="#0A8C7B"/>
+    </linearGradient>
+    <radialGradient id="glow3" cx="0.5" cy="0.4" r="0.72">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="strk3" x1="0" y1="1" x2="0.2" y2="0">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EAFBF6"/>
+    </linearGradient>
+    <linearGradient id="bTop3" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#8060DC"/><stop offset="1" stop-color="#6243C4"/>
+    </linearGradient>
+    <linearGradient id="bBot3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#36CCE6"/><stop offset="1" stop-color="#1C97CC"/>
+    </linearGradient>
+    <clipPath id="bc3"><circle cx="512" cy="248" r="80"/></clipPath>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg3)"/>
+  <rect width="1024" height="1024" fill="url(#glow3)"/>
+
+  <!-- impact spark at base -->
+  <g stroke="#FFFFFF" stroke-opacity="0.32" stroke-width="22" stroke-linecap="round">
+    <line x1="392" y1="760" x2="330" y2="820"/>
+    <line x1="512" y1="788" x2="512" y2="868"/>
+    <line x1="632" y1="760" x2="694" y2="820"/>
+  </g>
+
+  <!-- rising strike: echo + main chevron -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M348 700 L512 556 L676 700" stroke="url(#strk3)" stroke-opacity="0.40" stroke-width="74"/>
+    <path d="M320 560 L512 392 L704 560" stroke="url(#strk3)" stroke-width="88"/>
+  </g>
+
+  <!-- ball lifting off (echoes speed ball) -->
+  <g>
+    <circle cx="512" cy="248" r="80" fill="url(#bBot3)"/>
+    <g clip-path="url(#bc3)">
+      <rect x="432" y="168" width="160" height="78" fill="url(#bTop3)"/>
+      <rect x="432" y="240" width="160" height="20" fill="#FBF3E1"/>
+      <ellipse cx="486" cy="214" rx="24" ry="32" fill="#FFFFFF" opacity="0.22"/>
+    </g>
+  </g>
+</svg>
