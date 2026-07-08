@@ -1,5 +1,6 @@
 ﻿package com.zclei.hitrise.auth
 
+import com.zclei.hitrise.BuildConfig
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -134,7 +135,7 @@ class ActivationService(
     }
 
     companion object {
-        const val DEFAULT_BASE_URL = "http://152.136.62.157/hitrise"
+        val DEFAULT_BASE_URL: String = BuildConfig.HITRISE_API_BASE_URL
         const val NETWORK_REASON = "network_error"
         private const val CONNECT_TIMEOUT_MS = 6_000
         private const val READ_TIMEOUT_MS = 8_000

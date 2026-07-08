@@ -16,6 +16,7 @@ hitrise-server/.auth-deploy-venv/
 # Runtime secrets and deployment snapshots
 hitrise-deploy/runtime/
 hitrise-deploy/apk/
+server/
 *.env
 !*.env.example
 *.sql.gz
@@ -29,6 +30,16 @@ hitrise-deploy/*.log
 hitrise-deploy/icon/
 hitrise-deploy/verify_language/
 hitrise-deploy/verify_language_current/
+hitrise-deploy/compatibility/
+hitrise-deploy/design/
+hitrise-deploy/icon_preview/
+hitrise-deploy/migration/
+hitrise-deploy/preview_audio/
+hitrise-deploy/test/
+hitrise-deploy/tmp_palette_icons/
+hitrise-docs/rendered_user_manual/
+hitrise-docs/ui-previews/
+20260610/
 
 # Keep legacy reference copies out of the Hitrise repository
 smartsensorball/

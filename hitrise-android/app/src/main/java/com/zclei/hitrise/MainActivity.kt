@@ -53,7 +53,6 @@ import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.Toast
-import android.widget.VideoView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -63,6 +62,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.zclei.hitrise.auth.ActivationApiResult
@@ -413,7 +414,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var batteryHeaderView: TextView
     private lateinit var splashOverlay: FrameLayout
     private lateinit var splashBrandCard: LinearLayout
-    private lateinit var splashVideoView: VideoView
     private lateinit var quietIconView: ImageView
     private lateinit var modeGroup: RadioGroup
     private lateinit var mode30Button: RadioButton
@@ -698,12 +698,6 @@ class MainActivity : AppCompatActivity() {
         cloudSoundEffectsLoadingJob?.cancel()
         cloudBackgroundMusicLoadingJob?.cancel()
         sensorBallBluetooth.close()
-        if (::splashVideoView.isInitialized) {
-            try {
-                splashVideoView.stopPlayback()
-            } catch (_: Throwable) {
-            }
-        }
         tts?.stop()
         tts?.shutdown()
         stopImmersiveTrainingAudio()
@@ -736,6 +730,7 @@ class MainActivity : AppCompatActivity() {
                     )
             }
         contentRootView = contentRoot
+        applySystemBarInsets(root, contentRoot)
         val topContainer =
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -1731,6 +1726,18 @@ class MainActivity : AppCompatActivity() {
         return root
     }
 
+    private fun applySystemBarInsets(
+        root: View,
+        contentRoot: View,
+    ) {
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            contentRoot.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
+    }
+
     private fun buildLaunchSplashOverlay(): FrameLayout =
         FrameLayout(this).apply {
             layoutParams =
@@ -1743,8 +1750,11 @@ class MainActivity : AppCompatActivity() {
             isFocusable = true
             alpha = 1f
 
-            splashVideoView =
-                VideoView(this@MainActivity).apply {
+            val splashHeroImage =
+                ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.home_banner)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    alpha = 0.36f
                     layoutParams =
                         FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1834,37 +1844,26 @@ class MainActivity : AppCompatActivity() {
                         GradientDrawable(
                             GradientDrawable.Orientation.TOP_BOTTOM,
                             intArrayOf(
-                                Color.parseColor("#FFF6E2FF"),
-                                Color.parseColor("#FFD88AFF"),
+                                Color.parseColor("#FFFFFFFF"),
+                                Color.parseColor("#FFF7FBFF"),
                             ),
                         ).apply {
                             shape = GradientDrawable.RECTANGLE
                             cornerRadius = dp(32).toFloat()
-                            setStroke(dp(1), Color.parseColor("#E8FBFFFF"))
+                            setStroke(dp(1), Color.parseColor("#BFEFF7F3"))
                         }
                     elevation = dp(8).toFloat()
-                    setPadding(dp(24), dp(20), dp(24), dp(18))
+                    setPadding(dp(18), dp(18), dp(18), dp(18))
                     addView(
                         ImageView(this@MainActivity).apply {
-                            setImageResource(R.drawable.glowpeak_logo_mark)
+                            setImageResource(R.drawable.wavemill_logo)
                             adjustViewBounds = true
                             scaleType = ImageView.ScaleType.FIT_CENTER
                             layoutParams =
                                 LinearLayout.LayoutParams(
-                                    dp(220),
+                                    dp(300),
                                     ViewGroup.LayoutParams.WRAP_CONTENT,
                                 )
-                        },
-                    )
-                    addView(
-                        TextView(this@MainActivity).apply {
-                            text = "GLOWPEAK"
-                            gravity = Gravity.CENTER
-                            setTypeface(Typeface.DEFAULT_BOLD)
-                            setTextColor(Color.parseColor("#2D1400"))
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                            letterSpacing = 0.08f
-                            setPadding(0, dp(10), 0, 0)
                         },
                     )
                 }
@@ -1887,7 +1886,7 @@ class MainActivity : AppCompatActivity() {
             brandingColumn.addView(brandTitle)
             brandingColumn.addView(brandSubtitle)
 
-            addView(splashVideoView)
+            addView(splashHeroImage)
             addView(topScrim)
             addView(bottomScrim)
             addView(brandingColumn)
@@ -1898,7 +1897,7 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun startLaunchSplash() {
-        if (!::splashOverlay.isInitialized || !::splashVideoView.isInitialized) {
+        if (!::splashOverlay.isInitialized) {
             return
         }
         splashDismissed = false
@@ -1930,27 +1929,11 @@ class MainActivity : AppCompatActivity() {
                 }
                 .start()
         }
-        val splashUri = Uri.parse("android.resource://$packageName/${R.raw.app_launch_intro}")
-        splashVideoView.setOnPreparedListener { mediaPlayer ->
-            try {
-                mediaPlayer.isLooping = false
-                mediaPlayer.setVolume(0f, 0f)
-                mediaPlayer.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
-            } catch (_: Throwable) {
-            }
-            splashVideoView.start()
-        }
-        splashVideoView.setOnCompletionListener { dismissLaunchSplash() }
-        splashVideoView.setOnErrorListener { _, _, _ ->
-            dismissLaunchSplash()
-            true
-        }
-        splashVideoView.setVideoURI(splashUri)
         splashOverlay.postDelayed({
             if (!splashDismissed) {
                 dismissLaunchSplash()
             }
-        }, 8000L)
+        }, 2200L)
     }
 
     private fun dismissLaunchSplash() {
@@ -1958,12 +1941,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
         splashDismissed = true
-        try {
-            if (::splashVideoView.isInitialized) {
-                splashVideoView.stopPlayback()
-            }
-        } catch (_: Throwable) {
-        }
         if (::contentRootView.isInitialized) {
             contentRootView.alpha = 0.94f
             contentRootView.translationY = dp(10).toFloat()
@@ -14136,7 +14113,7 @@ class MainActivity : AppCompatActivity() {
         const val BACKGROUND_MUSIC_NONE_ID = "htr_music_none"
         const val LEGACY_AUTO_BACKGROUND_MUSIC_ID = "htr_music_champion_rush"
         const val REST_BACKGROUND_MUSIC_ID = "htr_music_rest_relax"
-        const val REST_BACKGROUND_MUSIC_URL = "asset://music/00_htr_music_rest_relax.mp3"
+        const val REST_BACKGROUND_MUSIC_URL = "asset://music/00_htr_music_rest_relax.wav"
         const val KEY_LAST_BLUETOOTH_NAME = "last_bluetooth_name"
         const val KEY_LAST_BLUETOOTH_ADDRESS = "last_bluetooth_address"
         const val KEY_LAST_BLUETOOTH_TRANSPORT = "last_bluetooth_transport"

@@ -1,0 +1,11 @@
+.venv
+.auth-deploy-venv
+__pycache__
+*.pyc
+.pytest_cache
+deploy
+scripts
+tools
+sql
+*.tar.gz
+*.zip

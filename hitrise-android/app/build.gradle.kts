@@ -13,6 +13,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+        buildConfigField(
+            "String",
+            "HITRISE_API_BASE_URL",
+            "\"https://hitrise.86086.cn/hitrise\"",
+        )
     }
 
     buildTypes {
