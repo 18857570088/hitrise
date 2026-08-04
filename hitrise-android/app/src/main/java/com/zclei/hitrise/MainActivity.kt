@@ -548,6 +548,9 @@ class MainActivity : AppCompatActivity() {
                         saveLastBluetoothDevice(device)
                         bluetoothBatteryText = localText("读取中", "Reading", "Lecture", "กำลังอ่าน")
                         bluetoothBatteryRaw = null
+                        bluetoothChargingFlagRaw = null
+                        deferredTrainingBatteryRaw = null
+                        deferredTrainingChargingFlagRaw = null
                         bluetoothHitCount = 0
                         bluetoothPeakText = "--"
                         bluetoothRealHitCount = 0
@@ -582,6 +585,9 @@ class MainActivity : AppCompatActivity() {
                         bluetoothDevices.clear()
                         bluetoothBatteryText = "--"
                         bluetoothBatteryRaw = null
+                        bluetoothChargingFlagRaw = null
+                        deferredTrainingBatteryRaw = null
+                        deferredTrainingChargingFlagRaw = null
                         pendingBluetoothGyroHitTimes.clear()
                         bluetoothAutoConnectInProgress = false
                         bluetoothStatusMessage =
@@ -599,12 +605,17 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         var forceSettingsRefresh = false
                         telemetry.batteryRaw.takeIf { it in 0..102 }?.let { batteryRaw ->
+                            val chargingFlagRaw = telemetry.chargingFlagRaw.takeIf { it in 0..1 }
                             if (trainingJob?.isActive == true) {
                                 deferredTrainingBatteryRaw = batteryRaw
+                                deferredTrainingChargingFlagRaw = chargingFlagRaw
                             } else {
-                                forceSettingsRefresh = bluetoothBatteryRaw != batteryRaw
+                                forceSettingsRefresh =
+                                    bluetoothBatteryRaw != batteryRaw ||
+                                        bluetoothChargingFlagRaw != chargingFlagRaw
                                 bluetoothBatteryRaw = batteryRaw
-                                bluetoothBatteryText = bluetoothBatteryDisplayText(batteryRaw)
+                                bluetoothChargingFlagRaw = chargingFlagRaw
+                                bluetoothBatteryText = bluetoothBatteryDisplayText(batteryRaw, chargingFlagRaw)
                             }
                         }
                         bluetoothPeakText = telemetry.forceN.toString()
@@ -622,7 +633,9 @@ class MainActivity : AppCompatActivity() {
     private var bluetoothStatusMessage: String = bluetoothDisconnectedText()
     private var bluetoothBatteryText: String = "--"
     private var bluetoothBatteryRaw: Int? = null
+    private var bluetoothChargingFlagRaw: Int? = null
     private var deferredTrainingBatteryRaw: Int? = null
+    private var deferredTrainingChargingFlagRaw: Int? = null
     private var bluetoothHitCount: Int? = null
     private var bluetoothPeakText: String = "--"
     private var bluetoothRealHitCount: Int = 0
@@ -9302,9 +9315,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyDeferredTrainingBatteryStatus() {
         val batteryRaw = deferredTrainingBatteryRaw ?: return
+        val chargingFlagRaw = deferredTrainingChargingFlagRaw
         deferredTrainingBatteryRaw = null
+        deferredTrainingChargingFlagRaw = null
         bluetoothBatteryRaw = batteryRaw
-        bluetoothBatteryText = bluetoothBatteryDisplayText(batteryRaw)
+        bluetoothChargingFlagRaw = chargingFlagRaw
+        bluetoothBatteryText = bluetoothBatteryDisplayText(batteryRaw, chargingFlagRaw)
     }
 
     private fun updateBluetoothSettingsViews() {
@@ -9423,13 +9439,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun currentBluetoothBatteryText(): String =
-        bluetoothBatteryRaw?.let(::bluetoothBatteryDisplayText) ?: bluetoothBatteryText
+        bluetoothBatteryRaw?.let { bluetoothBatteryDisplayText(it, bluetoothChargingFlagRaw) } ?: bluetoothBatteryText
 
-    private fun bluetoothBatteryDisplayText(raw: Int): String =
-        when (raw) {
-            101 -> localText("充电", "Charging", "En charge", "กำลังชาร์จ")
-            102 -> localText("充满", "Full", "Chargée", "เต็มแล้ว")
-            in 0..100 -> "$raw%"
+    private fun bluetoothBatteryDisplayText(raw: Int, chargingFlagRaw: Int? = bluetoothChargingFlagRaw): String =
+        when {
+            raw == 101 -> localText("充电", "Charging", "En charge", "กำลังชาร์จ")
+            raw == 102 -> localText("充满", "Full", "Chargée", "เต็มแล้ว")
+            raw in 0..100 && chargingFlagRaw == 1 ->
+                localText("充电 $raw%", "Charging $raw%", "En charge $raw%", "กำลังชาร์จ $raw%")
+            raw in 0..100 -> "$raw%"
             else -> "--"
         }
 

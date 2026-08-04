@@ -45,8 +45,8 @@ enum class SensorBallTransport {
 data class SensorBallTelemetry(
     val packetIndex: Int,
     val batteryRaw: Int,
+    val chargingFlagRaw: Int,
     val hitCount: Int,
-    val pressureHitCount: Int,
     val gyroForceRaw: Int,
     val pressureForceRaw: Int,
     val forceLow: Int,
@@ -57,10 +57,11 @@ data class SensorBallTelemetry(
         get() = forceN
 
     val batteryText: String =
-        when (batteryRaw) {
-            101 -> "充电"
-            102 -> "充满"
-            in 0..100 -> "$batteryRaw%"
+        when {
+            batteryRaw == 101 -> "充电"
+            batteryRaw == 102 -> "充满"
+            batteryRaw in 0..100 && chargingFlagRaw == 1 -> "充电 $batteryRaw%"
+            batteryRaw in 0..100 -> "$batteryRaw%"
             else -> "--"
         }
 }
@@ -815,8 +816,8 @@ class SensorBallBluetoothManager(
             SensorBallTelemetry(
                 packetIndex = value[index + 3].toInt() and 0xFF,
                 batteryRaw = value[index + 4].toInt() and 0xFF,
+                chargingFlagRaw = value[index + 6].toInt() and 0xFF,
                 hitCount = value[index + 5].toInt() and 0xFF,
-                pressureHitCount = value[index + 6].toInt() and 0xFF,
                 gyroForceRaw = gyroForceRaw,
                 pressureForceRaw = pressureForceRaw,
                 forceLow = forceLow,
@@ -825,7 +826,7 @@ class SensorBallBluetoothManager(
             )
         Log.d(
             TAG,
-            "telemetry packet=${telemetry.packetIndex} battery=${telemetry.batteryRaw} data2=${telemetry.hitCount} data3=${telemetry.pressureHitCount} data4=$gyroForceRaw data5=$pressureForceRaw data6=$forceLow data7=$forceHigh rawForceN=$rawForceN forceN=$forceN",
+            "telemetry packet=${telemetry.packetIndex} data1Battery=${telemetry.batteryRaw} data2=${telemetry.hitCount} data3Charging=${telemetry.chargingFlagRaw} data4=$gyroForceRaw data5=$pressureForceRaw data6=$forceLow data7=$forceHigh rawForceN=$rawForceN forceN=$forceN",
         )
         return telemetry
     }
