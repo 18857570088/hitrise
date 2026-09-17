@@ -10,9 +10,9 @@ This Privacy Policy explains how we collect, use, store, protect, and process in
 2. Information We Collect and Use
 Device profile and local identity. The app may generate a local user identifier, sync code, device summary, and local activation status to support cloud sync, profile features, achievements, and leaderboards. You may set a nickname, avatar, region code, and app language.
 
-Bluetooth device information. To connect the boxing device, the app uses Bluetooth scanning, connection, and communication features. We process Bluetooth device name, device address, connection status, battery level, charging status, punch count, force data, and Bluetooth status messages. The scan filters SENBALL# devices.
+Bluetooth device information. To connect the boxing device, the app uses Bluetooth scanning, connection, and communication features. We process Bluetooth device name, device address, connection status, battery level, charging status, punch count, Relative Power Score data, and Bluetooth status messages. The scan filters SENBALL# devices.
 
-Training and exercise data. During training, the app records rounds, duration, total punches, round punches, peak punch force, average punch force, BPM, calorie estimates, fat-burn estimates, combo performance, play mode, beat settings, selected sound effect, and selected background music.
+Training and exercise data. During training, the app records rounds, duration, total punches, round punches, peak and average Relative Power Score, BPM, calorie estimates, fat-burn estimates, combo performance, play mode, beat settings, selected sound effect, and selected background music.
 
 Achievements, leaderboards, and profile data. To provide badges, tiers, training history, leaderboards, and personal statistics, we process training summaries, best results, cumulative totals, active days, ranking metrics, and recent training records. Leaderboards may show your nickname, avatar, region, tier, and scores.
 
@@ -29,7 +29,7 @@ Vibration and audio capabilities are used for training feedback, beats, sound ef
 
 4. How We Use Information
 We use information to:
-1. complete Bluetooth connection, punch counting, force display, and battery display;
+1. complete Bluetooth connection, punch counting, Relative Power Score display, and battery display;
 2. generate training reports, round statistics, calories, and fat-burn estimates;
 3. provide achievements, tiers, leaderboards, and profile features;
 4. sync cloud training records and keep history across sessions;
@@ -56,7 +56,8 @@ You can view training records, achievements, leaderboards, and profile informati
 Minors should use HitRise under the guidance of a parent or guardian. Guardians should help minors understand training safety, personal information protection, and appropriate exercise intensity.
 
 10. Exercise and Health Notice
-Punch count, force, calories, and fat-burn values provided by HitRise are exercise feedback and estimates. They are not medical, nutrition, rehabilitation, or professional competition judgments. If you have a medical condition, injury, or discomfort, consult a qualified professional.
+Relative Power Score uses the raw value reported by the hardware without a 0.6 multiplier. It has not been calibrated with a standard force-measurement device, has no physical unit, and does not represent kg, kgf, or N. It is intended only for relative trends under comparable conditions, not absolute or cross-device force comparisons.
+Punch count, Relative Power Score, calories, and fat-burn values provided by HitRise are exercise feedback and estimates. They are not medical, nutrition, rehabilitation, or professional competition judgments. If you have a medical condition, injury, or discomfort, consult a qualified professional.
 
 11. Updates
 We may update this Privacy Policy due to product changes, legal requirements, or operational needs. Important changes may be notified through in-app prompts, release notes, or other reasonable methods. Continued use of HitRise means you understand the updated policy.

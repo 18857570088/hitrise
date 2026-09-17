@@ -10,7 +10,7 @@ By downloading, installing, opening, or using HitRise, you confirm that you have
 2. Product and Services
 HitRise provides features including:
 1. scanning and connecting SENBALL# Bluetooth devices;
-2. reading punch count, battery, charging status, and force data;
+2. reading punch count, battery, charging status, and Relative Power Score data;
 3. real-time training dashboard, round training, rhythm training, and training settings;
 4. training reports, round summaries, calorie estimates, and fat-burn estimates;
 5. achievements, badges, tiers, leaderboards, and profile features;
@@ -24,7 +24,9 @@ Use HitRise in a safe, open, and suitable exercise environment. Before training,
 If you experience illness, injury, fatigue, dizziness, chest discomfort, or any other discomfort, stop training immediately and seek professional advice if needed. Minors should use the app under the guidance of a parent or guardian.
 
 4. Bluetooth and Training Data
-The app receives SENBALL# device data through Bluetooth and displays punch count, force, battery, and round statistics. Data may vary due to device status, sensor tolerance, Bluetooth signal, usage posture, and environment.
+The app receives SENBALL# device data through Bluetooth and displays punch count, Relative Power Score, battery, and round statistics. Data may vary due to device status, sensor tolerance, Bluetooth signal, usage posture, and environment.
+
+Relative Power Score uses the raw value reported by the hardware without a 0.6 multiplier. It has not been calibrated with a standard force-measurement device, has no physical unit, and does not represent kg, kgf, or N. It is intended only for relative trends under comparable conditions, not absolute or cross-device force comparisons.
 
 HitRise training data is used for exercise feedback, statistics, achievements, and leaderboards. It should not be used as medical diagnosis, rehabilitation assessment, nutrition advice, or official competition judging.
 

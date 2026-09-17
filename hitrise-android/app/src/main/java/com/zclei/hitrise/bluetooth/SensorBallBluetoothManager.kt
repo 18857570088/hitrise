@@ -24,7 +24,6 @@ import android.util.Log
 import java.io.IOException
 import java.util.UUID
 import kotlin.concurrent.thread
-import kotlin.math.roundToInt
 
 data class SensorBallDevice(
     val name: String,
@@ -51,10 +50,11 @@ data class SensorBallTelemetry(
     val pressureForceRaw: Int,
     val forceLow: Int,
     val forceHigh: Int,
-    val forceN: Int,
+    /** Unitless raw value reported by the device; not a calibrated physical force. */
+    val relativePowerScore: Int,
 ) {
     val peak: Int
-        get() = forceN
+        get() = relativePowerScore
 
     val batteryText: String =
         when {
@@ -809,9 +809,9 @@ class SensorBallBluetoothManager(
         val pressureForceRaw = value[index + 8].toInt() and 0xFF
         val forceLow = value[index + 9].toInt() and 0xFF
         val forceHigh = value[index + 10].toInt() and 0xFF
-        val protocolForceN = readUInt16LittleEndian(value, index + 9)
-        val rawForceN = if (protocolForceN > 0) protocolForceN else maxOf(gyroForceRaw, pressureForceRaw)
-        val forceN = (rawForceN * SENSOR_FORCE_SCALE).roundToInt()
+        val protocolPowerScore = readUInt16LittleEndian(value, index + 9)
+        val relativePowerScore =
+            if (protocolPowerScore > 0) protocolPowerScore else maxOf(gyroForceRaw, pressureForceRaw)
         val telemetry =
             SensorBallTelemetry(
                 packetIndex = value[index + 3].toInt() and 0xFF,
@@ -822,11 +822,11 @@ class SensorBallBluetoothManager(
                 pressureForceRaw = pressureForceRaw,
                 forceLow = forceLow,
                 forceHigh = forceHigh,
-                forceN = forceN,
+                relativePowerScore = relativePowerScore,
             )
         Log.d(
             TAG,
-            "telemetry packet=${telemetry.packetIndex} data1Battery=${telemetry.batteryRaw} data2=${telemetry.hitCount} data3Charging=${telemetry.chargingFlagRaw} data4=$gyroForceRaw data5=$pressureForceRaw data6=$forceLow data7=$forceHigh rawForceN=$rawForceN forceN=$forceN",
+            "telemetry packet=${telemetry.packetIndex} data1Battery=${telemetry.batteryRaw} data2=${telemetry.hitCount} data3Charging=${telemetry.chargingFlagRaw} data4=$gyroForceRaw data5=$pressureForceRaw data6=$forceLow data7=$forceHigh relativePowerScore=$relativePowerScore",
         )
         return telemetry
     }
@@ -1039,7 +1039,6 @@ class SensorBallBluetoothManager(
         const val TAG = "SensorBallBT"
         const val DEVICE_PREFIX = "SENBALL#"
         const val TELEMETRY_PACKET_SIZE = 11
-        const val SENSOR_FORCE_SCALE = 0.6f
         const val BLE_SERVICE_DISCOVERY_DELAY_MS = 350L
         const val BLE_WRITE_CALLBACK_TIMEOUT_MS = 900L
         val DEVICE_NAME_REGEX = Regex("SENBALL#[A-Za-z0-9_-]*[A-Za-z]", RegexOption.IGNORE_CASE)

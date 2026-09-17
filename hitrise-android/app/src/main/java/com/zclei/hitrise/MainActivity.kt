@@ -618,7 +618,7 @@ class MainActivity : AppCompatActivity() {
                                 bluetoothBatteryText = bluetoothBatteryDisplayText(batteryRaw, chargingFlagRaw)
                             }
                         }
-                        bluetoothPeakText = telemetry.forceN.toString()
+                        bluetoothPeakText = telemetry.relativePowerScore.toString()
                         updateBluetoothGyroHitCount(telemetry.hitCount)
                         bluetoothStatusMessage = bluetoothPacketReceivedText(telemetry.packetIndex)
                         updateBluetoothSettingsViewsFromTelemetry(force = forceSettingsRefresh)
@@ -2905,7 +2905,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun forceDisplay(value: Float): String =
-        if (value > 0f) "${value.roundToInt()} N" else "-- N"
+        if (value > 0f) value.roundToInt().toString() else "--"
 
     private fun roundReportBadgeText(report: TrainingReport): String =
         if (report.totalRounds > 1) {
@@ -2941,7 +2941,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun trainingBattleReportForceLine(report: TrainingReport): String =
         localText(
-            "最大力度 ${forceDisplay(report.peakForceN)} | 平均力度 ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
+            "最高评分 ${forceDisplay(report.peakForceN)} | 平均评分 ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
             "Peak ${forceDisplay(report.peakForceN)} | Avg ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
             "Max ${forceDisplay(report.peakForceN)} | Moy. ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
             "สูงสุด ${forceDisplay(report.peakForceN)} | เฉลี่ย ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
@@ -2957,7 +2957,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun trainingStatsForceBurnLine(stats: CloudUserStatistics): String =
         localText(
-            "最大力度 ${forceDisplay(stats.bestPeakForceN)} | 最佳平均力度 ${forceDisplay(stats.bestAvgForceN)} | 累计等效燃脂 ${formatFatGrams(stats.totalFatBurnedGrams)}",
+            "最高评分 ${forceDisplay(stats.bestPeakForceN)} | 最佳平均评分 ${forceDisplay(stats.bestAvgForceN)} | 累计等效燃脂 ${formatFatGrams(stats.totalFatBurnedGrams)}",
             "Peak ${forceDisplay(stats.bestPeakForceN)} | Best avg ${forceDisplay(stats.bestAvgForceN)} | Fat ${formatFatGrams(stats.totalFatBurnedGrams)}",
             "Max ${forceDisplay(stats.bestPeakForceN)} | Moy. max ${forceDisplay(stats.bestAvgForceN)} | Graisse ${formatFatGrams(stats.totalFatBurnedGrams)}",
             "สูงสุด ${forceDisplay(stats.bestPeakForceN)} | เฉลี่ยดีที่สุด ${forceDisplay(stats.bestAvgForceN)} | ไขมันเทียบเท่า ${formatFatGrams(stats.totalFatBurnedGrams)}",
@@ -2965,10 +2965,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun trainingReportLeaderboardLine(): String =
         localText(
-            "锻炼成果与榜单按：时间、拳数、最大力度、平均力度、卡路里、等效燃脂量同步统计",
-            "Badges and leaderboards track duration, punches, peak force, average force, calories, and equivalent fat burn.",
-            "Badges et classements suivent durée, coups, force max, force moyenne, calories et graisse équivalente.",
-            "เหรียญและอันดับนับเวลา หมัด แรงสูงสุด แรงเฉลี่ย แคลอรี และไขมันเทียบเท่า",
+            "锻炼成果与榜单按：时间、拳数、最高评分、平均评分、卡路里、等效燃脂量同步统计",
+            "Badges and leaderboards track duration, punches, peak and average Relative Power Score, calories, and equivalent fat burn.",
+            "Badges et classements suivent durée, coups, score de puissance relative maximal et moyen, calories et graisse équivalente.",
+            "เหรียญและอันดับนับเวลา หมัด คะแนนสูงสุด คะแนนเฉลี่ย แคลอรี และไขมันเทียบเท่า",
         )
 
     private fun showCompletedForceStats() {
@@ -2979,20 +2979,20 @@ class MainActivity : AppCompatActivity() {
         dashboardForceSummaryView.text =
             if (forces.isEmpty()) {
                 localText(
-                    "本次力度：暂无击打数据",
-                    "Force: no hit data yet",
-                    "Force : aucune donnée de frappe",
-                    "แรง: ยังไม่มีข้อมูลหมัด",
+                    "本次评分：暂无击打数据",
+                    "Relative Power Score: no hit data yet",
+                    "Score de puissance relative : aucune donnée de frappe",
+                    "คะแนนพลังสัมพัทธ์: ยังไม่มีข้อมูลหมัด",
                 )
             } else {
                 val minForce = forces.minOrNull() ?: 0f
                 val maxForce = forces.maxOrNull() ?: 0f
                 val avgForce = forces.average().toFloat()
                 localText(
-                    "本次力度  最小 ${forceDisplay(minForce)} | 最大 ${forceDisplay(maxForce)} | 平均 ${forceDisplay(avgForce)}",
-                    "Force  Min ${forceDisplay(minForce)} | Max ${forceDisplay(maxForce)} | Avg ${forceDisplay(avgForce)}",
-                    "Force  Min ${forceDisplay(minForce)} | Max ${forceDisplay(maxForce)} | Moy ${forceDisplay(avgForce)}",
-                    "แรง  ต่ำสุด ${forceDisplay(minForce)} | สูงสุด ${forceDisplay(maxForce)} | เฉลี่ย ${forceDisplay(avgForce)}",
+                    "本次评分  最小 ${forceDisplay(minForce)} | 最大 ${forceDisplay(maxForce)} | 平均 ${forceDisplay(avgForce)}",
+                    "Relative Power Score  Min ${forceDisplay(minForce)} | Max ${forceDisplay(maxForce)} | Avg ${forceDisplay(avgForce)}",
+                    "Score de puissance relative  Min ${forceDisplay(minForce)} | Max ${forceDisplay(maxForce)} | Moy ${forceDisplay(avgForce)}",
+                    "คะแนนพลังสัมพัทธ์  ต่ำสุด ${forceDisplay(minForce)} | สูงสุด ${forceDisplay(maxForce)} | เฉลี่ย ${forceDisplay(avgForce)}",
                 )
             }
         dashboardForceSummaryView.visibility = View.VISIBLE
@@ -3013,10 +3013,10 @@ class MainActivity : AppCompatActivity() {
         aiCoachStatusView.background = roundedBackground("#17354A", "#2E75B6", 999)
         aiCoachMessageView.text =
             localText(
-                "连接 SENBALL# 后开始训练，我会根据节奏、力度和连击表现给你低频关键提示。",
-                "Start after connecting SENBALL#. I will give low-frequency key cues for rhythm, force, and combo flow.",
-                "Connectez SENBALL# puis lancez. Je donnerai des conseils clés sur rythme, force et combos.",
-                "เชื่อมต่อ SENBALL# แล้วเริ่มฝึก ฉันจะเตือนเฉพาะจังหวะ แรง และคอมโบที่สำคัญ",
+                "连接 SENBALL# 后开始训练，我会根据节奏、相对力量评分和连击表现给你低频关键提示。",
+                "Start after connecting SENBALL#. I will give low-frequency key cues for rhythm, Relative Power Score, and combo flow.",
+                "Connectez SENBALL# puis lancez. Je donnerai des conseils clés sur rythme, score de puissance relative et combos.",
+                "เชื่อมต่อ SENBALL# แล้วเริ่มฝึก ฉันจะเตือนเฉพาะจังหวะ คะแนนพลังสัมพัทธ์ และคอมโบที่สำคัญ",
             )
         aiCoachMetaView.text =
             localText(
@@ -3185,17 +3185,17 @@ class MainActivity : AppCompatActivity() {
                     key = "force_drop",
                     message =
                         localText(
-                            "注意力度！刚才这一拳明显掉下来了，手腕锁住，拳面打实。",
-                            "Watch the force. That punch dropped off, lock the wrist and land clean.",
-                            "Attention à la force. Ce coup a chuté, verrouillez le poignet et frappez net.",
-                            "ระวังแรง หมัดเมื่อกี้ตกลง ล็อกข้อมือแล้วออกหมัดให้แน่น",
+                            "注意发力！刚才这一拳明显掉下来了，手腕锁住，保持动作完整。",
+                            "Keep your technique consistent. That punch dropped off, lock the wrist and land clean.",
+                            "Le score a baissé. Gardez une technique régulière et verrouillez le poignet.",
+                            "คะแนนลดลง รักษาท่าทางให้สม่ำเสมอและล็อกข้อมือ",
                         ),
                     meta =
                         localText(
-                            "触发原因：单拳力度低于近期均值 28%",
-                            "Trigger: punch force below recent average by 28%",
-                            "Déclencheur : force sous la moyenne récente de 28 %",
-                            "สาเหตุ: แรงหมัดต่ำกว่าค่าเฉลี่ยล่าสุด 28%",
+                            "触发原因：单拳评分低于近期均值 28%",
+                            "Trigger: Relative Power Score below recent average by 28%",
+                            "Déclencheur : score de puissance relative sous la moyenne récente de 28 %",
+                            "สาเหตุ: คะแนนพลังสัมพัทธ์ต่ำกว่าค่าเฉลี่ยล่าสุด 28%",
                         ),
                 )
                 return
@@ -4242,7 +4242,7 @@ class MainActivity : AppCompatActivity() {
             }
         bottomRow.addView(
             reportMetricCard(
-                label = localText("最大力度", "Peak force", "Force max", "แรงสูงสุด"),
+                label = localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด"),
                 value = forceDisplay(report.peakForceN),
                 accentColor = "#E24B4A",
             ).apply {
@@ -4258,7 +4258,7 @@ class MainActivity : AppCompatActivity() {
         )
         bottomRow.addView(
             reportMetricCard(
-                label = localText("平均力度", "Avg force", "Force moy.", "แรงเฉลี่ย"),
+                label = localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย"),
                 value = forceDisplay(report.avgForceN),
                 accentColor = "#A7F3D0",
             ).apply {
@@ -6154,9 +6154,9 @@ class MainActivity : AppCompatActivity() {
             append('\n')
             append("${localText("锻炼时间", "Duration", "Durée", "เวลา")}: ${formatTrainingDuration(stats.totalTrainingSeconds)}")
             append(" | ")
-            append("${localText("最大力度", "Peak force", "Force max", "แรงสูงสุด")}: ${forceDisplay(stats.bestPeakForceN)}")
+            append("${localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด")}: ${forceDisplay(stats.bestPeakForceN)}")
             append('\n')
-            append("${localText("平均力度", "Avg force", "Force moy.", "แรงเฉลี่ย")}: ${forceDisplay(stats.bestAvgForceN)}")
+            append("${localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย")}: ${forceDisplay(stats.bestAvgForceN)}")
             append(" | ")
             append("${localText("平均单回合", "Avg round", "Round moy.", "เฉลี่ยต่อรอบ")}: ${String.format(Locale.US, "%.1f", stats.averageRoundHits)}")
             append('\n')
@@ -6418,17 +6418,35 @@ class MainActivity : AppCompatActivity() {
                 when (key) {
                     "duration" -> "锻炼时间"
                     "total_hits" -> "累计击打"
-                    "peak_force" -> "最大拳击力度"
-                    "avg_force" -> "平均拳击力度"
+                    "peak_force" -> "最高相对力量评分"
+                    "avg_force" -> "平均相对力量评分"
                     "calories" -> "卡路里消耗"
                     else -> "等效燃脂量"
                 }
-            else ->
+            AppLanguage.French ->
+                when (key) {
+                    "duration" -> "Durée d'entraînement"
+                    "total_hits" -> "Coups cumulés"
+                    "peak_force" -> "Score de puissance relative maximal"
+                    "avg_force" -> "Score de puissance relative moyen"
+                    "calories" -> "Calories brûlées"
+                    else -> "Graisse équivalente"
+                }
+            AppLanguage.Thai ->
+                when (key) {
+                    "duration" -> "ระยะเวลาฝึก"
+                    "total_hits" -> "จำนวนหมัดสะสม"
+                    "peak_force" -> "คะแนนพลังสัมพัทธ์สูงสุด"
+                    "avg_force" -> "คะแนนพลังสัมพัทธ์เฉลี่ย"
+                    "calories" -> "แคลอรีที่เผาผลาญ"
+                    else -> "ไขมันเทียบเท่า"
+                }
+            AppLanguage.English ->
                 when (key) {
                     "duration" -> "Training Duration"
                     "total_hits" -> "Total Hits"
-                    "peak_force" -> "Peak Force"
-                    "avg_force" -> "Average Force"
+                    "peak_force" -> "Peak score"
+                    "avg_force" -> "Average score"
                     "calories" -> "Calories Burned"
                     else -> "Equivalent Fat Burn"
                 }
@@ -6673,11 +6691,11 @@ class MainActivity : AppCompatActivity() {
             append(": ")
             append(formatTrainingDuration(stats.totalTrainingSeconds))
             append("   |   ")
-            append(localText("最大力度", "Peak force", "Force max", "แรงสูงสุด"))
+            append(localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด"))
             append(": ")
             append(forceDisplay(stats.bestPeakForceN))
             append('\n')
-            append(localText("平均力度", "Avg force", "Force moy.", "แรงเฉลี่ย"))
+            append(localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย"))
             append(": ")
             append(forceDisplay(stats.bestAvgForceN))
             append('\n')
@@ -6742,17 +6760,35 @@ class MainActivity : AppCompatActivity() {
                 when (board) {
                     LeaderboardBoard.TrainingDuration -> "锻炼时间"
                     LeaderboardBoard.TotalHits -> "累计榜"
-                    LeaderboardBoard.PeakForce -> "最大力度"
-                    LeaderboardBoard.AvgForce -> "平均力度"
+                    LeaderboardBoard.PeakForce -> "最高评分"
+                    LeaderboardBoard.AvgForce -> "平均评分"
                     LeaderboardBoard.Calories -> "卡路里"
                     LeaderboardBoard.FatBurned -> "等效燃脂榜"
                 }
-            else ->
+            AppLanguage.French ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "Durée"
+                    LeaderboardBoard.TotalHits -> "Coups cumulés"
+                    LeaderboardBoard.PeakForce -> "Score max"
+                    LeaderboardBoard.AvgForce -> "Score moyen"
+                    LeaderboardBoard.Calories -> "Calories"
+                    LeaderboardBoard.FatBurned -> "Graisse équiv."
+                }
+            AppLanguage.Thai ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "ระยะเวลา"
+                    LeaderboardBoard.TotalHits -> "หมัดสะสม"
+                    LeaderboardBoard.PeakForce -> "คะแนนสูงสุด"
+                    LeaderboardBoard.AvgForce -> "คะแนนเฉลี่ย"
+                    LeaderboardBoard.Calories -> "แคลอรี"
+                    LeaderboardBoard.FatBurned -> "ไขมันเทียบเท่า"
+                }
+            AppLanguage.English ->
                 when (board) {
                     LeaderboardBoard.TrainingDuration -> "Duration"
                     LeaderboardBoard.TotalHits -> "Total Hits"
-                    LeaderboardBoard.PeakForce -> "Peak Force"
-                    LeaderboardBoard.AvgForce -> "Avg Force"
+                    LeaderboardBoard.PeakForce -> "Peak score"
+                    LeaderboardBoard.AvgForce -> "Average score"
                     LeaderboardBoard.Calories -> "Calories"
                     LeaderboardBoard.FatBurned -> "Equivalent Fat"
                 }
@@ -6764,17 +6800,35 @@ class MainActivity : AppCompatActivity() {
                 when (board) {
                     LeaderboardBoard.TrainingDuration -> "按累计锻炼时间排名"
                     LeaderboardBoard.TotalHits -> "按累计击打总数排名"
-                    LeaderboardBoard.PeakForce -> "按历史最大拳击力度排名"
-                    LeaderboardBoard.AvgForce -> "按单次训练最佳平均力度排名"
+                    LeaderboardBoard.PeakForce -> "按历史最高相对力量评分排名"
+                    LeaderboardBoard.AvgForce -> "按单次训练最佳平均评分排名"
                     LeaderboardBoard.Calories -> "按累计卡路里消耗排名"
                     LeaderboardBoard.FatBurned -> "按累计等效燃脂量排名"
                 }
-            else ->
+            AppLanguage.French ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "Classement par durée totale"
+                    LeaderboardBoard.TotalHits -> "Classement par nombre total de coups"
+                    LeaderboardBoard.PeakForce -> "Classement par score de puissance relative maximal"
+                    LeaderboardBoard.AvgForce -> "Classement par meilleur score de puissance relative moyen"
+                    LeaderboardBoard.Calories -> "Classement par calories totales"
+                    LeaderboardBoard.FatBurned -> "Classement par graisse équivalente totale"
+                }
+            AppLanguage.Thai ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "จัดอันดับตามเวลาฝึกสะสม"
+                    LeaderboardBoard.TotalHits -> "จัดอันดับตามจำนวนหมัดสะสม"
+                    LeaderboardBoard.PeakForce -> "จัดอันดับตามคะแนนพลังสัมพัทธ์สูงสุด"
+                    LeaderboardBoard.AvgForce -> "จัดอันดับตามคะแนนพลังสัมพัทธ์เฉลี่ยที่ดีที่สุด"
+                    LeaderboardBoard.Calories -> "จัดอันดับตามแคลอรีสะสม"
+                    LeaderboardBoard.FatBurned -> "จัดอันดับตามไขมันเทียบเท่าสะสม"
+                }
+            AppLanguage.English ->
                 when (board) {
                     LeaderboardBoard.TrainingDuration -> "Ranked by total training time"
                     LeaderboardBoard.TotalHits -> "Ranked by lifetime hit count"
-                    LeaderboardBoard.PeakForce -> "Ranked by peak punch force"
-                    LeaderboardBoard.AvgForce -> "Ranked by best average force"
+                    LeaderboardBoard.PeakForce -> "Ranked by peak Relative Power Score"
+                    LeaderboardBoard.AvgForce -> "Ranked by best average Relative Power Score"
                     LeaderboardBoard.Calories -> "Ranked by total calories burned"
                     LeaderboardBoard.FatBurned -> "Ranked by total equivalent fat burn"
                 }
@@ -6800,8 +6854,8 @@ class MainActivity : AppCompatActivity() {
                     "${entry.bestHits} coups cumulés",
                     "รวม ${entry.bestHits} หมัด",
                 )
-            LeaderboardBoard.PeakForce -> "${entry.scoreValue.roundToInt()} N"
-            LeaderboardBoard.AvgForce -> "${entry.scoreValue.roundToInt()} N"
+            LeaderboardBoard.PeakForce -> entry.scoreValue.roundToInt().toString()
+            LeaderboardBoard.AvgForce -> entry.scoreValue.roundToInt().toString()
             LeaderboardBoard.Calories -> formatCalories(entry.scoreValue)
             LeaderboardBoard.FatBurned -> formatFatGrams(entry.scoreValue)
         }
@@ -6862,9 +6916,9 @@ class MainActivity : AppCompatActivity() {
             append('\n')
             append("${tr("average_frequency")}: $frequency ${tr("hits_per_second")}")
             append('\n')
-            append("${localText("最大力度", "Peak force", "Force max", "แรงสูงสุด")}: ${forceDisplay(report.peakForceN)}")
+            append("${localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด")}: ${forceDisplay(report.peakForceN)}")
             append('\n')
-            append("${localText("平均力度", "Avg force", "Force moy.", "แรงเฉลี่ย")}: ${forceDisplay(report.avgForceN)}")
+            append("${localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย")}: ${forceDisplay(report.avgForceN)}")
             append('\n')
             append("${tr("calories_burned")}: ${formatCalories(report.caloriesBurned)}")
             append('\n')
@@ -7121,7 +7175,7 @@ class MainActivity : AppCompatActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     addView(
-                        sectionLabel(localText("击打力度", "Punch force", "Force de frappe", "แรงหมัด")).apply {
+                        sectionLabel(localText("相对力量评分", "Relative Power Score", "Score de puissance relative", "คะแนนพลังสัมพัทธ์")).apply {
                             setTextColor(Color.parseColor("#17343B"))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                             layoutParams =
@@ -7247,8 +7301,8 @@ class MainActivity : AppCompatActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     setPadding(0, dp(6), dp(28), 0)
                     addView(homeV3MiniMetric(localText("本次拳数", "Hits", "Coups", "หมัด"), homeReportHitsValueView, dp(8)))
-                    addView(homeV3MiniMetric(localText("最大力度", "Peak", "Max", "สูงสุด"), homeReportPeakValueView, dp(8)))
-                    addView(homeV3MiniMetric(localText("平均力度", "Avg", "Moy.", "เฉลี่ย"), homeReportAvgValueView))
+                    addView(homeV3MiniMetric(localText("最高评分", "Peak", "Max", "สูงสุด"), homeReportPeakValueView, dp(8)))
+                    addView(homeV3MiniMetric(localText("平均评分", "Avg", "Moy.", "เฉลี่ย"), homeReportAvgValueView))
                 },
             )
             addView(content)
@@ -7584,12 +7638,12 @@ class MainActivity : AppCompatActivity() {
         dashboardBpmValueView = metricValueView("--")
         dashboardCaloriesValueView = metricValueView("0.0")
         dashboardFatValueView = metricValueView("0.0")
-        dashboardPeakValueView = metricValueView("-- N")
+        dashboardPeakValueView = metricValueView("--")
         dashboardRhythmValueView = metricValueView("--")
         dashboardRoundBadgeView =
             badgeText(localText("第 1 回合", "Round 1", "Round 1", "รอบ 1"), textColor = "#096D65", fillColor = mintSoft)
         dashboardPeakTagView =
-            badgeText(localText("峰值 -- N", "Peak -- N", "Pic -- N", "สูงสุด -- N"), textColor = "#F06B22", fillColor = orangeSoft)
+            badgeText(localText("最高评分 --", "Peak score --", "Score max --", "คะแนนสูงสุด --"), textColor = "#F06B22", fillColor = orangeSoft)
         dashboardGoalProgressView =
             bodyText(localText("今日目标：500 拳 | 已完成 0 拳", "Today: 500 hits | Done 0 hits", "Aujourd'hui : 500 coups | 0 coups faits", "วันนี้ 500 หมัด | ทำแล้ว 0 หมัด")).apply {
                 setTextColor(Color.parseColor(textPrimary))
@@ -8004,9 +8058,9 @@ class MainActivity : AppCompatActivity() {
                                 "#096D65",
                             ),
                             arrayOf(
-                                localText("力度骤降", "Force drop", "Baisse force", "แรงตก"),
-                                localText("注意力度，手腕锁住，拳面打实。", "Watch the force, lock the wrist and land clean.", "Force : verrouillez le poignet.", "ระวังแรง ล็อกข้อมือแล้วออกหมัดให้แน่น"),
-                                localText("触发原因：力度低于近期均值", "Trigger: force below recent average", "Déclencheur : force sous moyenne", "สาเหตุ: แรงต่ำกว่าค่าเฉลี่ย"),
+                                localText("评分骤降", "Score drop", "Baisse du score", "คะแนนลดลง"),
+                                localText("注意发力，手腕锁住，保持动作完整。", "Keep your technique consistent, lock the wrist and land clean.", "Force : verrouillez le poignet.", "ระวังแรง ล็อกข้อมือแล้วออกหมัดให้แน่น"),
+                                localText("触发原因：评分低于近期均值", "Trigger: score below recent average", "Déclencheur : score sous la moyenne", "สาเหตุ: คะแนนต่ำกว่าค่าเฉลี่ย"),
                                 "#FF8A32",
                                 "#B65A18",
                             ),
@@ -8505,7 +8559,7 @@ class MainActivity : AppCompatActivity() {
             root.addView(
                 LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
-                    addView(modeCard(localText("自由模式", "Free", "Libre", "อิสระ"), localText("记录拳数、力度和 BPM", "Track hits, force, and BPM", "Compte, force et BPM", "นับหมัด แรง BPM"), TrainingRhythmMode.Free).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) } })
+                    addView(modeCard(localText("自由模式", "Free", "Libre", "อิสระ"), localText("记录拳数、相对力量评分和 BPM", "Track hits, Relative Power Score, and BPM", "Coups, score de puissance relative et BPM", "นับหมัด คะแนนพลังสัมพัทธ์ และ BPM"), TrainingRhythmMode.Free).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) } })
                     addView(modeCard(localText("跟拍模式", "Beat", "Tempo", "จังหวะ"), localText("音乐节拍与跟拍评分", "Beat scoring with groove", "Score sur tempo", "คะแนนตามจังหวะ"), TrainingRhythmMode.Rhythm).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
                 },
             )
@@ -9298,7 +9352,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         waveformView.setLabelText(
-            empty = localText("等待击打力度", "Waiting for punch force", "En attente de force", "รอแรงหมัด"),
+            empty = localText("等待相对力量评分", "Waiting for Relative Power Score", "En attente du score de puissance relative", "รอคะแนนพลังสัมพัทธ์"),
             latest = localText("最新", "Latest", "Dernier", "ล่าสุด"),
             peak = localText("峰值", "Peak", "Pic", "สูงสุด"),
         )
@@ -11202,7 +11256,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 statusRow.addView(
                     badgeText(
-                        text = localText("最大力度 ${forceDisplay(report.peakForceN)}", "Peak ${forceDisplay(report.peakForceN)}", "Max ${forceDisplay(report.peakForceN)}", "สูงสุด ${forceDisplay(report.peakForceN)}"),
+                        text = localText("最高评分 ${forceDisplay(report.peakForceN)}", "Peak ${forceDisplay(report.peakForceN)}", "Max ${forceDisplay(report.peakForceN)}", "สูงสุด ${forceDisplay(report.peakForceN)}"),
                         textColor = "#FFFFFF",
                         fillColor = "#FF8A32",
                     ).apply {
@@ -11255,13 +11309,13 @@ class MainActivity : AppCompatActivity() {
                     ).apply { topMargin = dp(10) }
             }
         metricsRow2.addView(
-            posterMetricCard(localText("最大力度", "Peak force", "Force max", "แรงสูงสุด"), forceDisplay(report.peakForceN), "#FF8A32").apply {
+            posterMetricCard(localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด"), forceDisplay(report.peakForceN), "#FF8A32").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(10) }
             },
         )
         metricsRow2.addView(
-            posterMetricCard(localText("平均力度", "Avg force", "Force moy.", "แรงเฉลี่ย"), forceDisplay(report.avgForceN), "#9BE5C4").apply {
+            posterMetricCard(localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย"), forceDisplay(report.avgForceN), "#9BE5C4").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             },
@@ -11697,7 +11751,7 @@ class MainActivity : AppCompatActivity() {
         val shareText =
             if (report != null) {
                 localText(
-                    "我刚完成 ${roundReportBadgeText(report)} HitRise 训练战报：累计锻炼 ${formatTrainingDuration(report.durationSeconds)}，累计击打 ${report.totalHits} 次，最大力度 ${forceDisplay(report.peakForceN)}，平均力度 ${forceDisplay(report.avgForceN)}，消耗 ${formatCalories(report.caloriesBurned)}，等效燃脂约 ${formatFatGrams(report.fatBurnedGrams)}。",
+                    "我刚完成 ${roundReportBadgeText(report)} HitRise 训练战报：累计锻炼 ${formatTrainingDuration(report.durationSeconds)}，累计击打 ${report.totalHits} 次，最高评分 ${forceDisplay(report.peakForceN)}，平均评分 ${forceDisplay(report.avgForceN)}，消耗 ${formatCalories(report.caloriesBurned)}，等效燃脂约 ${formatFatGrams(report.fatBurnedGrams)}。",
                     "I just finished a HitRise ${roundReportBadgeText(report)} report: total ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} punches, peak ${forceDisplay(report.peakForceN)}, avg ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, and ${formatFatGrams(report.fatBurnedGrams)} equivalent fat burn.",
                     "Rapport HitRise ${roundReportBadgeText(report)} terminé : total ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} coups, max ${forceDisplay(report.peakForceN)}, moy. ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, ${formatFatGrams(report.fatBurnedGrams)} graisse équivalente.",
                     "รายงาน HitRise ${roundReportBadgeText(report)}: รวม ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} หมัด, สูงสุด ${forceDisplay(report.peakForceN)}, เฉลี่ย ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, ไขมันเทียบเท่า ${formatFatGrams(report.fatBurnedGrams)}",
@@ -12151,8 +12205,8 @@ class MainActivity : AppCompatActivity() {
                 "Final 10 seconds. Push hard, hold the rhythm, and keep punches clean."
             text.contains("节奏") || text.contains("pace", ignoreCase = true) || text.contains("BPM") ->
                 "Pick up the pace. Shorten the punch and recover faster."
-            text.contains("力度") || text.contains("force", ignoreCase = true) ->
-                "Watch the force. Lock the wrist and land clean."
+            text.contains("力度") || text.contains("评分") || text.contains("force", ignoreCase = true) || text.contains("score", ignoreCase = true) ->
+                "Keep your technique consistent. Lock the wrist and land clean."
             text.contains("连击") || text.contains("combo", ignoreCase = true) || text.contains("burst", ignoreCase = true) ->
                 "Nice combo rhythm. Keep the guard returning and stay compact."
             else ->
@@ -12264,10 +12318,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun leaderboardSubtitleText(): String =
         when (selectedLanguage) {
-            AppLanguage.Chinese -> "按锻炼时间、拳数、力度、卡路里与等效燃脂量排名"
-            AppLanguage.English -> "Rank by duration, hits, force, calories, and equivalent fat burn"
-            AppLanguage.French -> "Classement par durée, coups, force, calories et graisse équivalente"
-            AppLanguage.Thai -> "จัดอันดับตามเวลา หมัด แรง แคลอรี และไขมันเทียบเท่า"
+            AppLanguage.Chinese -> "按锻炼时间、拳数、相对力量评分、卡路里与等效燃脂量排名"
+            AppLanguage.English -> "Rank by duration, hits, Relative Power Score, calories, and equivalent fat burn"
+            AppLanguage.French -> "Classement par durée, coups, score de puissance relative, calories et graisse équivalente"
+            AppLanguage.Thai -> "จัดอันดับตามเวลา หมัด คะแนนพลังสัมพัทธ์ แคลอรี และไขมันเทียบเท่า"
         }
 
     private fun avatarChooseButtonLabel(): String =
@@ -12442,7 +12496,7 @@ class MainActivity : AppCompatActivity() {
         localText("锻炼成果徽章", "Training Result Badges", "Badges de résultats", "เหรียญผลการฝึก")
 
     private fun achievementsSectionHint(): String =
-        localText("按锻炼时间、拳击次数、力度、卡路里和等效燃脂量记录成果", "Track badges by duration, hits, force, calories, and equivalent fat burn.", "Suivez les badges par durée, coups, force, calories et graisse équivalente.", "ติดตามเหรียญจากเวลา หมัด แรง แคลอรี และไขมันเทียบเท่า")
+        localText("按锻炼时间、拳击次数、相对力量评分、卡路里和等效燃脂量记录成果", "Track badges by duration, hits, Relative Power Score, calories, and equivalent fat burn.", "Suivez les badges par durée, coups, score de puissance relative, calories et graisse équivalente.", "ติดตามเหรียญจากเวลา หมัด คะแนนพลังสัมพัทธ์ แคลอรี และไขมันเทียบเท่า")
 
     private fun profilePageSubtitle(): String =
         localText("查看你的段位、训练统计与最近获得的徽章", "View your tier, key stats and recently unlocked badges.", "Consultez votre rang, vos statistiques et vos badges récents.", "ดูระดับ สถิติหลัก และเหรียญล่าสุดของคุณ")
@@ -12532,14 +12586,14 @@ class MainActivity : AppCompatActivity() {
             "hits_500" -> localText("五百重击", "500 Heavy Hits", "500 frappes", "500 หมัดหนัก")
             "hits_1000" -> localText("千拳风暴", "1K Punch Storm", "Tempête 1K coups", "พายุ 1K หมัด")
             "hits_5000" -> localText("万击宗匠", "5K Master", "Maître 5K coups", "ปรมาจารย์ 5K")
-            "peak_force_50" -> localText("最大力度 500N", "Peak 500N", "Force max 500N", "แรงสูงสุด 500N")
-            "peak_force_100" -> localText("最大力度 1000N", "Peak 1000N", "Force max 1000N", "แรงสูงสุด 1000N")
-            "peak_force_150" -> localText("最大力度 1300N", "Peak 1300N", "Force max 1300N", "แรงสูงสุด 1300N")
-            "peak_force_200" -> localText("最大力度 1600N", "Peak 1600N", "Force max 1600N", "แรงสูงสุด 1600N")
-            "avg_force_30" -> localText("平均力度 500N", "Avg 500N", "Force moy. 500N", "แรงเฉลี่ย 500N")
-            "avg_force_60" -> localText("平均力度 800N", "Avg 800N", "Force moy. 800N", "แรงเฉลี่ย 800N")
-            "avg_force_90" -> localText("平均力度 1000N", "Avg 1000N", "Force moy. 1000N", "แรงเฉลี่ย 1000N")
-            "avg_force_120" -> localText("平均力度 1200N", "Avg 1200N", "Force moy. 1200N", "แรงเฉลี่ย 1200N")
+            "peak_force_50" -> localText("最高评分 500", "Peak 500", "Score max 500", "คะแนนสูงสุด 500")
+            "peak_force_100" -> localText("最高评分 1000", "Peak 1000", "Score max 1000", "คะแนนสูงสุด 1000")
+            "peak_force_150" -> localText("最高评分 1300", "Peak 1300", "Score max 1300", "คะแนนสูงสุด 1300")
+            "peak_force_200" -> localText("最高评分 1600", "Peak 1600", "Score max 1600", "คะแนนสูงสุด 1600")
+            "avg_force_30" -> localText("平均评分 500", "Avg 500", "Score moy. 500", "คะแนนเฉลี่ย 500")
+            "avg_force_60" -> localText("平均评分 800", "Avg 800", "Score moy. 800", "คะแนนเฉลี่ย 800")
+            "avg_force_90" -> localText("平均评分 1000", "Avg 1000", "Score moy. 1000", "คะแนนเฉลี่ย 1000")
+            "avg_force_120" -> localText("平均评分 1200", "Avg 1200", "Score moy. 1200", "คะแนนเฉลี่ย 1200")
             "calories_30" -> localText("消耗 500 kcal", "500 kcal Burned", "500 kcal brûlées", "เผาผลาญ 500 kcal")
             "calories_100" -> localText("消耗 1000 kcal", "1000 kcal Burned", "1000 kcal brûlées", "เผาผลาญ 1000 kcal")
             "calories_300" -> localText("消耗 2000 kcal", "2000 kcal Burned", "2000 kcal brûlées", "เผาผลาญ 2000 kcal")
@@ -12557,14 +12611,14 @@ class MainActivity : AppCompatActivity() {
             "duration_15m" -> localText("300 分钟", "300 min", "300 min", "300 นาที")
             "duration_30m" -> localText("600 分钟", "600 min", "600 min", "600 นาที")
             "duration_60m" -> localText("2000 分钟", "2000 min", "2000 min", "2000 นาที")
-            "peak_force_50" -> "500N"
-            "peak_force_100" -> "1000N"
-            "peak_force_150" -> "1300N"
-            "peak_force_200" -> "1600N"
-            "avg_force_30" -> "500N"
-            "avg_force_60" -> "800N"
-            "avg_force_90" -> "1000N"
-            "avg_force_120" -> "1200N"
+            "peak_force_50" -> "500"
+            "peak_force_100" -> "1000"
+            "peak_force_150" -> "1300"
+            "peak_force_200" -> "1600"
+            "avg_force_30" -> "500"
+            "avg_force_60" -> "800"
+            "avg_force_90" -> "1000"
+            "avg_force_120" -> "1200"
             "calories_30" -> "500 kcal"
             "calories_100" -> "1000 kcal"
             "calories_300" -> "2000 kcal"
@@ -12586,14 +12640,14 @@ class MainActivity : AppCompatActivity() {
             "hits_500" -> "H500"
             "hits_1000" -> "1K"
             "hits_5000" -> "5K"
-            "peak_force_50" -> "500N"
-            "peak_force_100" -> "1000N"
-            "peak_force_150" -> "1300N"
-            "peak_force_200" -> "1600N"
-            "avg_force_30" -> "500N"
-            "avg_force_60" -> "800N"
-            "avg_force_90" -> "1000N"
-            "avg_force_120" -> "1200N"
+            "peak_force_50" -> "500"
+            "peak_force_100" -> "1000"
+            "peak_force_150" -> "1300"
+            "peak_force_200" -> "1600"
+            "avg_force_30" -> "500"
+            "avg_force_60" -> "800"
+            "avg_force_90" -> "1000"
+            "avg_force_120" -> "1200"
             "calories_30" -> "500"
             "calories_100" -> "1000"
             "calories_300" -> "2000"
@@ -12637,7 +12691,7 @@ class MainActivity : AppCompatActivity() {
     private fun achievementProgressText(item: CloudAchievementItem): String =
         when (item.metric) {
             "total_training_seconds" -> "${formatTrainingDuration(item.progress)} / ${formatTrainingDuration(item.goal)}"
-            "best_peak_force_n", "best_avg_force_n" -> "${item.progress} N / ${item.goal} N"
+            "best_peak_force_n", "best_avg_force_n" -> "${item.progress} / ${item.goal}"
             "total_calories_burned" -> "${item.progress} kcal / ${item.goal} kcal"
             "total_fat_burned_grams" -> "${item.progress} g / ${item.goal} g"
             else -> "${item.progress} / ${item.goal}"
@@ -13334,7 +13388,7 @@ class MainActivity : AppCompatActivity() {
         metricsRow.addView(burstChip)
         val detailLine =
             bodyText(
-                "${localText("锻炼时间", "Duration", "Durée", "เวลา")}: ${formatTrainingDuration(item.durationSeconds)}  |  ${localText("最大力度", "Peak", "Max", "สูงสุด")}: ${forceDisplay(item.peakForceN)}  |  ${localText("平均力度", "Avg", "Moy.", "เฉลี่ย")}: ${forceDisplay(item.avgForceN)}\n${tr("calories_burned")}: ${formatCalories(item.caloriesBurned)}  |  ${tr("fat_burned")}: ${formatFatGrams(item.fatBurnedGrams)}",
+                "${localText("锻炼时间", "Duration", "Durée", "เวลา")}: ${formatTrainingDuration(item.durationSeconds)}  |  ${localText("最高评分", "Peak", "Max", "สูงสุด")}: ${forceDisplay(item.peakForceN)}  |  ${localText("平均评分", "Avg", "Moy.", "เฉลี่ย")}: ${forceDisplay(item.avgForceN)}\n${tr("calories_burned")}: ${formatCalories(item.caloriesBurned)}  |  ${tr("fat_burned")}: ${formatFatGrams(item.fatBurnedGrams)}",
             ).apply {
                 setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)

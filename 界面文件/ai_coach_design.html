@@ -101,8 +101,8 @@
       <div class="coach-row">
         <div class="coach-avatar">AI</div>
         <div style="flex:1">
-          <div class="coach-msg" id="coach-msg">注意节奏！你的右手力度比左手高出 38%，试着用左手多出几拳，保持平衡。接下来 30 秒加速，目标 BPM 提升到 72。</div>
-          <div class="coach-meta" id="coach-meta">触发原因：左右手力度差异超阈值 · 刚刚</div>
+          <div class="coach-msg" id="coach-msg">注意节奏！你的右手评分比左手高出 38%，试着用左手多出几拳，保持平衡。接下来 30 秒加速，目标 BPM 提升到 72。</div>
+          <div class="coach-meta" id="coach-meta">触发原因：左右手相对力量评分差异超阈值 · 刚刚</div>
         </div>
       </div>
       <div class="voice-bar" id="voice-bar">
@@ -121,8 +121,8 @@
         <i class="ti ti-player-play cue-play" aria-hidden="true"></i>
       </div>
       <div class="cue-item" onclick="showCue(2)">
-        <span class="cue-trigger badge-amber" style="font-size:10px;padding:2px 7px;border-radius:20px">力度骤降 20%</span>
-        <span class="cue-text">「注意力度！打得扎实一点，不是在挠痒痒！」</span>
+        <span class="cue-trigger badge-amber" style="font-size:10px;padding:2px 7px;border-radius:20px">评分骤降 20%</span>
+        <span class="cue-text">「注意评分！打得扎实一点，不是在挠痒痒！」</span>
         <i class="ti ti-player-play cue-play" aria-hidden="true"></i>
       </div>
       <div class="cue-item" onclick="showCue(3)">
@@ -241,7 +241,7 @@
     <div>
       <div class="insight-row">
         <div class="insight-dot" style="background:#E24B4A"></div>
-        <div class="insight-text"><strong>左右手失衡（优先改善）</strong>：右手平均力度 84N，左手仅 51N，差距 39%。AI 建议：接下来 3 次训练以左手专项为主，右手辅助配合。</div>
+        <div class="insight-text"><strong>左右手失衡（优先改善）</strong>：右手平均评分 84，左手仅 51，差距 39%。AI 建议：接下来 3 次训练以左手专项为主，右手辅助配合。</div>
       </div>
       <div class="insight-row">
         <div class="insight-dot" style="background:#BA7517"></div>
@@ -249,7 +249,7 @@
       </div>
       <div class="insight-row">
         <div class="insight-dot" style="background:#639922"></div>
-        <div class="insight-text"><strong>爆发力进步显著</strong>：本周单拳峰值力度较上周提升 12%，达 143N，你的重拳实力已超过同段位 67% 的用户。</div>
+        <div class="insight-text"><strong>爆发力进步显著</strong>：本周单拳最高评分较上周提升 12%，达 143，你的重拳实力已超过同段位 67% 的用户。</div>
       </div>
       <div class="insight-row">
         <div class="insight-dot" style="background:#378ADD"></div>
@@ -299,7 +299,7 @@
 const cues=[
   {msg:'加快节奏！你的BPM已经低于目标值 12 拳，感觉你慢下来了——跟上节拍，保持爆发！',meta:'触发原因：BPM低于目标值 · 刚刚'},
   {msg:'漂亮！连续命中 10 拳，这组节奏非常稳！保持这个状态，再来一组，我看好你！',meta:'触发原因：连续命中10拳 · 刚刚'},
-  {msg:'注意力度！你的右手力度刚才骤降了 20%，打得扎实一点——不是在挠痒痒！',meta:'触发原因：力度骤降超阈值 · 刚刚'},
+  {msg:'注意评分！你的右手评分刚才骤降了 20%，打得扎实一点——不是在挠痒痒！',meta:'触发原因：评分骤降超阈值 · 刚刚'},
   {msg:'最后 30 秒！全力冲刺，把今天所有能量都榨干，下回合你就可以好好休息！',meta:'触发原因：回合结束倒计时 · 刚刚'},
 ];
 

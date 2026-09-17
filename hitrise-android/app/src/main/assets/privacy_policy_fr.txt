@@ -12,7 +12,7 @@ Profil local et identifiant. L'application peut générer un identifiant local, 
 
 Informations Bluetooth. Pour connecter l'appareil de boxe, l'application utilise le scan, la connexion et la communication Bluetooth. Nous traitons le nom de l'appareil, l'adresse, l'état de connexion, la batterie, l'état de charge, le nombre de coups, la force et les messages d'état Bluetooth. Le scan filtre les appareils SENBALL#.
 
-Données d'entraînement. Pendant l'entraînement, l'application enregistre les rounds, la durée, les coups cumulés, les coups par round, la force maximale, la force moyenne, le BPM, les estimations de calories, les estimations de graisse brûlée, les combos, le mode, les réglages de tempo, l'effet sonore et la musique de fond sélectionnés.
+Données d'entraînement. Pendant l'entraînement, l'application enregistre les rounds, la durée, les coups cumulés, les coups par round, le score de puissance relative maximal et moyen, le BPM, les estimations de calories, les estimations de graisse brûlée, les combos, le mode, les réglages de tempo, l'effet sonore et la musique de fond sélectionnés.
 
 Succès, classements et profil. Pour fournir les badges, rangs, historique, classements et statistiques personnelles, nous traitons les résumés d'entraînement, les meilleurs résultats, les totaux cumulés, les jours actifs, les indicateurs de classement et les séances récentes. Les classements peuvent afficher votre pseudo, avatar, région, rang et score.
 
@@ -29,7 +29,7 @@ La vibration et l'audio servent au retour d'entraînement, au tempo, aux effets 
 
 4. Utilisation des informations
 Nous utilisons les informations pour :
-1. connecter le Bluetooth, compter les coups, afficher la force et la batterie ;
+1. connecter le Bluetooth, compter les coups, afficher le score de puissance relative et la batterie ;
 2. générer les rapports, statistiques de rounds, calories et graisse brûlée ;
 3. fournir les succès, rangs, classements et profils ;
 4. synchroniser les données cloud et conserver l'historique ;
@@ -56,7 +56,7 @@ Vous pouvez consulter les entraînements, succès, classements et informations d
 Les mineurs doivent utiliser HitRise sous la supervision d'un parent ou tuteur. Les tuteurs doivent aider les mineurs à comprendre la sécurité d'entraînement, la protection des informations personnelles et l'intensité appropriée.
 
 10. Avis santé et exercice
-Les valeurs de coups, force, calories et graisse brûlée fournies par HitRise sont des retours et estimations d'exercice. Elles ne constituent pas un diagnostic médical, un conseil nutritionnel, une rééducation ou une décision de compétition. En cas de maladie, blessure ou malaise, consultez un professionnel qualifié.
+Les valeurs de coups, score de puissance relative, calories et graisse brûlée fournies par HitRise sont des retours et estimations d'exercice. Elles ne constituent pas un diagnostic médical, un conseil nutritionnel, une rééducation ou une décision de compétition. En cas de maladie, blessure ou malaise, consultez un professionnel qualifié.
 
 11. Mises à jour
 Nous pouvons mettre à jour cette politique en raison de changements de produit, d'exigences légales ou de besoins opérationnels. Les changements importants peuvent être signalés dans l'application, les notes de version ou par tout autre moyen raisonnable. La poursuite de l'utilisation de HitRise signifie que vous comprenez la politique mise à jour.

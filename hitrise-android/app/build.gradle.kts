@@ -11,8 +11,8 @@ android {
         applicationId = "com.zclei.hitrise"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         buildConfigField(
             "String",
             "HITRISE_API_BASE_URL",
@@ -48,6 +48,13 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+val packageDebugApk by tasks.registering(Copy::class) {
+    dependsOn("assembleDebug")
+    from(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"))
+    into(layout.buildDirectory.dir("outputs/apk/distribution"))
+    rename { "HitRise.apk" }
 }
 
 dependencies {
