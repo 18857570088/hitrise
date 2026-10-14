@@ -1,6 +1,6 @@
 Politique de confidentialité HitRise
-Version : V1.1
-Date d'effet : 2026-05-20
+Version : V1.2
+Date d'effet : 2026-09-17
 
 1. Introduction
 Bienvenue dans HitRise. HitRise est une application d'entraînement avec balle de vitesse connectée, fournie par Shaoxing Weimai Technology Co., Ltd. Elle se connecte aux appareils Bluetooth SENBALL#, enregistre les données d'entraînement, génère des rapports, et propose résultats, classements, profil, effets sonores et musique de fond.
@@ -8,7 +8,7 @@ Bienvenue dans HitRise. HitRise est une application d'entraînement avec balle d
 La présente politique explique comment nous collectons, utilisons, stockons, protégeons et traitons les informations lorsque vous utilisez HitRise. Veuillez la lire attentivement avant d'utiliser l'application.
 
 2. Informations collectées et utilisées
-Profil local et identifiant. L'application peut générer un identifiant local, un code de synchronisation, un résumé d'appareil et un état d'activation local afin de fournir la synchronisation cloud, le profil, les succès et les classements. Vous pouvez définir un pseudo, un avatar, une région et une langue.
+Profil local et identifiant. L'application peut générer un identifiant local, un code de synchronisation, un résumé d'appareil et un état d'authentification local afin de fournir la synchronisation cloud, le profil, les succès et les classements. Vous pouvez définir un pseudo, un avatar, une région et une langue. L'appareil de boxe physique ne fournit ni numéro de série du produit ni informations d'activation. Les identifiants générés par l'application ne sont pas des numéros de série du matériel ; aucun numéro de série du produit ni code d'activation n'est nécessaire pour connecter l'appareil Bluetooth ou utiliser les fonctions d'entraînement.
 
 Informations Bluetooth. Pour connecter l'appareil de boxe, l'application utilise le scan, la connexion et la communication Bluetooth. Nous traitons le nom de l'appareil, l'adresse, l'état de connexion, la batterie, l'état de charge, le nombre de coups, la force et les messages d'état Bluetooth. Le scan filtre les appareils SENBALL#.
 

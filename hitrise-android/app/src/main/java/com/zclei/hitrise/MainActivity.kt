@@ -44,6 +44,7 @@ import android.view.ViewOutlineProvider
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.GridLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -64,10 +65,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.widget.doAfterTextChanged
+import androidx.core.widget.TextViewCompat
 import androidx.lifecycle.lifecycleScope
-import com.zclei.hitrise.auth.ActivationApiResult
-import com.zclei.hitrise.auth.ActivationService
 import com.zclei.hitrise.auth.ActivationState
 import com.zclei.hitrise.cloud.CloudBackgroundMusic
 import com.zclei.hitrise.cloud.CloudBootstrapResult
@@ -175,7 +174,7 @@ class MainActivity : AppCompatActivity() {
         val restHalfMinutes: Int = 1,
         val rounds: Int = 3,
         val rhythmMode: TrainingRhythmMode = TrainingRhythmMode.Rhythm,
-        val bpm: Int = 80,
+        val bpm: Int = 100,
     ) {
         val workSeconds: Int
             get() = workMinutes * 60
@@ -238,7 +237,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedMode: TrainingMode = TrainingMode.Seconds30
     private var selectedPlayMode: TrainingPlayMode = TrainingPlayMode.Classic30
     private var selectedRhythmMode: TrainingRhythmMode = TrainingRhythmMode.Rhythm
-    private var selectedBeatBpm: Int = 80
+    private var selectedBeatBpm: Int = 100
     private var selectedSoundPack: SoundPack = SoundPack.Gym
     private var trainingSessionSetup = TrainingSessionSetup()
     private var lastCoachMessage: String? = null
@@ -247,7 +246,6 @@ class MainActivity : AppCompatActivity() {
     private var selectedPalette: AppPalette = HitRisePalettes.byId(HitRisePalettes.DEFAULT_ID)
     private var selectedHomePage: HomePage = HomePage.TrainingCenter
     private var trainingJob: Job? = null
-    private var activationJob: Job? = null
     private var bluetoothTrainingCount: Int = 0
     private var bluetoothTrainingMode: TrainingMode? = null
     private var partialTrainingUploadTriggered: Boolean = false
@@ -291,7 +289,6 @@ class MainActivity : AppCompatActivity() {
     private var bluetoothAutoConnectInProgress: Boolean = false
     private var bluetoothLastAutoConnectStartedMs: Long = 0L
     private var pendingAvatarSelection: ((Uri?) -> Unit)? = null
-    private var autoRestoreAttempted = false
     private var splashDismissed = false
     private var celebrationShowing = false
     private var dismissingCelebrationForTraining = false
@@ -300,6 +297,7 @@ class MainActivity : AppCompatActivity() {
 
     private var trainingSessionId: String = ""
     private var trainingStartedElapsedMs: Long = 0L
+    private var trainingRoundStartedElapsedMs: Long = 0L
     private var trainingPeakForceN: Float = 0f
     private var trainingCurrentBpm: Float = 0f
     private var trainingPerfectBeats: Int = 0
@@ -316,7 +314,6 @@ class MainActivity : AppCompatActivity() {
     private var trainingLastCoachSpeechElapsedMs: Long = -120_000L
     private val trainingDeliveredCoachCues = mutableSetOf<String>()
 
-    private val activationService = ActivationService()
     private val cloudSyncService = CloudSyncService()
     private var cloudSoundEffects: List<CloudSoundEffect> = emptyList()
     private var cloudSoundEffectsMessage: String? = null
@@ -387,7 +384,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var leaderboardMeTitleView: TextView
     private lateinit var leaderboardMeView: TextView
     private lateinit var shareLeaderboardButton: Button
-    private lateinit var leaderboardModeGroup: RadioGroup
+    private lateinit var leaderboardModeGroup: GridLayout
     private lateinit var leaderboardDurationButton: RadioButton
     private lateinit var leaderboardTotalHitsButton: RadioButton
     private lateinit var leaderboardPeakForceButton: RadioButton
@@ -461,23 +458,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var musicImmersionCard: LinearLayout
     private lateinit var rhythmFreeButton: RadioButton
     private lateinit var rhythmBeatButton: RadioButton
-    private lateinit var beat40Button: RadioButton
-    private lateinit var beat65Button: RadioButton
-    private lateinit var beat80Button: RadioButton
     private lateinit var beat100Button: RadioButton
-    private lateinit var beat120Button: RadioButton
+    private lateinit var beat150Button: RadioButton
+    private lateinit var beat200Button: RadioButton
+    private lateinit var beat250Button: RadioButton
+    private lateinit var beat300Button: RadioButton
     private lateinit var soundGymButton: RadioButton
     private lateinit var soundStreetButton: RadioButton
 
     private lateinit var activationCard: LinearLayout
     private lateinit var activationTitleView: TextView
     private lateinit var activationHintView: TextView
-    private lateinit var serialInput: EditText
-    private lateinit var codeInput: EditText
-    private lateinit var serialInputErrorView: TextView
-    private lateinit var codeInputErrorView: TextView
-    private var activationInputsValid: Boolean = false
-    private lateinit var activateButton: Button
     private lateinit var authStatusView: TextView
     private lateinit var activationDetailsView: TextView
     private lateinit var pageTabsCard: LinearLayout
@@ -546,7 +537,15 @@ class MainActivity : AppCompatActivity() {
                         bluetoothConnectedDevice = device
                         rememberBluetoothDevice(device)
                         saveLastBluetoothDevice(device)
-                        bluetoothBatteryText = localText("读取中", "Reading", "Lecture", "กำลังอ่าน")
+                        bluetoothBatteryText = localText(
+                            "读取中",
+                            "Reading",
+                            "Lecture",
+                            "กำลังอ่าน",
+                            "leyendo",
+                            "Lesen",
+                            "독서",
+                        )
                         bluetoothBatteryRaw = null
                         bluetoothChargingFlagRaw = null
                         deferredTrainingBatteryRaw = null
@@ -706,7 +705,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         trainingJob?.cancel()
         trainingBluetoothReconnectJob?.cancel()
-        activationJob?.cancel()
         cloudJob?.cancel()
         cloudSoundEffectsLoadingJob?.cancel()
         cloudBackgroundMusicLoadingJob?.cancel()
@@ -887,43 +885,6 @@ class MainActivity : AppCompatActivity() {
                 setTextColor(Color.parseColor("#DFFFF0"))
                 setPadding(0, 0, 0, dp(10))
             }
-        serialInput =
-            activationInput("").apply {
-                filters = arrayOf(InputFilter.LengthFilter(11))
-            }
-        serialInputErrorView =
-            bodyText("").apply {
-                setTextColor(Color.parseColor("#FFB347"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setPadding(dp(2), dp(4), 0, 0)
-                visibility = View.GONE
-            }
-        codeInput =
-            activationInput("").apply {
-                filters = arrayOf(InputFilter.LengthFilter(8))
-            }
-        codeInputErrorView =
-            bodyText("").apply {
-                setTextColor(Color.parseColor("#FFB347"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setPadding(dp(2), dp(4), 0, 0)
-                visibility = View.GONE
-            }
-        activateButton =
-            actionButton("", "#10BDAA").apply {
-                layoutParams =
-                    LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    )
-                setOnClickListener { activateDevice() }
-            }
-        serialInput.doAfterTextChanged {
-            updateActivationInputState()
-        }
-        codeInput.doAfterTextChanged {
-            updateActivationInputState()
-        }
         authStatusView =
             bodyText("").apply {
                 setTextColor(Color.parseColor("#FFD060"))
@@ -937,18 +898,10 @@ class MainActivity : AppCompatActivity() {
             }
         activationCard.addView(activationTitleView)
         activationCard.addView(activationHintView)
-        activationCard.addView(serialInput)
-        activationCard.addView(serialInputErrorView)
-        activationCard.addView(spacer(dp(8)))
-        activationCard.addView(codeInput)
-        activationCard.addView(codeInputErrorView)
-        activationCard.addView(spacer(dp(12)))
-        activationCard.addView(activateButton)
         activationCard.addView(authStatusView)
         activationCard.addView(activationDetailsView)
         activationCard.visibility = View.GONE
         topContainer.addView(activationCard)
-        updateActivationInputState()
 
         pageTabsCard =
             surfaceCard().apply {
@@ -1555,9 +1508,11 @@ class MainActivity : AppCompatActivity() {
         leaderboardSubtitleView = sectionSubtitle("")
         pageLeaderboardContainer.addView(leaderboardSubtitleView)
         leaderboardModeGroup =
-            RadioGroup(this).apply {
-                orientation = RadioGroup.HORIZONTAL
-                gravity = Gravity.START
+            GridLayout(this).apply {
+                columnCount = 2
+                rowCount = 3
+                alignmentMode = GridLayout.ALIGN_MARGINS
+                useDefaultMargins = false
                 setPadding(0, dp(4), 0, dp(8))
             }
         leaderboardDurationButton =
@@ -1591,33 +1546,29 @@ class MainActivity : AppCompatActivity() {
                 id = View.generateViewId()
                 configureLeaderboardFilterButton(this)
             }
-        leaderboardModeGroup.addView(leaderboardDurationButton)
-        leaderboardModeGroup.addView(leaderboardTotalHitsButton)
-        leaderboardModeGroup.addView(leaderboardPeakForceButton)
-        leaderboardModeGroup.addView(leaderboardAvgForceButton)
-        leaderboardModeGroup.addView(leaderboardCaloriesButton)
-        leaderboardModeGroup.addView(leaderboardFatButton)
-        leaderboardModeGroup.setOnCheckedChangeListener { _, checkedId ->
-            leaderboardBoard =
-                when (checkedId) {
-                    leaderboardTotalHitsButton.id -> LeaderboardBoard.TotalHits
-                    leaderboardPeakForceButton.id -> LeaderboardBoard.PeakForce
-                    leaderboardAvgForceButton.id -> LeaderboardBoard.AvgForce
-                    leaderboardCaloriesButton.id -> LeaderboardBoard.Calories
-                    leaderboardFatButton.id -> LeaderboardBoard.FatBurned
-                    else -> LeaderboardBoard.TrainingDuration
+        val leaderboardFilters =
+            listOf(
+                leaderboardDurationButton to LeaderboardBoard.TrainingDuration,
+                leaderboardTotalHitsButton to LeaderboardBoard.TotalHits,
+                leaderboardPeakForceButton to LeaderboardBoard.PeakForce,
+                leaderboardAvgForceButton to LeaderboardBoard.AvgForce,
+                leaderboardCaloriesButton to LeaderboardBoard.Calories,
+                leaderboardFatButton to LeaderboardBoard.FatBurned,
+            )
+        leaderboardFilters.forEachIndexed { index, (button, board) ->
+            button.layoutParams =
+                GridLayout.LayoutParams(
+                    GridLayout.spec(index / 2),
+                    GridLayout.spec(index % 2, 1f),
+                ).apply {
+                    width = 0
+                    height = ViewGroup.LayoutParams.WRAP_CONTENT
+                    setMargins(0, 0, if (index % 2 == 0) dp(6) else 0, dp(6))
                 }
-            leaderboardSubtitleView.text = leaderboardBoardSubtitle(leaderboardBoard)
-            if (isActivated() && trainingJob?.isActive != true) {
-                refreshLeaderboardOnly()
-            }
+            button.setOnClickListener { selectLeaderboardBoard(board) }
+            leaderboardModeGroup.addView(button)
         }
-        pageLeaderboardContainer.addView(
-            HorizontalScrollView(this).apply {
-                isHorizontalScrollBarEnabled = false
-                addView(leaderboardModeGroup)
-            },
-        )
+        pageLeaderboardContainer.addView(leaderboardModeGroup)
         refreshLeaderboardButton =
             compactActionButton("", "#10BDAA").apply {
                 layoutParams =
@@ -1831,7 +1782,15 @@ class MainActivity : AppCompatActivity() {
 
             val brandSubtitle =
                 TextView(this@MainActivity).apply {
-                    text = localText("智能拳击球训练", "HitRise Training", "Entraînement HitRise", "ฝึก HitRise")
+                    text = localText(
+                        "智能拳击球训练",
+                        "HitRise Training",
+                        "Entraînement HitRise",
+                        "ฝึก HitRise",
+                        "Entrenamiento HitRise",
+                        "HitRise-Training",
+                        "HitRise 훈련",
+                    )
                     setTextColor(Color.parseColor("#CAA26A"))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     setPadding(0, dp(8), 0, 0)
@@ -1883,7 +1842,15 @@ class MainActivity : AppCompatActivity() {
 
             val skipHint =
                 TextView(this@MainActivity).apply {
-                    text = localText("轻触跳过", "Tap to skip", "Touchez pour passer", "แตะเพื่อข้าม")
+                    text = localText(
+                        "轻触跳过",
+                        "Tap to skip",
+                        "Touchez pour passer",
+                        "แตะเพื่อข้าม",
+                        "Toca para saltar",
+                        "Zum Überspringen tippen",
+                        "건너뛰려면 탭하세요.",
+                    )
                     setTextColor(Color.parseColor("#B88A54"))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                     layoutParams =
@@ -1992,6 +1959,14 @@ class MainActivity : AppCompatActivity() {
             includeFontPadding = false
             setPadding(dp(7), dp(7), dp(7), dp(7))
             compoundDrawablePadding = dp(4)
+            setSingleLine(true)
+            TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                this,
+                8,
+                11,
+                1,
+                TypedValue.COMPLEX_UNIT_SP,
+            )
             isAllCaps = false
             minHeight = dp(58)
             layoutParams =
@@ -2004,6 +1979,18 @@ class MainActivity : AppCompatActivity() {
             isFocusable = true
             setOnClickListener { onClick() }
             applyRippleOverlay()
+        }
+
+    private fun homeNavigationLabel(page: HomePage): String =
+        when (page) {
+            HomePage.TrainingCenter ->
+                localText("训练", "Training", "Entraîner", "ฝึก", "Entrenar", "Training", "훈련")
+            HomePage.TrainingAchievements ->
+                localText("成果", "Results", "Résultats", "ผลการฝึก", "Logros", "Erfolge", "성과")
+            HomePage.Leaderboard ->
+                localText("排名", "Ranking", "Classement", "อันดับ", "Clasificación", "Rangliste", "순위표")
+            HomePage.Profile ->
+                localText("我的", "Profile", "Profil", "โปรไฟล์", "Perfil", "Profil", "프로필")
         }
 
     private fun pageContentContainer(): LinearLayout =
@@ -2215,6 +2202,9 @@ class MainActivity : AppCompatActivity() {
                         "Bluetooth counting channel is not ready. Keep the device connected and retry.",
                         "Le canal de comptage Bluetooth n'est pas prêt. Gardez l'appareil connecté et réessayez.",
                         "ช่องนับผ่านบลูทูธยังไม่พร้อม โปรดเชื่อมต่ออุปกรณ์ไว้แล้วลองอีกครั้ง",
+                        "Bluetooth el canal de conteo no está listo. Mantenga el dispositivo conectado y vuelva a intentarlo.",
+                        "Der Zählkanal Bluetooth ist nicht bereit. Lassen Sie das Gerät angeschlossen und versuchen Sie es erneut.",
+                        "Bluetooth 카운팅 채널이 준비되지 않았습니다. 장치를 연결된 상태로 유지하고 다시 시도하세요.",
                     )
                 } else {
                     localText(
@@ -2222,6 +2212,9 @@ class MainActivity : AppCompatActivity() {
                         "Gyro-off command was not confirmed. Local training count has been stopped.",
                         "La commande d'arrêt du gyroscope n'a pas été confirmée. Le comptage local est arrêté.",
                         "ยังไม่ยืนยันคำสั่งปิดไจโร หยุดนับการฝึกในเครื่องแล้ว",
+                        "El comando de apagado giroscópico no fue confirmado. Se ha detenido el recuento de entrenamiento local.",
+                        "Gyro-Off-Befehl wurde nicht bestätigt. Die Zählung der lokalen Trainings wurde gestoppt.",
+                        "자이로오프 명령이 확인되지 않았습니다. 로컬 훈련 카운트가 중지되었습니다.",
                     )
                 }
             updateBluetoothSettingsViews()
@@ -2290,6 +2283,9 @@ class MainActivity : AppCompatActivity() {
                                 "Bluetooth counting did not start. Check the device connection and retry.",
                                 "Le comptage Bluetooth n'a pas démarré. Vérifiez la connexion puis réessayez.",
                                 "เริ่มนับผ่านบลูทูธไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+                                "Bluetooth el conteo no comenzó. Verifique la conexión del dispositivo y vuelva a intentarlo.",
+                                "Bluetooth Zählung wurde nicht gestartet. Überprüfen Sie die Geräteverbindung und versuchen Sie es erneut.",
+                                "Bluetooth 계산이 시작되지 않았습니다. 장치 연결을 확인하고 다시 시도하십시오.",
                             ),
                         )
                     }
@@ -2305,6 +2301,9 @@ class MainActivity : AppCompatActivity() {
                                 "Let's go. Settle into rhythm first, keep shoulders relaxed, and use light punches for the first 10 seconds.",
                                 "C'est parti. Trouvez le rythme, épaules relâchées, coups légers pendant 10 secondes.",
                                 "เริ่มได้ จับจังหวะก่อน ผ่อนหัวไหล่ แล้วใช้หมัดเบาใน 10 วินาทีแรก",
+                                "Vámonos. Primero, establezca el ritmo, mantenga los hombros relajados y use golpes ligeros durante los primeros 10 segundos.",
+                                "Lass uns gehen. Stellen Sie sich zunächst auf den Rhythmus ein, halten Sie die Schultern entspannt und führen Sie in den ersten 10 Sekunden leichte Schläge aus.",
+                                "가자. 먼저 리듬을 잡고 어깨를 편안하게 유지하며 처음 10초 동안 가벼운 펀치를 사용합니다.",
                             ),
                         meta =
                             localText(
@@ -2312,6 +2311,9 @@ class MainActivity : AppCompatActivity() {
                                 "Trigger: round started | AI live coaching",
                                 "Déclencheur : début du round | coaching IA",
                                 "สาเหตุ: เริ่มรอบ | โค้ช AI สด",
+                                "Desencadenante: ronda iniciada | AI entrenamiento en vivo",
+                                "Auslöser: Runde gestartet | AI Live-Coaching",
+                                "트리거: 라운드 시작됨 | AI 라이브 코칭",
                             ),
                         speak = false,
                     )
@@ -2383,12 +2385,23 @@ class MainActivity : AppCompatActivity() {
                     "Preparing counting channel...",
                     "Préparation du canal de comptage...",
                     "กำลังเตรียมช่องนับ...",
+                    "Preparando el canal de conteo...",
+                    "Zählkanal wird vorbereitet...",
+                    "카운트 채널 준비 중...",
                 )
             statusView.text = readyText
             statusView.setTextColor(Color.parseColor(selectedPalette.warning))
             remainingView.text = displayRemaining(currentRoundRemainingMs)
             showDashboardCenterCue(
-                center = localText("准备", "Ready", "Prêt", "พร้อม"),
+                center = localText(
+                    "准备",
+                    "Ready",
+                    "Prêt",
+                    "พร้อม",
+                    "Listo",
+                    "Bereit",
+                    "준비",
+                ),
                 caption = readyText,
                 color = Color.parseColor(selectedPalette.warning),
             )
@@ -2402,6 +2415,9 @@ class MainActivity : AppCompatActivity() {
                             "Bluetooth counting started",
                             "Comptage Bluetooth démarré",
                             "เริ่มนับผ่านบลูทูธแล้ว",
+                            "Conteo Bluetooth iniciado",
+                            "Bluetooth-Zählung gestartet",
+                            "Bluetooth 카운트가 시작되었습니다",
                         )
                     updateBluetoothSettingsViews()
                     return true
@@ -2423,6 +2439,9 @@ class MainActivity : AppCompatActivity() {
                         "Counting channel is still not ready. Refreshing Bluetooth...",
                         "Le canal de comptage n'est pas prêt. Reconnexion Bluetooth...",
                         "ช่องนับยังไม่พร้อม กำลังรีเฟรชบลูทูธ...",
+                        "El canal de conteo aún no está listo. Refrescante Bluetooth...",
+                        "Der Zählkanal ist noch nicht bereit. Erfrischend Bluetooth...",
+                        "카운팅 채널이 아직 준비되지 않았습니다. Bluetooth 새로 고치는 중...",
                     )
                 updateBluetoothSettingsViews()
                 sensorBallBluetooth.disconnect()
@@ -2460,16 +2479,21 @@ class MainActivity : AppCompatActivity() {
                     "Round $round in progress",
                     "Round $round en cours",
                     "รอบ $round กำลังฝึก",
+                    "Ronda $round en curso",
+                    "Runde $round in Bearbeitung",
+                    "라운드 $round 진행 중",
                 )
             statusView.setTextColor(Color.parseColor("#FFB347"))
             scrollRealtimeTrainingToTop()
             scheduleRoundStartAiCoachCue(round, setup.rounds)
             val startMs = SystemClock.elapsedRealtime()
+            trainingRoundStartedElapsedMs = startMs
+            trainingLastEvaluatedBeat = -1
             while (SystemClock.elapsedRealtime() - startMs < workDurationMs) {
                 val remainingMs = (workDurationMs - (SystemClock.elapsedRealtime() - startMs)).coerceAtLeast(0L)
                 currentRoundRemainingMs = remainingMs
                 remainingView.text = displayRemaining(remainingMs)
-                evaluateMissedBeats(SystemClock.elapsedRealtime() - trainingStartedElapsedMs)
+                evaluateMissedBeats(SystemClock.elapsedRealtime() - trainingRoundStartedElapsedMs)
                 evaluateAiCoachTimerCue(remainingMs)
                 updateDashboardViews(remainingMs)
                 delay(100L)
@@ -2503,6 +2527,9 @@ class MainActivity : AppCompatActivity() {
                             "Rest ${formatDurationClock(remainingMs)}",
                             "Repos ${formatDurationClock(remainingMs)}",
                             "พัก ${formatDurationClock(remainingMs)}",
+                            "Descanso ${formatDurationClock(remainingMs)}",
+                            "Pause ${formatDurationClock(remainingMs)}",
+                            "휴식 ${formatDurationClock(remainingMs)}",
                         )
                     updateDashboardViews(remainingMs)
                     delay(100L)
@@ -2522,6 +2549,9 @@ class MainActivity : AppCompatActivity() {
                             "Bluetooth counting did not restart after rest. Check the device connection and retry.",
                             "Le comptage Bluetooth n'a pas redémarré après le repos. Vérifiez la connexion puis réessayez.",
                             "หลังพักแล้วเริ่มนับผ่านบลูทูธใหม่ไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+                            "Bluetooth el conteo no se reanudó después del descanso. Verifique la conexión del dispositivo y vuelva a intentarlo.",
+                            "Bluetooth Die Zählung wurde nach der Pause nicht neu gestartet. Überprüfen Sie die Geräteverbindung und versuchen Sie es erneut.",
+                            "Bluetooth 계산이 휴식 후 다시 시작되지 않았습니다. 장치 연결을 확인하고 다시 시도하십시오.",
                         ),
                     )
                 }
@@ -2546,7 +2576,7 @@ class MainActivity : AppCompatActivity() {
             )
             lastSpokenCountdown = value
             countdownView.announceForAccessibility(value.toString())
-            speakCueAndWait(value.toString(), timeoutMs = 900L)
+            speakCountdownCueAndWait(value.toString(), timeoutMs = 900L)
             delay(120L)
         }
         countdownView.text = displayGoLabel()
@@ -2559,12 +2589,16 @@ class MainActivity : AppCompatActivity() {
         )
         goSpoken = true
         countdownView.announceForAccessibility(displayGoLabel())
-        speakCueAndWait(displayGoCue(), timeoutMs = 900L)
+        speakCountdownCueAndWait(displayGoCue(), timeoutMs = 900L)
     }
 
-    private suspend fun speakCueAndWait(text: String, timeoutMs: Long) {
+    private suspend fun speakCountdownCueAndWait(text: String, timeoutMs: Long) {
         val completed = CompletableDeferred<Unit>()
-        speakCue(text) {
+        speakCue(
+            text = text,
+            preferredLocales = countdownTtsLocales(),
+            spokenTextOverride = countdownSpokenCueText(text),
+        ) {
             if (!completed.isCompleted) {
                 completed.complete(Unit)
             }
@@ -2698,6 +2732,7 @@ class MainActivity : AppCompatActivity() {
     private fun resetRealtimeTrainingSession(mode: TrainingMode) {
         trainingSessionId = UUID.randomUUID().toString()
         trainingStartedElapsedMs = 0L
+        trainingRoundStartedElapsedMs = 0L
         clearDashboardCenterCue()
         currentTrainingRound = 1
         currentTrainingRoundCount = trainingSessionSetup.rounds
@@ -2733,8 +2768,9 @@ class MainActivity : AppCompatActivity() {
     private fun recordTrainingPunch() {
         val now = SystemClock.elapsedRealtime()
         val elapsedMs = if (trainingStartedElapsedMs > 0L) now - trainingStartedElapsedMs else 0L
+        val roundElapsedMs = if (trainingRoundStartedElapsedMs > 0L) now - trainingRoundStartedElapsedMs else elapsedMs
         val force = (bluetoothPeakText.toFloatOrNull() ?: 0f).let { if (it > 0f) it else 15f }.coerceAtLeast(0f)
-        val beatResult = evaluateBeatForPunch(elapsedMs)
+        val beatResult = evaluateBeatForPunch(roundElapsedMs)
         bluetoothTrainingCount += 1
         trainingPeakForceN = max(trainingPeakForceN, force)
         trainingPunchTimesMs.addLast(now)
@@ -2763,12 +2799,13 @@ class MainActivity : AppCompatActivity() {
             return null
         }
         val intervalMs = 60_000f / selectedBeatBpm.coerceAtLeast(1)
+        val (perfectWindowMs, goodWindowMs) = beatScoringWindows(intervalMs)
         val nearestBeatMs = (elapsedMs / intervalMs).roundToInt() * intervalMs
         val offset = abs(elapsedMs - nearestBeatMs.roundToInt()).toInt()
         val score =
             when {
-                offset <= 100 -> BeatScore.Perfect
-                offset <= 200 -> BeatScore.Good
+                offset <= perfectWindowMs -> BeatScore.Perfect
+                offset <= goodWindowMs -> BeatScore.Good
                 else -> BeatScore.Miss
             }
         when (score) {
@@ -2780,27 +2817,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun evaluateMissedBeats(elapsedMs: Long) {
-        if (selectedRhythmMode != TrainingRhythmMode.Rhythm || elapsedMs < 220L) {
+        if (selectedRhythmMode != TrainingRhythmMode.Rhythm) {
             return
         }
         val intervalMs = 60_000f / selectedBeatBpm.coerceAtLeast(1)
-        val completedBeat = ((elapsedMs - 220L) / intervalMs).toInt()
+        val (_, goodWindowMs) = beatScoringWindows(intervalMs)
+        val graceMs = goodWindowMs + 20L
+        if (elapsedMs < graceMs) {
+            return
+        }
+        val completedBeat = ((elapsedMs - graceMs) / intervalMs).toInt()
         if (completedBeat <= trainingLastEvaluatedBeat) {
             return
         }
         val start = max(0, trainingLastEvaluatedBeat + 1)
+        val roundStartInSessionMs =
+            (trainingRoundStartedElapsedMs - trainingStartedElapsedMs).coerceAtLeast(0L)
         for (beat in start..completedBeat) {
             val beatElapsed = (beat * intervalMs).roundToInt().toLong()
+            val beatSessionElapsed = roundStartInSessionMs + beatElapsed
             playBeatTick()
             val hasNearbyPunch =
                 trainingPunchEvents.any { event ->
-                    event.deviceTs >= 0 && abs(event.deviceTs - beatElapsed) <= 200
+                    event.deviceTs >= 0 && abs(event.deviceTs - beatSessionElapsed) <= goodWindowMs.toLong()
                 }
             if (!hasNearbyPunch) {
                 trainingMissBeats += 1
             }
         }
         trainingLastEvaluatedBeat = completedBeat
+    }
+
+    private fun beatScoringWindows(intervalMs: Float): Pair<Int, Int> {
+        val perfectWindowMs = (intervalMs * 0.20f).roundToInt().coerceIn(40, 100)
+        val goodWindowMs = (intervalMs * 0.40f).roundToInt().coerceIn(perfectWindowMs + 1, 200)
+        return perfectWindowMs to goodWindowMs
     }
 
     private fun calculateRecentBpm(): Float {
@@ -2896,11 +2947,35 @@ class MainActivity : AppCompatActivity() {
         val minutes = safeSeconds / 60
         val seconds = safeSeconds % 60
         return if (minutes <= 0) {
-            localText("${seconds} 秒", "${seconds}s", "${seconds} s", "${seconds} วิ")
+            localText(
+                "${seconds} 秒",
+                "${seconds}s",
+                "${seconds} s",
+                "${seconds} วิ",
+                "${seconds} s",
+                "${seconds} Sek.",
+                "${seconds}초",
+            )
         } else if (seconds == 0) {
-            localText("${minutes} 分钟", "${minutes} min", "${minutes} min", "${minutes} นาที")
+            localText(
+                "${minutes} 分钟",
+                "${minutes} min",
+                "${minutes} min",
+                "${minutes} นาที",
+                "${minutes} min",
+                "${minutes} Min.",
+                "${minutes}분",
+            )
         } else {
-            localText("${minutes}分${seconds}秒", "${minutes}m ${seconds}s", "${minutes} min ${seconds} s", "${minutes} นาที ${seconds} วิ")
+            localText(
+                "${minutes}分${seconds}秒",
+                "${minutes}m ${seconds}s",
+                "${minutes} min ${seconds} s",
+                "${minutes} นาที ${seconds} วิ",
+                "${minutes} min ${seconds} s",
+                "${minutes} Min. ${seconds} Sek.",
+                "${minutes}분 ${seconds}초",
+            )
         }
     }
 
@@ -2914,9 +2989,20 @@ class MainActivity : AppCompatActivity() {
                 "Round ${report.completedRounds}/${report.totalRounds}",
                 "Round ${report.completedRounds}/${report.totalRounds}",
                 "รอบ ${report.completedRounds}/${report.totalRounds}",
+                "Redondo ${report.completedRounds}/${report.totalRounds}",
+                "Rund ${report.completedRounds}/${report.totalRounds}",
+                "라운드 ${report.completedRounds}/${report.totalRounds}",
             )
         } else {
-            localText("训练战报", "Training Report", "Rapport", "รายงานการฝึก")
+            localText(
+                "训练战报",
+                "Training Report",
+                "Rapport",
+                "รายงานการฝึก",
+                "Informe de formación",
+                "Trainingsbericht",
+                "훈련 보고서",
+            )
         }
 
     private fun roundReportTitleText(report: TrainingReport): String =
@@ -2926,9 +3012,20 @@ class MainActivity : AppCompatActivity() {
                 "Round ${report.completedRounds} Training Report",
                 "Rapport du round ${report.completedRounds}",
                 "รายงานรอบ ${report.completedRounds}",
+                "Informe de entrenamiento de la ronda ${report.completedRounds}",
+                "Trainingsbericht für Runde ${report.completedRounds}",
+                "${report.completedRounds}라운드 훈련 보고서",
             )
         } else {
-            localText("HitRise 训练战报", "HitRise Training Report", "Rapport HitRise", "รายงาน HitRise")
+            localText(
+                "HitRise 训练战报",
+                "HitRise Training Report",
+                "Rapport HitRise",
+                "รายงาน HitRise",
+                "Informe de entrenamiento HitRise",
+                "HitRise-Trainingsbericht",
+                "HitRise 훈련 보고서",
+            )
         }
 
     private fun trainingBattleReportSummary(report: TrainingReport): String =
@@ -2937,6 +3034,9 @@ class MainActivity : AppCompatActivity() {
             "Total ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} punches | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} equivalent fat",
             "Total ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} coups | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} graisse équiv.",
             "รวม ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} หมัด | ${formatCalories(report.caloriesBurned)} | ไขมันเทียบเท่า ${formatFatGrams(report.fatBurnedGrams)}",
+            "Total ${formatTrainingDuration(report.durationSeconds)} | Punzones ${report.totalHits} | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} grasa equivalente",
+            "Gesamt ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} Stempel | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} äquivalentes Fett",
+            "합계 ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} 펀치 | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} 상당 지방",
         )
 
     private fun trainingBattleReportForceLine(report: TrainingReport): String =
@@ -2945,6 +3045,9 @@ class MainActivity : AppCompatActivity() {
             "Peak ${forceDisplay(report.peakForceN)} | Avg ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
             "Max ${forceDisplay(report.peakForceN)} | Moy. ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
             "สูงสุด ${forceDisplay(report.peakForceN)} | เฉลี่ย ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
+            "Pico ${forceDisplay(report.peakForceN)} | Promedio ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
+            "Peak ${forceDisplay(report.peakForceN)} | Durchschn. ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
+            "피크 ${forceDisplay(report.peakForceN)} | 평균 ${forceDisplay(report.avgForceN)} | ${formatReportEndedTime(report.endedAtEpochMs)}",
         )
 
     private fun trainingStatsSummary(stats: CloudUserStatistics): String =
@@ -2953,6 +3056,9 @@ class MainActivity : AppCompatActivity() {
             "Total ${formatTrainingDuration(stats.totalTrainingSeconds)} | ${stats.totalHits} punches | ${formatCalories(stats.totalCaloriesBurned)}",
             "Total ${formatTrainingDuration(stats.totalTrainingSeconds)} | ${stats.totalHits} coups | ${formatCalories(stats.totalCaloriesBurned)}",
             "รวม ${formatTrainingDuration(stats.totalTrainingSeconds)} | ${stats.totalHits} หมัด | ${formatCalories(stats.totalCaloriesBurned)}",
+            "Total ${formatTrainingDuration(stats.totalTrainingSeconds)} | Punzones ${stats.totalHits} | ${formatCalories(stats.totalCaloriesBurned)}",
+            "Gesamt ${formatTrainingDuration(stats.totalTrainingSeconds)} | ${stats.totalHits} Stempel | ${formatCalories(stats.totalCaloriesBurned)}",
+            "합계 ${formatTrainingDuration(stats.totalTrainingSeconds)} | ${stats.totalHits} 펀치 | ${formatCalories(stats.totalCaloriesBurned)}",
         )
 
     private fun trainingStatsForceBurnLine(stats: CloudUserStatistics): String =
@@ -2961,6 +3067,9 @@ class MainActivity : AppCompatActivity() {
             "Peak ${forceDisplay(stats.bestPeakForceN)} | Best avg ${forceDisplay(stats.bestAvgForceN)} | Fat ${formatFatGrams(stats.totalFatBurnedGrams)}",
             "Max ${forceDisplay(stats.bestPeakForceN)} | Moy. max ${forceDisplay(stats.bestAvgForceN)} | Graisse ${formatFatGrams(stats.totalFatBurnedGrams)}",
             "สูงสุด ${forceDisplay(stats.bestPeakForceN)} | เฉลี่ยดีที่สุด ${forceDisplay(stats.bestAvgForceN)} | ไขมันเทียบเท่า ${formatFatGrams(stats.totalFatBurnedGrams)}",
+            "Pico ${forceDisplay(stats.bestPeakForceN)} | Mejor promedio ${forceDisplay(stats.bestAvgForceN)} | Grasa ${formatFatGrams(stats.totalFatBurnedGrams)}",
+            "Peak ${forceDisplay(stats.bestPeakForceN)} | Bester Durchschnitt ${forceDisplay(stats.bestAvgForceN)} | Fett ${formatFatGrams(stats.totalFatBurnedGrams)}",
+            "피크 ${forceDisplay(stats.bestPeakForceN)} | 최고 평균 ${forceDisplay(stats.bestAvgForceN)} | 뚱뚱한 ${formatFatGrams(stats.totalFatBurnedGrams)}",
         )
 
     private fun trainingReportLeaderboardLine(): String =
@@ -2969,6 +3078,9 @@ class MainActivity : AppCompatActivity() {
             "Badges and leaderboards track duration, punches, peak and average Relative Power Score, calories, and equivalent fat burn.",
             "Badges et classements suivent durée, coups, score de puissance relative maximal et moyen, calories et graisse équivalente.",
             "เหรียญและอันดับนับเวลา หมัด คะแนนสูงสุด คะแนนเฉลี่ย แคลอรี และไขมันเทียบเท่า",
+            "Las insignias y clasificaciones registran la duración, los golpes, la Puntuación de Potencia Relativa máxima y media, las calorías y la grasa equivalente.",
+            "Abzeichen und Ranglisten erfassen Dauer, Schläge, maximale und durchschnittliche Relative Power Score, Kalorien und äquivalente Fettverbrennung.",
+            "배지와 순위표는 시간, 타격 수, 최대·평균 상대 파워 점수, 칼로리 및 환산 지방 소모량을 기록합니다.",
         )
 
     private fun showCompletedForceStats() {
@@ -2983,6 +3095,9 @@ class MainActivity : AppCompatActivity() {
                     "Relative Power Score: no hit data yet",
                     "Score de puissance relative : aucune donnée de frappe",
                     "คะแนนพลังสัมพัทธ์: ยังไม่มีข้อมูลหมัด",
+                    "Relativo Power Score: aún no hay datos de aciertos",
+                    "Relativ Power Score: noch keine Trefferdaten",
+                    "상대 Power Score: 아직 적중 데이터가 없습니다.",
                 )
             } else {
                 val minForce = forces.minOrNull() ?: 0f
@@ -2993,6 +3108,9 @@ class MainActivity : AppCompatActivity() {
                     "Relative Power Score  Min ${forceDisplay(minForce)} | Max ${forceDisplay(maxForce)} | Avg ${forceDisplay(avgForce)}",
                     "Score de puissance relative  Min ${forceDisplay(minForce)} | Max ${forceDisplay(maxForce)} | Moy ${forceDisplay(avgForce)}",
                     "คะแนนพลังสัมพัทธ์  ต่ำสุด ${forceDisplay(minForce)} | สูงสุด ${forceDisplay(maxForce)} | เฉลี่ย ${forceDisplay(avgForce)}",
+                    "Relativo Power Score Mín. ${forceDisplay(minForce)} | Max ${forceDisplay(maxForce)} | Promedio ${forceDisplay(avgForce)}",
+                    "Relativ Power Score Min. ${forceDisplay(minForce)} | Max ${forceDisplay(maxForce)} | Durchschn. ${forceDisplay(avgForce)}",
+                    "상대 Power Score 최소 ${forceDisplay(minForce)} | 맥스 ${forceDisplay(maxForce)} | 평균 ${forceDisplay(avgForce)}",
                 )
             }
         dashboardForceSummaryView.visibility = View.VISIBLE
@@ -3009,7 +3127,15 @@ class MainActivity : AppCompatActivity() {
         if (!::aiCoachMessageView.isInitialized) {
             return
         }
-        aiCoachStatusView.text = localText("待命", "Ready", "Prêt", "พร้อม")
+        aiCoachStatusView.text = localText(
+            "待命",
+            "Ready",
+            "Prêt",
+            "พร้อม",
+            "Listo",
+            "Bereit",
+            "준비",
+        )
         aiCoachStatusView.background = roundedBackground("#17354A", "#2E75B6", 999)
         aiCoachMessageView.text =
             localText(
@@ -3017,6 +3143,9 @@ class MainActivity : AppCompatActivity() {
                 "Start after connecting SENBALL#. I will give low-frequency key cues for rhythm, Relative Power Score, and combo flow.",
                 "Connectez SENBALL# puis lancez. Je donnerai des conseils clés sur rythme, score de puissance relative et combos.",
                 "เชื่อมต่อ SENBALL# แล้วเริ่มฝึก ฉันจะเตือนเฉพาะจังหวะ คะแนนพลังสัมพัทธ์ และคอมโบที่สำคัญ",
+                "Comience después de conectar SENBALL#. Daré claves clave de baja frecuencia para el ritmo, Power Score relativo y flujo combinado.",
+                "Beginnen Sie nach dem Anschließen von SENBALL#. Ich werde niederfrequente Schlüsselhinweise für Rhythmus, Relative Power Score und Combo-Flow geben.",
+                "SENBALL#를 연결한 후 시작하세요. 리듬, 상대 Power Score 및 콤보 흐름에 대한 저주파 키 큐를 제공합니다.",
             )
         aiCoachMetaView.text =
             localText(
@@ -3024,6 +3153,9 @@ class MainActivity : AppCompatActivity() {
                 "Trigger: waiting for training data",
                 "Déclencheur : attente des données",
                 "สาเหตุ: รอข้อมูลการฝึก",
+                "Desencadenante: esperando datos de entrenamiento",
+                "Auslöser: Warten auf Trainingsdaten",
+                "트리거: 훈련 데이터를 기다리는 중",
             )
         updateAiCoachVoiceBar(active = false)
     }
@@ -3120,9 +3252,25 @@ class MainActivity : AppCompatActivity() {
         ) {
             aiCoachStatusView.text =
                 if (willSpeak) {
-                    localText("语音播报中", "Speaking", "En annonce", "กำลังพูด")
+                    localText(
+                        "语音播报中",
+                        "Speaking",
+                        "En annonce",
+                        "กำลังพูด",
+                        "hablando",
+                        "Sprechen",
+                        "말하기",
+                    )
                 } else {
-                    localText("提示已更新", "Cue updated", "Conseil mis à jour", "อัปเดตคำแนะนำ")
+                    localText(
+                        "提示已更新",
+                        "Cue updated",
+                        "Conseil mis à jour",
+                        "อัปเดตคำแนะนำ",
+                        "Cue actualizado",
+                        "Cue aktualisiert",
+                        "큐가 업데이트되었습니다.",
+                    )
                 }
             aiCoachStatusView.background =
                 if (willSpeak) {
@@ -3136,7 +3284,15 @@ class MainActivity : AppCompatActivity() {
             aiCoachStatusView.postDelayed(
                 {
                     if (::aiCoachStatusView.isInitialized) {
-                        aiCoachStatusView.text = localText("实时监听", "Listening", "Écoute", "กำลังฟัง")
+                        aiCoachStatusView.text = localText(
+                            "实时监听",
+                            "Listening",
+                            "Écoute",
+                            "กำลังฟัง",
+                            "escuchando",
+                            "Zuhören",
+                            "듣기",
+                        )
                         aiCoachStatusView.background = roundedBackground("#04342C", "#0F6E56", 999)
                         updateAiCoachVoiceBar(active = false)
                     }
@@ -3166,6 +3322,9 @@ class MainActivity : AppCompatActivity() {
                         "Pick up the pace. You are under the target BPM, shorten the punch and recover faster.",
                         "Accélérez. Vous êtes sous le BPM cible, coups plus courts et retour plus rapide.",
                         "เร่งจังหวะ ตอนนี้ต่ำกว่า BPM เป้าหมาย หมัดสั้นขึ้นและดึงกลับเร็วขึ้น",
+                        "Acelera el ritmo. Estás bajo el objetivo BPM, acorta el golpe y recupera más rápido.",
+                        "Beschleunigen Sie das Tempo. Sie liegen unter dem Ziel BPM, verkürzen den Schlag und erholen sich schneller.",
+                        "속도를 높이십시오. 당신은 목표 BPM 아래에 있습니다. 펀치를 줄이고 더 빨리 회복하십시오.",
                     ),
                 meta =
                     localText(
@@ -3173,6 +3332,9 @@ class MainActivity : AppCompatActivity() {
                         "Trigger: BPM below target",
                         "Déclencheur : BPM sous la cible",
                         "สาเหตุ: BPM ต่ำกว่าเป้า",
+                        "Activador: BPM por debajo del objetivo",
+                        "Auslöser: BPM unter dem Zielwert",
+                        "트리거: 목표보다 낮은 BPM",
                     ),
                 )
             return
@@ -3189,6 +3351,9 @@ class MainActivity : AppCompatActivity() {
                             "Keep your technique consistent. That punch dropped off, lock the wrist and land clean.",
                             "Le score a baissé. Gardez une technique régulière et verrouillez le poignet.",
                             "คะแนนลดลง รักษาท่าทางให้สม่ำเสมอและล็อกข้อมือ",
+                            "Mantenga su técnica consistente. Ese golpe cayó, bloqueó la muñeca y aterrizó limpio.",
+                            "Halten Sie Ihre Technik konsistent. Der Schlag ließ nach, sperre das Handgelenk und lande sauber.",
+                            "기술을 일관되게 유지하십시오. 그 펀치가 떨어졌고, 손목을 잠그고 깨끗하게 착지했습니다.",
                         ),
                     meta =
                         localText(
@@ -3196,6 +3361,9 @@ class MainActivity : AppCompatActivity() {
                             "Trigger: Relative Power Score below recent average by 28%",
                             "Déclencheur : score de puissance relative sous la moyenne récente de 28 %",
                             "สาเหตุ: คะแนนพลังสัมพัทธ์ต่ำกว่าค่าเฉลี่ยล่าสุด 28%",
+                            "Desencadenante: Power Score relativo por debajo del promedio reciente en un 28%",
+                            "Auslöser: Relativer Power Score unter aktuellem Durchschnitt um 28 %",
+                            "트리거: 최근 평균보다 28% 낮은 상대 Power Score",
                         ),
                 )
                 return
@@ -3211,6 +3379,9 @@ class MainActivity : AppCompatActivity() {
                         "Great burst. Hold that state and give me one more short combo.",
                         "Belle explosion. Gardez cet état et refaites un combo court.",
                         "ระเบิดพลังสวยมาก รักษาจังหวะนี้แล้วต่อคอมโบสั้นอีกชุด",
+                        "Gran estallido. Mantén ese estado y dame un combo corto más.",
+                        "Toller Ausbruch. Halten Sie diesen Zustand und geben Sie mir noch eine kurze Kombination.",
+                        "큰 폭발. 그 상태를 유지하고 짧은 콤보를 하나 더 주세요.",
                     ),
                 meta =
                     localText(
@@ -3218,6 +3389,9 @@ class MainActivity : AppCompatActivity() {
                         "Trigger: power burst detected",
                         "Déclencheur : rafale détectée",
                         "สาเหตุ: พบชุดระเบิดพลัง",
+                        "Activador: ráfaga de energía detectada",
+                        "Auslöser: Stromstoß erkannt",
+                        "트리거: 전력 버스트 감지됨",
                     ),
             )
             return
@@ -3232,6 +3406,9 @@ class MainActivity : AppCompatActivity() {
                         "Nice combo rhythm. Keep the guard returning so the combination does not pull your posture apart.",
                         "Bon rythme de combo. Ramenez la garde pour garder la posture compacte.",
                         "คอมโบจังหวะดี ดึงการ์ดกลับไว้ อย่าให้ท่าหลุด",
+                        "Buen ritmo combinado. Mantenga la guardia regresando para que la combinación no altere su postura.",
+                        "Schöner Combo-Rhythmus. Halten Sie den Schutz immer wieder zurück, damit die Kombination Ihre Haltung nicht auseinanderzieht.",
+                        "콤보리듬이 좋네요. 조합으로 인해 자세가 무너지지 않도록 가드를 계속 돌려놓으십시오.",
                     ),
                 meta =
                     localText(
@@ -3239,6 +3416,9 @@ class MainActivity : AppCompatActivity() {
                         "Trigger: combo streak detected",
                         "Déclencheur : série de combos détectée",
                         "สาเหตุ: พบคอมโบต่อเนื่อง",
+                        "Desencadenante: racha de combo detectada",
+                        "Auslöser: Combo Streak erkannt",
+                        "트리거: 콤보 연속 감지됨",
                     ),
             )
         }
@@ -3267,6 +3447,9 @@ class MainActivity : AppCompatActivity() {
                     "Round $round starts. Settle your breathing, punch short, and bring the guard back.",
                     "Round $round. Respirez, frappez court et ramenez la garde.",
                     "เริ่มรอบ $round คุมลมหายใจ ชกสั้น และยกการ์ดกลับ",
+                    "Comienza la ronda $round. Calma tu respiración, golpea brevemente y trae a la guardia de regreso.",
+                    "Die Runde $round beginnt. Beruhigen Sie Ihre Atmung, schlagen Sie kurz zu und bringen Sie die Wache zurück.",
+                    "$round 라운드가 시작됩니다. 호흡을 진정시키고 짧게 펀치를 날린 후 경비원을 다시 데려오세요.",
                 ),
             meta =
                 localText(
@@ -3274,6 +3457,9 @@ class MainActivity : AppCompatActivity() {
                     "Trigger: round $round/$totalRounds started",
                     "Déclencheur : round $round/$totalRounds lancé",
                     "สาเหตุ: เริ่มรอบ $round/$totalRounds",
+                    "Activador: ronda $round/$totalRounds iniciada",
+                    "Auslöser: Runde $round/$totalRounds gestartet",
+                    "트리거: 라운드 $round/$totalRounds 시작됨",
                 ),
             force = true,
         )
@@ -3292,6 +3478,9 @@ class MainActivity : AppCompatActivity() {
                         "Final 10 seconds. Push hard, hold the rhythm, and keep punches clean.",
                         "Dernières 10 secondes. Poussez fort, gardez le rythme et frappez propre.",
                         "10 วินาทีสุดท้าย เร่งเต็มที่ คุมจังหวะและหมัดให้ชัด",
+                        "Últimos 10 segundos. Empuja fuerte, mantén el ritmo y mantén los golpes limpios.",
+                        "Letzte 10 Sekunden. Drücken Sie kräftig, halten Sie den Rhythmus und halten Sie die Schläge sauber.",
+                        "마지막 10초. 세게 밀고, 리듬을 유지하고, 펀치를 깨끗하게 유지하세요.",
                     ),
                 meta =
                     localText(
@@ -3299,6 +3488,9 @@ class MainActivity : AppCompatActivity() {
                         "Trigger: final 10 seconds",
                         "Déclencheur : 10 secondes restantes",
                         "สาเหตุ: เหลือ 10 วินาที",
+                        "Disparador: últimos 10 segundos",
+                        "Auslöser: letzte 10 Sekunden",
+                        "트리거: 마지막 10초",
                     ),
             )
         }
@@ -3409,9 +3601,25 @@ class MainActivity : AppCompatActivity() {
             caption =
                 dashboardCenterCueCaption
                     ?: if (trainingResting) {
-                        localText("休息时间", "Rest time", "Temps de repos", "เวลาพัก")
+                        localText(
+                            "休息时间",
+                            "Rest time",
+                            "Temps de repos",
+                            "เวลาพัก",
+                            "tiempo de descanso",
+                            "Ruhezeit",
+                            "휴식시간",
+                        )
                     } else {
-                        localText("回合时间", "Round time", "Temps du round", "เวลารอบ")
+                        localText(
+                            "回合时间",
+                            "Round time",
+                            "Temps du round",
+                            "เวลารอบ",
+                            "tiempo redondo",
+                            "Rundenzeit",
+                            "라운드 시간",
+                        )
                     },
             color = dashboardCenterCueColor ?: timerColor,
         )
@@ -3444,6 +3652,9 @@ class MainActivity : AppCompatActivity() {
                 "Round $currentTrainingRound / $currentTrainingRoundCount",
                 "Round $currentTrainingRound / $currentTrainingRoundCount",
                 "รอบ $currentTrainingRound / $currentTrainingRoundCount",
+                "Redondo $currentTrainingRound / $currentTrainingRoundCount",
+                "Rund $currentTrainingRound / $currentTrainingRoundCount",
+                "라운드 $currentTrainingRound / $currentTrainingRoundCount",
             )
         dashboardPunchValueView.text = displayHits.toString()
         dashboardBpmValueView.text = if (displayBpm > 0f) displayBpm.roundToInt().toString() else "--"
@@ -3456,13 +3667,24 @@ class MainActivity : AppCompatActivity() {
                 "Peak ${forceDisplay(trainingPeakForceN)}",
                 "Pic ${forceDisplay(trainingPeakForceN)}",
                 "สูงสุด ${forceDisplay(trainingPeakForceN)}",
+                "Pico ${forceDisplay(trainingPeakForceN)}",
+                "Spitze ${forceDisplay(trainingPeakForceN)}",
+                "피크 ${forceDisplay(trainingPeakForceN)}",
             )
         dashboardRhythmValueView.text =
             if (selectedRhythmMode == TrainingRhythmMode.Rhythm) {
                 val summary = RhythmSummary(trainingPerfectBeats, trainingGoodBeats, trainingMissBeats)
                 "${(summary.accuracy * 100f).roundToInt()}%"
             } else {
-                localText("自由", "Free", "Libre", "อิสระ")
+                localText(
+                    "自由",
+                    "Free",
+                    "Libre",
+                    "อิสระ",
+                    "Gratis",
+                    "Kostenlos",
+                    "무료",
+                )
             }
         dashboardGoalProgressView.text =
             localText(
@@ -3470,12 +3692,23 @@ class MainActivity : AppCompatActivity() {
                 "Today: $goalTarget hits | Done $displayHits hits",
                 "Aujourd'hui : $goalTarget coups | $displayHits coups faits",
                 "วันนี้ $goalTarget หมัด | ทำแล้ว $displayHits หมัด",
+                "Hoy: $goalTarget golpes | Completados $displayHits",
+                "Heute: $goalTarget trifft | Fertig $displayHits Treffer",
+                "오늘: 타격 ${goalTarget}회 | ${displayHits}회 완료",
             )
         updateDashboardGoalProgressBar(displayHits, goalTarget)
         refreshSecondaryHomeCardsThrottled()
         dashboardComboSummaryView.text =
             if (trainingComboCounts.isEmpty()) {
-                localText("连击识别等待第一拳。", "Combo recognition is waiting for the first hit.", "En attente du premier coup.", "รอหมัดแรก")
+                localText(
+                    "连击识别等待第一拳。",
+                    "Combo recognition is waiting for the first hit.",
+                    "En attente du premier coup.",
+                    "รอหมัดแรก",
+                    "El reconocimiento combinado está esperando el primer golpe.",
+                    "Die Combo-Erkennung wartet auf den ersten Treffer.",
+                    "콤보 인식이 첫 번째 히트를 기다리고 있습니다.",
+                )
             } else {
                 trainingComboCounts.entries.joinToString("  ") { "${comboDisplayName(it.key)} ×${it.value}" }
             }
@@ -3548,19 +3781,56 @@ class MainActivity : AppCompatActivity() {
 
     private fun comboDisplayName(combo: String): String =
         when (combo) {
-            "heavy_hit" -> localText("重击", "Heavy", "Puissant", "หนัก")
-            "combo" -> localText("连击", "Combo", "Combo", "คอมโบ")
-            "triple_combo" -> localText("三连击", "Triple", "Triple", "สามต่อ")
-            "power_burst" -> localText("爆发连击", "Burst", "Rafale", "ระเบิด")
-            else -> localText("击打", "Hit", "Coup", "หมัด")
+            "heavy_hit" -> localText(
+                "重击",
+                "Heavy",
+                "Puissant",
+                "หนัก",
+                "pesado",
+                "Schwer",
+                "헤비",
+            )
+            "combo" -> localText(
+                "连击",
+                "Combo",
+                "Combo",
+                "คอมโบ",
+                "combinado",
+                "Kombi",
+                "콤보",
+            )
+            "triple_combo" -> localText(
+                "三连击",
+                "Triple",
+                "Triple",
+                "สามต่อ",
+                "triple",
+                "Dreifach",
+                "트리플",
+            )
+            "power_burst" -> localText(
+                "爆发连击",
+                "Burst",
+                "Rafale",
+                "ระเบิด",
+                "Explosión",
+                "Platzen",
+                "버스트",
+            )
+            else -> localText(
+                "击打",
+                "Hit",
+                "Coup",
+                "หมัด",
+                "Golpear",
+                "Schlag",
+                "히트",
+            )
         }
 
     private fun startImmersiveTrainingAudio() {
         stopImmersiveTrainingAudio()
         startSelectedBackgroundMusic()
-        if (selectedRhythmMode != TrainingRhythmMode.Rhythm) {
-            return
-        }
         prepareSelectedCloudSoundEffect()
         val bpm = immersiveGrooveBpm()
         val soundPack = selectedSoundPack
@@ -3600,7 +3870,8 @@ class MainActivity : AppCompatActivity() {
                 try {
                     track.play()
                     while (isActive) {
-                        if (trainingResting) {
+                        val resting = trainingResting
+                        if (resting) {
                             buffer.fill(0)
                         } else {
                             renderImmersiveGroove(buffer, frameCursor, sampleRate, bpm, soundPack)
@@ -3611,6 +3882,8 @@ class MainActivity : AppCompatActivity() {
                         }
                         if (written == 0) {
                             delay(8L)
+                        } else if (resting) {
+                            frameCursor = 0L
                         } else {
                             frameCursor += written
                         }
@@ -3638,14 +3911,8 @@ class MainActivity : AppCompatActivity() {
         stopTrainingBackgroundMusic()
     }
 
-    private fun immersiveGrooveBpm(): Int {
-        val base = selectedBeatBpm.coerceIn(40, 120)
-        return when {
-            base < 70 -> base * 2
-            base < 90 -> 100
-            else -> base
-        }.coerceIn(80, 130)
-    }
+    private fun immersiveGrooveBpm(): Int =
+        selectedBeatBpm.coerceIn(MIN_TRAINING_BPM, MAX_TRAINING_BPM)
 
     private fun renderImmersiveGroove(
         buffer: ShortArray,
@@ -3709,7 +3976,15 @@ class MainActivity : AppCompatActivity() {
     private fun previewCloudSoundEffect(effect: CloudSoundEffect) {
         stopCloudEffectPreview()
         stopBackgroundMusicPreview()
-        Toast.makeText(this, localText("正在试听：${cloudSoundEffectName(effect)}", "Previewing: ${cloudSoundEffectName(effect)}", "Écoute : ${cloudSoundEffectName(effect)}", "ลองฟัง: ${cloudSoundEffectName(effect)}"), Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, localText(
+            "正在试听：${cloudSoundEffectName(effect)}",
+            "Previewing: ${cloudSoundEffectName(effect)}",
+            "Écoute : ${cloudSoundEffectName(effect)}",
+            "ลองฟัง: ${cloudSoundEffectName(effect)}",
+            "Vista previa: ${cloudSoundEffectName(effect)}",
+            "Vorschau: ${cloudSoundEffectName(effect)}",
+            "미리보기: ${cloudSoundEffectName(effect)}",
+        ), Toast.LENGTH_SHORT).show()
         cloudEffectPreviewPlayer =
             MediaPlayer().apply {
                 setAudioAttributes(
@@ -3735,7 +4010,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 setOnErrorListener { _, _, _ ->
                     stopCloudEffectPreview()
-                    Toast.makeText(this@MainActivity, localText("试听失败", "Preview failed", "Échec de l'écoute", "ฟังไม่สำเร็จ"), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, localText(
+                        "试听失败",
+                        "Preview failed",
+                        "Échec de l'écoute",
+                        "ฟังไม่สำเร็จ",
+                        "Error en la vista previa",
+                        "Vorschau fehlgeschlagen",
+                        "미리보기 실패",
+                    ), Toast.LENGTH_SHORT).show()
                     true
                 }
                 if (effect.url.startsWith("asset://")) {
@@ -3768,7 +4051,15 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, backgroundMusicDescription(track), Toast.LENGTH_SHORT).show()
             return
         }
-        Toast.makeText(this, localText("正在试听：${backgroundMusicName(track)}", "Previewing: ${backgroundMusicName(track)}", "Écoute : ${backgroundMusicName(track)}", "ลองฟัง: ${backgroundMusicName(track)}"), Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, localText(
+            "正在试听：${backgroundMusicName(track)}",
+            "Previewing: ${backgroundMusicName(track)}",
+            "Écoute : ${backgroundMusicName(track)}",
+            "ลองฟัง: ${backgroundMusicName(track)}",
+            "Vista previa: ${backgroundMusicName(track)}",
+            "Vorschau: ${backgroundMusicName(track)}",
+            "미리보기: ${backgroundMusicName(track)}",
+        ), Toast.LENGTH_SHORT).show()
         backgroundMusicPreviewPlayer =
             MediaPlayer().apply {
                 setAudioAttributes(
@@ -3800,7 +4091,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 setOnErrorListener { _, _, _ ->
                     stopBackgroundMusicPreview()
-                    Toast.makeText(this@MainActivity, localText("试听失败", "Preview failed", "Échec de l'écoute", "ฟังไม่สำเร็จ"), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, localText(
+                        "试听失败",
+                        "Preview failed",
+                        "Échec de l'écoute",
+                        "ฟังไม่สำเร็จ",
+                        "Error en la vista previa",
+                        "Vorschau fehlgeschlagen",
+                        "미리보기 실패",
+                    ), Toast.LENGTH_SHORT).show()
                     true
                 }
                 setMusicDataSource(track.url)
@@ -4067,21 +4366,53 @@ class MainActivity : AppCompatActivity() {
         if (!::rhythmFreeButton.isInitialized) {
             return
         }
-        rhythmFreeButton.text = localText("自由", "Free", "Libre", "อิสระ")
-        rhythmBeatButton.text = localText("跟拍", "Beat", "Tempo", "ตามจังหวะ")
-        soundGymButton.text = localText("拳击馆", "Gym", "Salle", "ยิม")
-        soundStreetButton.text = localText("街头", "Street", "Rue", "สตรีท")
+        rhythmFreeButton.text = localText(
+            "自由",
+            "Free",
+            "Libre",
+            "อิสระ",
+            "Gratis",
+            "Kostenlos",
+            "무료",
+        )
+        rhythmBeatButton.text = localText(
+            "跟拍",
+            "Beat",
+            "Tempo",
+            "ตามจังหวะ",
+            "batir",
+            "Schlag",
+            "비트",
+        )
+        soundGymButton.text = localText(
+            "拳击馆",
+            "Gym",
+            "Salle",
+            "ยิม",
+            "Gimnasio",
+            "Fitnessstudio",
+            "체육관",
+        )
+        soundStreetButton.text = localText(
+            "街头",
+            "Street",
+            "Rue",
+            "สตรีท",
+            "calle",
+            "Straße",
+            "거리",
+        )
         rhythmFreeButton.isChecked = selectedRhythmMode == TrainingRhythmMode.Free
         rhythmBeatButton.isChecked = selectedRhythmMode == TrainingRhythmMode.Rhythm
-        beat40Button.isChecked = selectedBeatBpm == 40
-        beat65Button.isChecked = selectedBeatBpm == 65
-        beat80Button.isChecked = selectedBeatBpm == 80
         beat100Button.isChecked = selectedBeatBpm == 100
-        beat120Button.isChecked = selectedBeatBpm == 120
+        beat150Button.isChecked = selectedBeatBpm == 150
+        beat200Button.isChecked = selectedBeatBpm == 200
+        beat250Button.isChecked = selectedBeatBpm == 250
+        beat300Button.isChecked = selectedBeatBpm == 300
         soundGymButton.isChecked = selectedSoundPack == SoundPack.Gym
         soundStreetButton.isChecked = selectedSoundPack == SoundPack.Street
         val musicEnabled = trainingJob?.isActive != true
-        listOf(rhythmFreeButton, rhythmBeatButton, beat40Button, beat65Button, beat80Button, beat100Button, beat120Button, soundGymButton, soundStreetButton).forEach {
+        listOf(rhythmFreeButton, rhythmBeatButton, beat100Button, beat150Button, beat200Button, beat250Button, beat300Button, soundGymButton, soundStreetButton).forEach {
             it.isEnabled = musicEnabled
             it.alpha = if (musicEnabled) 1f else 0.62f
         }
@@ -4122,7 +4453,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderActivationRequired(message: String? = null) {
         setTrainingBusyUi(false)
-        setActivationBusy(false)
         setActivationVisible(true)
         statusView.text = tr("activation_required")
         statusView.setTextColor(Color.parseColor("#FF8A32"))
@@ -4207,7 +4537,15 @@ class MainActivity : AppCompatActivity() {
             }
         topRow.addView(
             reportMetricCard(
-                label = localText("累计锻炼时间", "Total duration", "Durée totale", "เวลารวม"),
+                label = localText(
+                    "累计锻炼时间",
+                    "Total duration",
+                    "Durée totale",
+                    "เวลารวม",
+                    "Duración total",
+                    "Gesamtdauer",
+                    "총 기간",
+                ),
                 value = formatTrainingDuration(report.durationSeconds),
                 accentColor = "#10BDAA",
             ).apply {
@@ -4223,7 +4561,15 @@ class MainActivity : AppCompatActivity() {
         )
         topRow.addView(
             reportMetricCard(
-                label = localText("累计击拳数", "Total punches", "Coups cumulés", "หมัดรวม"),
+                label = localText(
+                    "累计击拳数",
+                    "Total punches",
+                    "Coups cumulés",
+                    "หมัดรวม",
+                    "Golpes totales",
+                    "Totale Schläge",
+                    "총 펀치",
+                ),
                 value = "${report.totalHits} ${tr("hits")}",
                 accentColor = "#16C8B5",
             ).apply {
@@ -4242,7 +4588,15 @@ class MainActivity : AppCompatActivity() {
             }
         bottomRow.addView(
             reportMetricCard(
-                label = localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด"),
+                label = localText(
+                    "最高评分",
+                    "Peak score",
+                    "Score max",
+                    "คะแนนสูงสุด",
+                    "Puntuación máxima",
+                    "Spitzenpunktzahl",
+                    "최고점수",
+                ),
                 value = forceDisplay(report.peakForceN),
                 accentColor = "#E24B4A",
             ).apply {
@@ -4258,7 +4612,15 @@ class MainActivity : AppCompatActivity() {
         )
         bottomRow.addView(
             reportMetricCard(
-                label = localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย"),
+                label = localText(
+                    "平均评分",
+                    "Average score",
+                    "Score moy.",
+                    "คะแนนเฉลี่ย",
+                    "Puntuación media",
+                    "Durchschnittliche Punktzahl",
+                    "평균 점수",
+                ),
                 value = forceDisplay(report.avgForceN),
                 accentColor = "#A7F3D0",
             ).apply {
@@ -4305,7 +4667,15 @@ class MainActivity : AppCompatActivity() {
             }
         trainingQualityRow.addView(
             reportMetricCard(
-                label = localText("平均 BPM", "Avg BPM", "BPM moy.", "BPM เฉลี่ย"),
+                label = localText(
+                    "平均 BPM",
+                    "Avg BPM",
+                    "BPM moy.",
+                    "BPM เฉลี่ย",
+                    "Promedio BPM",
+                    "Durchschnitt BPM",
+                    "평균 BPM",
+                ),
                 value = if (report.avgBpm > 0f) report.avgBpm.roundToInt().toString() else "--",
                 accentColor = "#4FB6FF",
             ).apply {
@@ -4317,7 +4687,15 @@ class MainActivity : AppCompatActivity() {
         )
         trainingQualityRow.addView(
             reportMetricCard(
-                label = localText("最佳连击", "Best burst", "Meilleure rafale", "คอมโบสูงสุด"),
+                label = localText(
+                    "最佳连击",
+                    "Best burst",
+                    "Meilleure rafale",
+                    "คอมโบสูงสุด",
+                    "mejor estallido",
+                    "Bester Burst",
+                    "최고의 버스트",
+                ),
                 value = "${report.bestBurstCount} ${tr("hits")}",
                 accentColor = "#FFD060",
             ).apply {
@@ -4376,7 +4754,15 @@ class MainActivity : AppCompatActivity() {
                     topMargin = dp(12)
                 }
             addView(
-                bodyText(localText("回合累计战报", "Round Cumulative Reports", "Rapports cumulés", "รายงานสะสมรายรอบ")).apply {
+                bodyText(localText(
+                    "回合累计战报",
+                    "Round Cumulative Reports",
+                    "Rapports cumulés",
+                    "รายงานสะสมรายรอบ",
+                    "Informes acumulativos redondos",
+                    "Runde kumulative Berichte",
+                    "라운드 누적 보고서",
+                )).apply {
                     setTextColor(Color.parseColor("#17343B"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
@@ -4400,6 +4786,9 @@ class MainActivity : AppCompatActivity() {
             "Round ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} punches | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} equivalent fat",
             "Round ${report.completedRounds} : ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} coups | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} graisse équiv.",
             "รอบ ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} หมัด | ${formatCalories(report.caloriesBurned)} | ไขมันเทียบเท่า ${formatFatGrams(report.fatBurnedGrams)}",
+            "Redondo ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | Punzones ${report.totalHits} | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} grasa equivalente",
+            "Rund ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} Stempel | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} äquivalentes Fett",
+            "라운드 ${report.completedRounds}: ${formatTrainingDuration(report.durationSeconds)} | ${report.totalHits} 펀치 | ${formatCalories(report.caloriesBurned)} | ${formatFatGrams(report.fatBurnedGrams)} 상당 지방",
         )
 
     private fun addShareTrainingButtonToReport() {
@@ -4426,120 +4815,6 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         reportView.addView(shareRow)
-    }
-
-    private fun activateDevice() {
-        val serial = normalizeDigits(serialInput.text?.toString()).take(11)
-        val code = normalizeDigits(codeInput.text?.toString()).take(8)
-        if (serial.length != 11) {
-            setAuthStatusMessage("#FFB347", key = "serial_invalid")
-            return
-        }
-        if (code.length != 8) {
-            setAuthStatusMessage("#FFB347", key = "code_invalid")
-            return
-        }
-
-        activationJob?.cancel()
-        setActivationBusy(true)
-        setAuthStatusMessage("#FFD060", key = "activation_loading")
-        activationJob =
-            lifecycleScope.launch(Dispatchers.IO) {
-                val result =
-                    activationService.activate(
-                        serial = serial,
-                        code = code,
-                        installId = installId,
-                        deviceHash = deviceHash,
-                        appVersion = BuildConfig.VERSION_NAME,
-                    )
-                withContext(Dispatchers.Main) {
-                    setActivationBusy(false)
-                    handleActivationResult(serial, result)
-                }
-            }
-    }
-
-    private fun handleActivationResult(
-        serial: String,
-        result: ActivationApiResult,
-    ) {
-        if (result.success && !result.activationToken.isNullOrBlank()) {
-            persistActivationState(result.serial ?: serial, result.activationToken)
-            codeInput.setText("")
-            renderIdle(authMessageKey = "activation_success_ready")
-            refreshCloudData(forceLeaderboard = true)
-            return
-        }
-
-        setAuthStatusFailure(result.reason, result.message)
-    }
-
-    private fun attemptAutoRestoreActivation(force: Boolean = false) {
-        if (isActivated()) {
-            return
-        }
-        if (autoRestoreAttempted && !force) {
-            return
-        }
-        autoRestoreAttempted = true
-        activationJob?.cancel()
-        setActivationBusy(true)
-        setAuthStatusMessage("#FFD060", fallback = activationRestoreLoadingMessage())
-        activationJob =
-            lifecycleScope.launch(Dispatchers.IO) {
-                val result =
-                    activationService.reactivateByDevice(
-                        installId = installId,
-                        deviceHash = deviceHash,
-                        appVersion = BuildConfig.VERSION_NAME,
-                    )
-                withContext(Dispatchers.Main) {
-                    setActivationBusy(false)
-                    if (result.success && !result.activationToken.isNullOrBlank() && !result.serial.isNullOrBlank()) {
-                        persistActivationState(result.serial, result.activationToken)
-                        clearAuthStatusMessage()
-                        renderIdle()
-                        refreshCloudData(forceLeaderboard = true)
-                    } else if (result.reason == ActivationService.NETWORK_REASON) {
-                        setAuthStatusMessage("#FFD060", fallback = activationRestoreNetworkMessage())
-                    } else {
-                        clearAuthStatusMessage()
-                        renderActivationRequired()
-                    }
-                }
-            }
-    }
-
-    private fun verifyActivationInBackground() {
-        val state = activationState ?: return
-        activationJob?.cancel()
-        activationJob =
-            lifecycleScope.launch(Dispatchers.IO) {
-                val result =
-                    activationService.check(
-                        serial = state.serial,
-                        activationToken = state.activationToken,
-                        installId = installId,
-                        deviceHash = deviceHash,
-                        appVersion = BuildConfig.VERSION_NAME,
-                    )
-                withContext(Dispatchers.Main) {
-                    if (result.success) {
-                        markActivationCheckedNow()
-                        refreshCloudData(forceLeaderboard = true)
-                        if (trainingJob?.isActive != true) {
-                            clearAuthStatusMessage()
-                            applyStaticTexts()
-                        }
-                    } else if (result.reason != ActivationService.NETWORK_REASON) {
-                        clearActivationState()
-                        setAuthStatusFailure(result.reason, result.message)
-                        renderActivationRequired(currentAuthStatusMessage())
-                        attemptAutoRestoreActivation(force = true)
-                    }
-                }
-            }
     }
 
     private fun ensureInstallIdentity() {
@@ -4612,28 +4887,6 @@ class MainActivity : AppCompatActivity() {
         return numeric.take(11).padEnd(11, '0')
     }
 
-    private fun authFailureMessageKey(reason: String?): String? =
-        when (reason) {
-            "serial_not_found" -> "activation_serial_not_found"
-            "invalid_code" -> "activation_invalid_code"
-            "already_bound" -> "activation_already_bound"
-            "not_activated" -> "activation_not_activated"
-            ActivationService.NETWORK_REASON -> "activation_network_error"
-            else -> null
-        }
-
-    private fun setAuthStatusFailure(
-        reason: String?,
-        fallbackMessage: String,
-    ) {
-        val key = authFailureMessageKey(reason)
-        setAuthStatusMessage(
-            colorHex = if (reason == ActivationService.NETWORK_REASON) "#FFD060" else "#FFB347",
-            key = key,
-            fallback = if (key == null) fallbackMessage.ifBlank { tr("activation_failed") } else null,
-        )
-    }
-
     private fun setAuthStatusMessage(
         colorHex: String,
         key: String? = null,
@@ -4675,17 +4928,6 @@ class MainActivity : AppCompatActivity() {
             if (activated) tr("activation_ready_title") else tr("activation_title")
         activationHintView.text =
             if (activated) tr("activation_ready_subtitle") else tr("activation_subtitle")
-        serialInput.hint = tr("serial_hint")
-        codeInput.hint = tr("code_hint")
-        activateButton.text = tr("activate")
-
-        serialInput.visibility = if (activated) View.GONE else View.VISIBLE
-        codeInput.visibility = if (activated) View.GONE else View.VISIBLE
-        if (activated) {
-            serialInputErrorView.visibility = View.GONE
-            codeInputErrorView.visibility = View.GONE
-        }
-        activateButton.visibility = if (activated) View.GONE else View.VISIBLE
         activationDetailsView.visibility = if (activated) View.VISIBLE else View.GONE
 
         if (activated) {
@@ -4720,13 +4962,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun maskSerial(serial: String): String =
-        if (serial.length <= 4) serial else "•••••••" + serial.takeLast(4)
-
     private fun localUserLabel(): String =
         when (selectedLanguage) {
             AppLanguage.Chinese -> "用户ID"
             AppLanguage.English -> "User ID"
+            AppLanguage.Spanish -> "ID de usuario"
+            AppLanguage.German -> "Benutzer-ID"
+            AppLanguage.Korean -> "사용자 ID"
             AppLanguage.French -> "ID utilisateur"
             AppLanguage.Thai -> "รหัสผู้ใช้"
         }
@@ -4735,6 +4977,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "状态"
             AppLanguage.English -> "Status"
+            AppLanguage.Spanish -> "Estado"
+            AppLanguage.German -> "Status"
+            AppLanguage.Korean -> "상태"
             AppLanguage.French -> "Statut"
             AppLanguage.Thai -> "สถานะ"
         }
@@ -4743,6 +4988,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "可用"
             AppLanguage.English -> "Ready"
+            AppLanguage.Spanish -> "Listo"
+            AppLanguage.German -> "Bereit"
+            AppLanguage.Korean -> "준비"
             AppLanguage.French -> "Prêt"
             AppLanguage.Thai -> "พร้อมใช้งาน"
         }
@@ -4751,6 +4999,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "最近同步"
             AppLanguage.English -> "Last sync"
+            AppLanguage.Spanish -> "Última sincronización"
+            AppLanguage.German -> "Letzte Synchronisierung"
+            AppLanguage.Korean -> "마지막 동기화"
             AppLanguage.French -> "Derniere sync"
             AppLanguage.Thai -> "ซิงก์ล่าสุด"
         }
@@ -4761,24 +5012,6 @@ class MainActivity : AppCompatActivity() {
         }
         return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(epochMs))
     }
-
-    private fun normalizeDigits(value: String?): String = value.orEmpty().filter { it.isDigit() }
-
-    private fun activationRestoreLoadingMessage(): String =
-        when (selectedLanguage) {
-            AppLanguage.Chinese -> "正在准备本机用户资料..."
-            AppLanguage.English -> "Preparing this device profile..."
-            AppLanguage.French -> "Preparation du profil de cet appareil..."
-            AppLanguage.Thai -> "กำลังเตรียมโปรไฟล์ของอุปกรณ์นี้..."
-        }
-
-    private fun activationRestoreNetworkMessage(): String =
-        when (selectedLanguage) {
-            AppLanguage.Chinese -> "暂时无法同步本机用户资料，请联网后重试。"
-            AppLanguage.English -> "Unable to sync this device profile right now. Please connect to the internet and try again."
-            AppLanguage.French -> "Impossible de synchroniser ce profil pour le moment. Connectez-vous a Internet puis reessayez."
-            AppLanguage.Thai -> "ยังไม่สามารถซิงก์โปรไฟล์อุปกรณ์นี้ได้ โปรดเชื่อมต่ออินเทอร์เน็ตแล้วลองอีกครั้ง"
-        }
 
     private fun computeDeviceHash(): String {
         val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
@@ -5402,13 +5635,24 @@ class MainActivity : AppCompatActivity() {
             when (selectedLanguage) {
                 AppLanguage.Chinese -> "训练战报"
                 AppLanguage.English -> "TRAINING REPORT"
+                AppLanguage.Spanish -> "INFORME DE ENTRENAMIENTO"
+                AppLanguage.German -> "TRAININGSBERICHT"
+                AppLanguage.Korean -> "훈련 보고서"
                 AppLanguage.French -> "RAPPORT"
                 AppLanguage.Thai -> "รายงานการฝึก"
             }
         trainingHeroHeadlineView.text =
             when {
                 latestReport != null -> roundReportTitleText(latestReport!!)
-                activated -> localText("准备生成训练战报", "Ready To Generate Report", "Pret a generer le rapport", "พร้อมสร้างรายงาน")
+                activated -> localText(
+                    "准备生成训练战报",
+                    "Ready To Generate Report",
+                    "Pret a generer le rapport",
+                    "พร้อมสร้างรายงาน",
+                    "Listo para generar el informe",
+                    "Bereit für den Bericht",
+                    "보고서 생성 준비 완료",
+                )
                 else -> tr("title")
             }
         trainingHeroSummaryView.text =
@@ -5417,6 +5661,9 @@ class MainActivity : AppCompatActivity() {
                     when (selectedLanguage) {
                         AppLanguage.Chinese -> "准备好本机用户资料后，即可开启训练成长与段位挑战。"
                         AppLanguage.English -> "Your device profile is getting ready for training progress and rank challenges."
+                        AppLanguage.Spanish -> "El perfil de tu dispositivo se está preparando para el progreso del entrenamiento y los desafíos de clasificación."
+                        AppLanguage.German -> "Ihr Geräteprofil bereitet sich auf Trainingsfortschritte und Ranglistenherausforderungen vor."
+                        AppLanguage.Korean -> "귀하의 장치 프로필이 훈련 진행 및 순위 도전을 준비하고 있습니다."
                         AppLanguage.French -> "Votre profil appareil se prepare pour la progression et les defis de rang."
                         AppLanguage.Thai -> "กำลังเตรียมโปรไฟล์อุปกรณ์สำหรับความก้าวหน้าและความท้าทายด้านระดับ"
                     }
@@ -5426,6 +5673,9 @@ class MainActivity : AppCompatActivity() {
                     when (selectedLanguage) {
                         AppLanguage.Chinese -> "云端训练数据正在同步，稍后即可看到你的成绩、段位与成长进度。"
                         AppLanguage.English -> "Cloud data is syncing. Your scores, rank, and growth progress will appear soon."
+                        AppLanguage.Spanish -> "Los datos de la nube se están sincronizando. Tus puntuaciones, rango y progreso de crecimiento aparecerán pronto."
+                        AppLanguage.German -> "Cloud-Daten werden synchronisiert. Ihre Punktzahlen, Ihr Rang und Ihr Wachstumsfortschritt werden bald angezeigt."
+                        AppLanguage.Korean -> "클라우드 데이터를 동기화하는 중입니다. 점수, 순위, 성장 진행 상황이 곧 표시됩니다."
                         AppLanguage.French -> "Les données cloud sont en cours de synchronisation. Vos scores et votre progression apparaîtront bientôt."
                         AppLanguage.Thai -> "กำลังซิงก์ข้อมูลคลาวด์ ไม่นานคุณจะเห็นคะแนน ระดับ และความคืบหน้า"
                     }
@@ -5445,6 +5695,9 @@ class MainActivity : AppCompatActivity() {
                     when (selectedLanguage) {
                         AppLanguage.Chinese -> "训练记录、成就、榜单与个人成长数据将自动同步"
                         AppLanguage.English -> "Cloud records, achievements, leaderboards, and profile progress sync automatically."
+                        AppLanguage.Spanish -> "Los registros en la nube, los logros, las tablas de clasificación y el progreso del perfil se sincronizan automáticamente."
+                        AppLanguage.German -> "Cloud-Aufzeichnungen, Erfolge, Bestenlisten und Profilfortschritte werden automatisch synchronisiert."
+                        AppLanguage.Korean -> "클라우드 기록, 성과, 리더보드, 프로필 진행 상황이 자동으로 동기화됩니다."
                         AppLanguage.French -> "Historique cloud, succes, classements et progression se synchronisent automatiquement."
                         AppLanguage.Thai -> "ประวัติ ความสำเร็จ กระดานจัดอันดับ และความก้าวหน้าจะซิงก์อัตโนมัติ"
                     }
@@ -5487,9 +5740,17 @@ class MainActivity : AppCompatActivity() {
         button.includeFontPadding = false
         button.minHeight = dp(36)
         button.minimumHeight = dp(36)
-        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
         button.setTextColor(Color.parseColor("#17343B"))
-        button.setPadding(dp(8), dp(6), dp(12), dp(6))
+        button.setPadding(dp(6), dp(6), dp(8), dp(6))
+        button.setSingleLine(true)
+        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+            button,
+            9,
+            13,
+            1,
+            TypedValue.COMPLEX_UNIT_SP,
+        )
         button.buttonTintList =
             ColorStateList(
                 arrayOf(
@@ -5501,13 +5762,27 @@ class MainActivity : AppCompatActivity() {
                     Color.parseColor("#8CCDC4"),
                 ),
             )
-        button.layoutParams =
-            RadioGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                rightMargin = dp(6)
-            }
+    }
+
+    private fun leaderboardFilterButtons(): List<Pair<RadioButton, LeaderboardBoard>> =
+        listOf(
+            leaderboardDurationButton to LeaderboardBoard.TrainingDuration,
+            leaderboardTotalHitsButton to LeaderboardBoard.TotalHits,
+            leaderboardPeakForceButton to LeaderboardBoard.PeakForce,
+            leaderboardAvgForceButton to LeaderboardBoard.AvgForce,
+            leaderboardCaloriesButton to LeaderboardBoard.Calories,
+            leaderboardFatButton to LeaderboardBoard.FatBurned,
+        )
+
+    private fun selectLeaderboardBoard(board: LeaderboardBoard) {
+        leaderboardBoard = board
+        leaderboardFilterButtons().forEach { (button, itemBoard) ->
+            button.isChecked = itemBoard == board
+        }
+        leaderboardSubtitleView.text = leaderboardBoardSubtitle(board)
+        if (isActivated() && trainingJob?.isActive != true) {
+            refreshLeaderboardOnly()
+        }
     }
 
     private fun refreshModeButtonStyles() {
@@ -5576,22 +5851,70 @@ class MainActivity : AppCompatActivity() {
     private fun playModeLabel(playMode: TrainingPlayMode): String =
         when (playMode) {
             TrainingPlayMode.Classic30 ->
-                localText("● 经典30秒", "● Classic 30s", "● Classique 30s", "● คลาสสิก 30วิ")
+                localText(
+                    "● 经典30秒",
+                    "● Classic 30s",
+                    "● Classique 30s",
+                    "● คลาสสิก 30วิ",
+                    "● Clásico 30 s",
+                    "● Klassisch 30 Sek.",
+                    "● 클래식 30초",
+                )
 
             TrainingPlayMode.Classic60 ->
-                localText("◆ 60秒耐力", "◆ Endurance 60s", "◆ Endurance 60s", "◆ อึด 60วิ")
+                localText(
+                    "◆ 60秒耐力",
+                    "◆ Endurance 60s",
+                    "◆ Endurance 60s",
+                    "◆ อึด 60วิ",
+                    "◆ Resistencia 60 s",
+                    "◆ Ausdauer 60 Sek.",
+                    "◆ 지구력 60초",
+                )
 
             TrainingPlayMode.Burst10 ->
-                localText("▲ 10秒爆发", "▲ Burst 10s", "▲ Explosif 10s", "▲ ระเบิด 10วิ")
+                localText(
+                    "▲ 10秒爆发",
+                    "▲ Burst 10s",
+                    "▲ Explosif 10s",
+                    "▲ ระเบิด 10วิ",
+                    "▲ Ráfaga 10 s",
+                    "▲ Burst 10 Sek.",
+                    "▲ 버스트 10초",
+                )
 
             TrainingPlayMode.Burst15 ->
-                localText("▲ 15秒爆发", "▲ Burst 15s", "▲ Explosif 15s", "▲ ระเบิด 15วิ")
+                localText(
+                    "▲ 15秒爆发",
+                    "▲ Burst 15s",
+                    "▲ Explosif 15s",
+                    "▲ ระเบิด 15วิ",
+                    "▲ Ráfaga 15 s",
+                    "▲ Burst 15 Sek.",
+                    "▲ 버스트 15초",
+                )
 
             TrainingPlayMode.LevelChallenge ->
-                localText("★ 闯关挑战", "★ Level Challenge", "★ Défi niveau", "★ ด่านท้าทาย")
+                localText(
+                    "★ 闯关挑战",
+                    "★ Level Challenge",
+                    "★ Défi niveau",
+                    "★ ด่านท้าทาย",
+                    "★ Desafío de nivel",
+                    "★ Level-Herausforderung",
+                    "★ 레벨 챌린지",
+                )
 
             TrainingPlayMode.DailyChallenge ->
-                localText("✓ 每日挑战", "✓ Daily Challenge", "✓ Défi quotidien", "✓ ภารกิจวันนี้")
+                localText(
+                    "✓ 每日挑战",
+                    "✓ Daily Challenge",
+                    "✓ Défi quotidien",
+                    "✓ ภารกิจวันนี้",
+                    "✓ Desafío diario",
+                    "✓ Tägliche Herausforderung",
+                    "✓ 일일 도전",
+                )
         }
 
     private fun renderTrainingPlayStatus() {
@@ -5615,36 +5938,69 @@ class MainActivity : AppCompatActivity() {
         return when (playMode) {
             TrainingPlayMode.Classic30 ->
                 TrainingGoalPresentation(
-                    title = localText("经典训练", "Classic Training", "Entraînement classique", "ฝึกคลาสสิก"),
+                    title = localText(
+                        "经典训练",
+                        "Classic Training",
+                        "Entraînement classique",
+                        "ฝึกคลาสสิก",
+                        "Entrenamiento clásico",
+                        "Klassisches Training",
+                        "클래식 트레이닝",
+                    ),
                     body = localText(
                         "30 秒稳定计数，适合每天热身、测试节奏和刷新历史最佳。",
                         "A steady 30-second session for warm-up, rhythm checks, and best-score attempts.",
                         "Session stable de 30 s pour s'échauffer, tester le rythme et battre son record.",
                         "ฝึก 30 วินาทีแบบมั่นคง เหมาะสำหรับวอร์มอัพ เช็กจังหวะ และทำสถิติใหม่",
+                        "Una sesión constante de 30 segundos para calentamiento, controles de ritmo e intentos de lograr la mejor puntuación.",
+                        "Eine gleichmäßige 30-Sekunden-Sitzung zum Aufwärmen, Rhythmusprüfungen und Bestleistungsversuchen.",
+                        "워밍업, 리듬 확인, 최고 점수 시도를 위한 꾸준한 30초 세션입니다.",
                     ),
                     accentColor = "#FF9A30",
                 )
 
             TrainingPlayMode.Classic60 ->
                 TrainingGoalPresentation(
-                    title = localText("耐力训练", "Endurance Training", "Entraînement endurance", "ฝึกความอึด"),
+                    title = localText(
+                        "耐力训练",
+                        "Endurance Training",
+                        "Entraînement endurance",
+                        "ฝึกความอึด",
+                        "Entrenamiento de resistencia",
+                        "Ausdauertraining",
+                        "지구력 훈련",
+                    ),
                     body = localText(
                         "60 秒持续输出，适合练稳定性、耐力和连续节奏。",
                         "A 60-second session for consistency, stamina, and sustained rhythm.",
                         "Session de 60 s pour travailler la régularité, l'endurance et le rythme continu.",
                         "ฝึก 60 วินาที เพื่อความสม่ำเสมอ ความอึด และจังหวะต่อเนื่อง",
+                        "Una sesión de 60 segundos para lograr consistencia, resistencia y ritmo sostenido.",
+                        "Eine 60-sekündige Sitzung für Beständigkeit, Ausdauer und anhaltenden Rhythmus.",
+                        "일관성, 체력, 지속적인 리듬을 위한 60초 세션입니다.",
                     ),
                     accentColor = "#FFB347",
                 )
 
             TrainingPlayMode.Burst10 ->
                 TrainingGoalPresentation(
-                    title = localText("10 秒爆发", "10-second Burst", "Explosif 10 s", "ระเบิด 10 วิ"),
+                    title = localText(
+                        "10 秒爆发",
+                        "10-second Burst",
+                        "Explosif 10 s",
+                        "ระเบิด 10 วิ",
+                        "Explosión de 10 segundos",
+                        "10-Sekunden-Burst",
+                        "10초 버스트",
+                    ),
                     body = localText(
                         "短时间冲刺，目标 25 击；更适合练启动速度和瞬间爆发。",
                         "Short sprint mode. Target 25 hits for launch speed and explosive rhythm.",
                         "Sprint court. Objectif 25 coups pour travailler le départ et l'explosivité.",
                         "โหมดสปรินต์สั้น เป้าหมาย 25 ครั้ง เพื่อฝึกความเร็วเริ่มต้นและแรงระเบิด",
+                        "Modo de sprint corto. Realiza 25 golpes para lograr velocidad de lanzamiento y ritmo explosivo.",
+                        "Kurzer Sprintmodus. Zielen Sie auf 25 Treffer für Startgeschwindigkeit und explosiven Rhythmus.",
+                        "단거리 질주 모드. 발사 속도와 폭발적인 리듬을 위해 25번의 타격을 목표로 삼으세요.",
                     ),
                     accentColor = "#FFD060",
                     targetHits = 25,
@@ -5652,12 +6008,23 @@ class MainActivity : AppCompatActivity() {
 
             TrainingPlayMode.Burst15 ->
                 TrainingGoalPresentation(
-                    title = localText("15 秒爆发", "15-second Burst", "Explosif 15 s", "ระเบิด 15 วิ"),
+                    title = localText(
+                        "15 秒爆发",
+                        "15-second Burst",
+                        "Explosif 15 s",
+                        "ระเบิด 15 วิ",
+                        "Explosión de 15 segundos",
+                        "15-Sekunden-Burst",
+                        "15초 버스트",
+                    ),
                     body = localText(
                         "稍长冲刺，目标 38 击；兼顾爆发和控制。",
                         "A longer sprint. Target 38 hits while keeping control.",
                         "Sprint plus long. Objectif 38 coups en gardant le contrôle.",
                         "สปรินต์นานขึ้น เป้าหมาย 38 ครั้ง พร้อมคุมจังหวะให้ดี",
+                        "Un sprint más largo. Realiza 38 golpes mientras mantienes el control.",
+                        "Ein längerer Sprint. Zielen Sie 38 Treffer und behalten Sie dabei die Kontrolle.",
+                        "더 긴 스프린트. 컨트롤을 유지하면서 38개의 히트를 목표로 삼으세요.",
                     ),
                     accentColor = "#FFD060",
                     targetHits = 38,
@@ -5670,12 +6037,18 @@ class MainActivity : AppCompatActivity() {
                         "Level ${level.level} | ${level.targetHits} hits",
                         "Niveau ${level.level} | ${level.targetHits} coups",
                         "ด่าน ${level.level} | เป้าหมาย ${level.targetHits} ครั้ง",
+                        "Nivel ${level.level} | ${level.targetHits} golpes",
+                        "Ebene ${level.level} | ${level.targetHits} Treffer",
+                        "레벨 ${level.level} | 타격 ${level.targetHits}회",
                     ),
                     body = localText(
                         "完成本关即可解锁下一关。闯关模式会把训练变成可持续推进的成长路线。",
                         "Clear the target to unlock the next level and turn training into steady progression.",
                         "Atteignez l'objectif pour débloquer le niveau suivant et progresser régulièrement.",
                         "ทำให้ถึงเป้าหมายเพื่อปลดล็อกด่านถัดไป และเปลี่ยนการฝึกให้เป็นเส้นทางเติบโต",
+                        "Despeja el objetivo para desbloquear el siguiente nivel y convertir el entrenamiento en una progresión constante.",
+                        "Löschen Sie das Ziel, um das nächste Level freizuschalten und das Training in einen stetigen Fortschritt zu verwandeln.",
+                        "목표를 지워 다음 레벨을 잠금 해제하고 훈련을 꾸준한 진행으로 바꾸세요.",
                     ),
                     accentColor = "#10BDAA",
                     targetHits = level.targetHits,
@@ -5688,12 +6061,18 @@ class MainActivity : AppCompatActivity() {
                         "Daily Challenge | $dailyTarget hits",
                         "Défi du jour | $dailyTarget coups",
                         "ภารกิจวันนี้ | $dailyTarget ครั้ง",
+                        "Desafío diario | $dailyTarget golpes",
+                        "Tägliche Herausforderung | $dailyTarget Treffer",
+                        "일일 도전 | 타격 ${dailyTarget}회",
                     ),
                     body = localText(
                         "每天一个轻量目标，完成后记录今日任务奖励，适合培养连续训练习惯。",
                         "A lightweight daily target that rewards consistency and helps build a training habit.",
                         "Un objectif léger chaque jour pour récompenser la régularité et créer l'habitude.",
                         "เป้าหมายเบา ๆ รายวัน ช่วยให้ฝึกต่อเนื่องและสร้างนิสัยการฝึก",
+                        "Un objetivo diario ligero que premia la constancia y ayuda a desarrollar un hábito de entrenamiento.",
+                        "Ein leichtes tägliches Ziel, das Beständigkeit belohnt und dabei hilft, eine Trainingsgewohnheit aufzubauen.",
+                        "일관성을 보상하고 훈련 습관을 형성하는 데 도움이 되는 가벼운 일일 목표입니다.",
                     ),
                     accentColor = "#E07010",
                     targetHits = dailyTarget,
@@ -5781,6 +6160,9 @@ class MainActivity : AppCompatActivity() {
                         "High burst rhythm. Keep the movement quality clean.",
                         "Rythme explosif. Gardez une bonne qualité de mouvement.",
                         "จังหวะระเบิดดีมาก รักษาคุณภาพท่าไว้",
+                        "Ritmo de ráfaga alto. Mantenga limpia la calidad del movimiento.",
+                        "Hoher Burst-Rhythmus. Halten Sie die Bewegungsqualität sauber.",
+                        "높은 버스트 리듬. 무브먼트 품질을 깨끗하게 유지하세요.",
                     )
 
                 report.averageFrequency >= 2.0f ->
@@ -5789,6 +6171,9 @@ class MainActivity : AppCompatActivity() {
                         "Solid rhythm. You are ready to chase a higher target.",
                         "Rythme solide. Vous pouvez viser plus haut.",
                         "จังหวะมั่นคง พร้อมท้าทายเป้าหมายที่สูงขึ้น",
+                        "Ritmo sólido. Estás listo para perseguir un objetivo más alto.",
+                        "Solider Rhythmus. Sie sind bereit, ein höheres Ziel zu verfolgen.",
+                        "탄탄한 리듬. 당신은 더 높은 목표를 쫓을 준비가 되었습니다.",
                     )
 
                 else ->
@@ -5797,6 +6182,9 @@ class MainActivity : AppCompatActivity() {
                         "Lock in clean hits first, then build speed gradually.",
                         "Stabilisez d'abord les frappes, puis accélérez.",
                         "ตั้งคุณภาพหมัดให้แน่นก่อน แล้วค่อยเพิ่มความเร็ว",
+                        "Primero realiza golpes limpios y luego aumenta la velocidad gradualmente.",
+                        "Erzielen Sie zunächst saubere Treffer und steigern Sie dann nach und nach die Geschwindigkeit.",
+                        "먼저 클린 히트를 확보한 다음 점차적으로 속도를 높이세요.",
                     )
             }
         return localText(
@@ -5804,6 +6192,9 @@ class MainActivity : AppCompatActivity() {
             "$challengeMessage $paceLine Streak ${outcome.streak} day(s), XP +${outcome.xpGain}. $trend",
             "$challengeMessage $paceLine Série de ${outcome.streak} jour(s), XP +${outcome.xpGain}. $trend",
             "$challengeMessage $paceLine ฝึกต่อเนื่อง ${outcome.streak} วัน, XP +${outcome.xpGain}. $trend",
+            "$challengeMessage $paceLine Racha ${outcome.streak} día(s), XP +${outcome.xpGain}. $trend",
+            "$challengeMessage $paceLine Streak ${outcome.streak} Tag(e), XP +${outcome.xpGain}. $trend",
+            "$challengeMessage $paceLine 연속 ${outcome.streak}일, XP +${outcome.xpGain}. $trend",
         )
     }
 
@@ -5821,6 +6212,9 @@ class MainActivity : AppCompatActivity() {
                             "Level cleared. Level ${outcome.levelAfter} unlocked.",
                             "Niveau réussi. Niveau ${outcome.levelAfter} débloqué.",
                             "ผ่านด่านแล้ว ปลดล็อกด่าน ${outcome.levelAfter}",
+                            "Nivel despejado. Nivel ${outcome.levelAfter} desbloqueado.",
+                            "Level gelöscht. Level ${outcome.levelAfter} freigeschaltet.",
+                            "레벨이 클리어되었습니다. 레벨 ${outcome.levelAfter}가 잠금 해제되었습니다.",
                         )
                     } else {
                         localText(
@@ -5828,6 +6222,9 @@ class MainActivity : AppCompatActivity() {
                             "Top level cleared. Keep pushing your limit.",
                             "Dernier niveau terminé. Continuez à dépasser vos limites.",
                             "ผ่านด่านสูงสุดแล้ว ลุยทำลายขีดจำกัดต่อไป",
+                            "Nivel superior despejado. Sigue superando tu límite.",
+                            "Oberste Ebene gelöscht. Gehen Sie weiter an Ihre Grenzen.",
+                            "최상위 레벨이 삭제되었습니다. 계속해서 한계를 뛰어넘으세요.",
                         )
                     }
                 } else {
@@ -5837,6 +6234,9 @@ class MainActivity : AppCompatActivity() {
                         "$remaining hits to clear this level. Keep the rhythm steady next time.",
                         "Il manque $remaining coups pour réussir. Gardez le rythme la prochaine fois.",
                         "ยังขาด $remaining หมัดสำหรับด่านนี้ ครั้งหน้าคุมจังหวะให้มั่น",
+                        "$remaining golpea para superar este nivel. Mantén el ritmo constante la próxima vez.",
+                        "$remaining trifft, um dieses Level zu löschen. Behalten Sie beim nächsten Mal den Rhythmus bei.",
+                        "${remaining}는 이 레벨을 클리어하기 위해 히트합니다. 다음번에는 리듬을 일정하게 유지하세요.",
                     )
                 }
             }
@@ -5849,6 +6249,9 @@ class MainActivity : AppCompatActivity() {
                         "Daily challenge completed and rewarded.",
                         "Défi quotidien terminé, récompense enregistrée.",
                         "ทำภารกิจวันนี้สำเร็จ บันทึกรางวัลแล้ว",
+                        "Desafío diario completado y recompensado.",
+                        "Tägliche Herausforderung abgeschlossen und belohnt.",
+                        "일일 챌린지를 완료하고 보상을 받았습니다.",
                     )
                 } else {
                     val remaining = (target - report.totalHits).coerceAtLeast(0)
@@ -5857,6 +6260,9 @@ class MainActivity : AppCompatActivity() {
                         "$remaining hits short of today's challenge. One more run can do it.",
                         "Il manque $remaining coups au défi du jour. Un autre round peut suffire.",
                         "ภารกิจวันนี้ยังขาด $remaining หมัด อีกหนึ่งรอบทำได้",
+                        "$remaining no está a la altura del desafío de hoy. Una carrera más puede bastar.",
+                        "$remaining bleibt hinter der heutigen Herausforderung zurück. Ein weiterer Lauf reicht.",
+                        "${remaining}는 오늘의 과제에 미치지 못했습니다. 한 번만 더 달리면 됩니다.",
                     )
                 }
             }
@@ -5870,6 +6276,9 @@ class MainActivity : AppCompatActivity() {
                         "Burst target reached. Your launch speed looks sharp.",
                         "Objectif explosif atteint. Votre démarrage est net.",
                         "ถึงเป้าหมายระเบิดแล้ว จังหวะเริ่มสวยมาก",
+                        "Objetivo de explosión alcanzado. Tu velocidad de lanzamiento parece nítida.",
+                        "Burst-Ziel erreicht. Deine Startgeschwindigkeit sieht hoch aus.",
+                        "버스트 목표에 도달했습니다. 발사 속도가 날카로워 보입니다.",
                     )
                 } else {
                     localText(
@@ -5877,6 +6286,9 @@ class MainActivity : AppCompatActivity() {
                         "Burst session complete. Try attacking the first 3 seconds harder next round.",
                         "Séance explosive terminée. Attaquez plus fort les 3 premières secondes au prochain round.",
                         "จบรอบระเบิดแล้ว รอบหน้าลองเร่ง 3 วินาทีแรกให้ดุดันขึ้น",
+                        "Sesión de ráfaga completa. Intenta atacar los primeros 3 segundos con más fuerza en la siguiente ronda.",
+                        "Burst-Sitzung abgeschlossen. Versuchen Sie in der nächsten Runde, die ersten 3 Sekunden härter anzugreifen.",
+                        "버스트 세션이 완료되었습니다. 다음 라운드에서는 처음 3초를 더 강하게 공격해 보세요.",
                     )
                 }
             }
@@ -5888,6 +6300,9 @@ class MainActivity : AppCompatActivity() {
                 "Session recorded. Today's rhythm moved one step forward.",
                 "Séance enregistrée. Votre rythme progresse encore aujourd'hui.",
                 "บันทึกการฝึกแล้ว จังหวะวันนี้ก้าวหน้าอีกขั้น",
+                "Sesión grabada. El ritmo de hoy avanzó un paso.",
+                "Sitzung aufgezeichnet. Der heutige Rhythmus rückte einen Schritt nach vorne.",
+                "세션이 녹화되었습니다. 오늘의 리듬은 한걸음 앞으로 나아갔습니다.",
             )
         }
 
@@ -5895,9 +6310,28 @@ class MainActivity : AppCompatActivity() {
         ensureDailyTaskDate()
         val targetText =
             targetHits?.let {
-                localText("本轮目标 $it 击", "Target $it hits", "Objectif $it coups", "เป้าหมายรอบนี้ $it หมัด")
-            } ?: localText("自由训练", "Free training", "Entraînement libre", "ฝึกอิสระ")
+                localText(
+                    "本轮目标 $it 击",
+                    "Target $it hits",
+                    "Objectif $it coups",
+                    "เป้าหมายรอบนี้ $it หมัด",
+                    "Objetivo: $it golpes",
+                    "Ziel $it Treffer",
+                    "목표 타격 ${it}회",
+                )
+            } ?: localText(
+                "自由训练",
+                "Free training",
+                "Entraînement libre",
+                "ฝึกอิสระ",
+                "Entrenamiento gratuito",
+                "Kostenlose Schulung",
+                "무료 교육",
+            )
         return localText(
+            "$targetText | ${dailyTaskSummaryText()} | ${sevenDayTrendText()}",
+            "$targetText | ${dailyTaskSummaryText()} | ${sevenDayTrendText()}",
+            "$targetText | ${dailyTaskSummaryText()} | ${sevenDayTrendText()}",
             "$targetText | ${dailyTaskSummaryText()} | ${sevenDayTrendText()}",
             "$targetText | ${dailyTaskSummaryText()} | ${sevenDayTrendText()}",
             "$targetText | ${dailyTaskSummaryText()} | ${sevenDayTrendText()}",
@@ -5920,6 +6354,9 @@ class MainActivity : AppCompatActivity() {
             "Daily tasks $doneCount/3 | Streak $streak | XP $xp",
             "Tâches du jour $doneCount/3 | Série $streak | XP $xp",
             "ภารกิจวันนี้ $doneCount/3 | ต่อเนื่อง $streak วัน | XP $xp",
+            "Tareas diarias $doneCount/3 | Racha $streak | XP $xp",
+            "Tägliche Aufgaben $doneCount/3 | Streifen $streak | XP $xp",
+            "일일 작업 $doneCount/3 | 연속 $streak | XP $xp",
         )
     }
 
@@ -6055,6 +6492,9 @@ class MainActivity : AppCompatActivity() {
                 "7-day trend: collecting data",
                 "Tendance 7 j : collecte de données",
                 "แนวโน้ม 7 วัน: กำลังเก็บข้อมูล",
+                "Tendencia de 7 días: recopilación de datos",
+                "7-Tage-Trend: Daten sammeln",
+                "7일 추세: 데이터 수집",
             )
         }
         val splitIndex = (sessions.size / 2).coerceAtLeast(1)
@@ -6070,6 +6510,9 @@ class MainActivity : AppCompatActivity() {
                     "7-day trend: +${String.format(Locale.US, "%.1f", diff)}",
                     "Tendance 7 j : +${String.format(Locale.US, "%.1f", diff)}",
                     "แนวโน้ม 7 วัน: +${String.format(Locale.US, "%.1f", diff)}",
+                    "Tendencia de 7 días: +${String.format(Locale.US, "%.1f", diff)}",
+                    "7-Tage-Trend: +${String.format(Locale.US, "%.1f", diff)}",
+                    "7일 추세: +${String.format(Locale.US, "%.1f", diff)}",
                 )
 
             diff <= -2.0 ->
@@ -6078,10 +6521,21 @@ class MainActivity : AppCompatActivity() {
                     "7-day trend: ${String.format(Locale.US, "%.1f", diff)}",
                     "Tendance 7 j : ${String.format(Locale.US, "%.1f", diff)}",
                     "แนวโน้ม 7 วัน: ${String.format(Locale.US, "%.1f", diff)}",
+                    "Tendencia de 7 días: ${String.format(Locale.US, "%.1f", diff)}",
+                    "7-Tage-Trend: ${String.format(Locale.US, "%.1f", diff)}",
+                    "7일 추세: ${String.format(Locale.US, "%.1f", diff)}",
                 )
 
             else ->
-                localText("7天趋势：稳定", "7-day trend: stable", "Tendance 7 j : stable", "แนวโน้ม 7 วัน: คงที่")
+                localText(
+                    "7天趋势：稳定",
+                    "7-day trend: stable",
+                    "Tendance 7 j : stable",
+                    "แนวโน้ม 7 วัน: คงที่",
+                    "Tendencia de 7 días: estable",
+                    "7-Tage-Trend: stabil",
+                    "7일 추세: 안정적",
+                )
         }
     }
 
@@ -6097,11 +6551,17 @@ class MainActivity : AppCompatActivity() {
         english: String,
         french: String,
         thai: String,
+        spanish: String = english,
+        german: String = english,
+        korean: String = english,
     ): String =
         when (selectedLanguage) {
             AppLanguage.Chinese -> chinese
             AppLanguage.English -> english
             AppLanguage.French -> french
+            AppLanguage.Spanish -> spanish
+            AppLanguage.German -> german
+            AppLanguage.Korean -> korean
             AppLanguage.Thai -> thai
         }
 
@@ -6113,6 +6573,9 @@ class MainActivity : AppCompatActivity() {
                 "Waiting for your fighter profile",
                 "En attente de votre profil boxe",
                 "กำลังรอโปรไฟล์นักชกของคุณ",
+                "Esperando tu perfil de luchador",
+                "Ich warte auf dein Kämpferprofil",
+                "선수 프로필을 기다리는 중",
             )
         }
         return profile.nickname
@@ -6125,7 +6588,7 @@ class MainActivity : AppCompatActivity() {
         val parts =
             mutableListOf(
                 "${localUserLabel()}: ${profile.serialMasked}",
-                "${tr("profile_language")}: ${languageDisplayName(AppLanguage.fromStorage(profile.languageCode))}",
+                "${tr("profile_language")}: ${languageDisplayName(selectedLanguage)}",
             )
         val countryCode = normalizedCountryCode(profile.countryCode)
         if (countryCode != null) {
@@ -6142,27 +6605,86 @@ class MainActivity : AppCompatActivity() {
                     "Finish and sync your first session to build your training stats and profile assets.",
                     "Terminez et synchronisez votre première séance pour créer vos statistiques.",
                     "ฝึกและซิงก์ครั้งแรกเพื่อสร้างสถิติและโปรไฟล์การเติบโต",
+                    "Finaliza y sincroniza tu primera sesión para crear tus estadísticas de entrenamiento y activos de perfil.",
+                    "Beenden und synchronisieren Sie Ihre erste Sitzung, um Ihre Trainingsstatistiken und Profilressourcen zu erstellen.",
+                    "첫 번째 세션을 완료하고 동기화하여 훈련 통계와 프로필 자산을 구축하세요.",
                 )
         return buildString {
             append("${tr("total_sessions")}: ${stats.totalSessions}")
             append(" | ")
-            append("${localText("总回合", "Rounds", "Rounds", "รอบ")}: ${stats.totalRounds}")
+            append("${localText(
+                "总回合",
+                "Rounds",
+                "Rounds",
+                "รอบ",
+                "Rondas",
+                "Runden",
+                "라운드",
+            )}: ${stats.totalRounds}")
             append('\n')
             append("${tr("total_hits")}: ${stats.totalHits}")
             append(" | ")
-            append("${localText("最佳单回合", "Best round", "Meilleur round", "รอบดีที่สุด")}: ${stats.bestRoundHits}")
+            append("${localText(
+                "最佳单回合",
+                "Best round",
+                "Meilleur round",
+                "รอบดีที่สุด",
+                "Mejor ronda",
+                "Beste Runde",
+                "베스트 라운드",
+            )}: ${stats.bestRoundHits}")
             append('\n')
-            append("${localText("锻炼时间", "Duration", "Durée", "เวลา")}: ${formatTrainingDuration(stats.totalTrainingSeconds)}")
+            append("${localText(
+                "锻炼时间",
+                "Duration",
+                "Durée",
+                "เวลา",
+                "Duración",
+                "Dauer",
+                "기간",
+            )}: ${formatTrainingDuration(stats.totalTrainingSeconds)}")
             append(" | ")
-            append("${localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด")}: ${forceDisplay(stats.bestPeakForceN)}")
+            append("${localText(
+                "最高评分",
+                "Peak score",
+                "Score max",
+                "คะแนนสูงสุด",
+                "Puntuación máxima",
+                "Spitzenpunktzahl",
+                "최고점수",
+            )}: ${forceDisplay(stats.bestPeakForceN)}")
             append('\n')
-            append("${localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย")}: ${forceDisplay(stats.bestAvgForceN)}")
+            append("${localText(
+                "平均评分",
+                "Average score",
+                "Score moy.",
+                "คะแนนเฉลี่ย",
+                "Puntuación media",
+                "Durchschnittliche Punktzahl",
+                "평균 점수",
+            )}: ${forceDisplay(stats.bestAvgForceN)}")
             append(" | ")
-            append("${localText("平均单回合", "Avg round", "Round moy.", "เฉลี่ยต่อรอบ")}: ${String.format(Locale.US, "%.1f", stats.averageRoundHits)}")
+            append("${localText(
+                "平均单回合",
+                "Avg round",
+                "Round moy.",
+                "เฉลี่ยต่อรอบ",
+                "Ronda promedio",
+                "Durchschnittliche Runde",
+                "평균 라운드",
+            )}: ${String.format(Locale.US, "%.1f", stats.averageRoundHits)}")
             append('\n')
             append("${tr("calories_burned")}: ${formatCalories(stats.totalCaloriesBurned)}")
             append(" | ")
-            append("${localText("单回合均卡", "Avg kcal/round", "Kcal/round moy.", "แคลอรี/รอบ")}: ${formatCalories(stats.averageRoundCaloriesBurned)}")
+            append("${localText(
+                "单回合均卡",
+                "Avg kcal/round",
+                "Kcal/round moy.",
+                "แคลอรี/รอบ",
+                "Promedio de kcal/ronda",
+                "Durchschn. kcal/Runde",
+                "평균 kcal/회",
+            )}: ${formatCalories(stats.averageRoundCaloriesBurned)}")
             append('\n')
             append("${tr("fat_burned")}: ${formatFatGrams(stats.totalFatBurnedGrams)}")
             append(" | ")
@@ -6189,6 +6711,9 @@ class MainActivity : AppCompatActivity() {
                 "Recent badges: keep training to unlock your first badge",
                 "Badges récents : continuez pour débloquer le premier",
                 "เหรียญล่าสุด: ฝึกต่อเพื่อปลดล็อกเหรียญแรก",
+                "Insignias recientes: sigue entrenando para desbloquear tu primera insignia",
+                "Aktuelle Abzeichen: Trainieren Sie weiter, um Ihr erstes Abzeichen freizuschalten",
+                "최근 배지: 첫 번째 배지를 잠금 해제하려면 계속 훈련하세요.",
             )
         }
         val names = unlocked.joinToString(" | ") { achievementDisplayName(it.key) }
@@ -6197,6 +6722,9 @@ class MainActivity : AppCompatActivity() {
             "Recent badges: $names",
             "Badges récents : $names",
             "เหรียญล่าสุด: $names",
+            "Insignias recientes: $names",
+            "Aktuelle Abzeichen: $names",
+            "최근 배지: $names",
         )
     }
 
@@ -6274,14 +6802,33 @@ class MainActivity : AppCompatActivity() {
             achievementsSummaryView.text = achievementsSubtitleText(0, 0)
             achievementsGridContainer.addView(
                 emptyStateCard(
-                    badge = localText("徽章", "HONOR", "HONNEUR", "เกียรติยศ"),
-                    title = localText("荣誉馆等待点亮", "Your honor hall is waiting", "Votre galerie d'honneur vous attend", "หอเกียรติยศกำลังรอคุณ"),
+                    badge = localText(
+                        "徽章",
+                        "HONOR",
+                        "HONNEUR",
+                        "เกียรติยศ",
+                        "HONOR",
+                        "ERFOLGE",
+                        "명예",
+                    ),
+                    title = localText(
+                        "荣誉馆等待点亮",
+                        "Your honor hall is waiting",
+                        "Votre galerie d'honneur vous attend",
+                        "หอเกียรติยศกำลังรอคุณ",
+                        "Tu salón de honor está esperando",
+                        "Ihre Ehrenhalle wartet",
+                        "당신의 명예의 전당이 기다리고 있습니다",
+                    ),
                     message =
                         localText(
                             "完成训练并同步云端后，这里会展示你的段位与徽章成长。",
                             "Finish and sync a session to light up your tier and badge collection here.",
                             "Terminez et synchronisez une séance pour afficher vos rangs et badges.",
                             "ฝึกและซิงก์หนึ่งครั้งเพื่อแสดงระดับและเหรียญของคุณ",
+                            "Finaliza y sincroniza una sesión para iluminar tu colección de niveles e insignias aquí.",
+                            "Beenden und synchronisieren Sie eine Sitzung, um Ihre Rang- und Abzeichensammlung hier aufzupeppen.",
+                            "여기에서 세션을 완료하고 동기화하여 등급과 배지 컬렉션을 더욱 빛나게 하세요.",
                         ),
                     accentColor = "#FFD060",
                 ),
@@ -6306,7 +6853,7 @@ class MainActivity : AppCompatActivity() {
             achievementsGridContainer.addView(spacer(dp(8)))
             val recentRow =
                 LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
+                    orientation = LinearLayout.VERTICAL
                     gravity = Gravity.START
                 }
             recentUnlocked.forEachIndexed { index, item ->
@@ -6318,13 +6865,22 @@ class MainActivity : AppCompatActivity() {
                     ).apply {
                         layoutParams =
                             LinearLayout.LayoutParams(
-                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.WRAP_CONTENT,
                             ).apply {
                                 if (index > 0) {
-                                    leftMargin = dp(8)
+                                    topMargin = dp(6)
                                 }
                             }
+                        gravity = Gravity.CENTER
+                        setSingleLine(true)
+                        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                            this,
+                            9,
+                            12,
+                            1,
+                            TypedValue.COMPLEX_UNIT_SP,
+                        )
                     },
                 )
             }
@@ -6450,14 +7006,44 @@ class MainActivity : AppCompatActivity() {
                     "calories" -> "Calories Burned"
                     else -> "Equivalent Fat Burn"
                 }
+            AppLanguage.Spanish ->
+                when (key) {
+                    "duration" -> "Duración del entrenamiento"
+                    "total_hits" -> "Golpes totales"
+                    "peak_force" -> "Puntuación máxima"
+                    "avg_force" -> "Puntuación media"
+                    "calories" -> "Calorías quemadas"
+                    else -> "Grasa equivalente"
+                }
+            AppLanguage.German ->
+                when (key) {
+                    "duration" -> "Trainingsdauer"
+                    "total_hits" -> "Schläge gesamt"
+                    "peak_force" -> "Spitzenpunktzahl"
+                    "avg_force" -> "Durchschnittspunktzahl"
+                    "calories" -> "Verbrannte Kalorien"
+                    else -> "Äquivalente Fettverbrennung"
+                }
+            AppLanguage.Korean ->
+                when (key) {
+                    "duration" -> "훈련 시간"
+                    "total_hits" -> "총 타격 수"
+                    "peak_force" -> "최고 점수"
+                    "avg_force" -> "평균 점수"
+                    "calories" -> "소모 칼로리"
+                    else -> "환산 지방 소모량"
+                }
         }
 
     private fun achievementsRecentUnlockedTitle(): String =
         when (selectedLanguage) {
             AppLanguage.Chinese -> "最近解锁"
+            AppLanguage.English -> "Recently unlocked"
             AppLanguage.French -> "Déblocages récents"
+            AppLanguage.Spanish -> "Desbloqueos recientes"
+            AppLanguage.German -> "Kürzlich freigeschaltet"
+            AppLanguage.Korean -> "최근 잠금 해제"
             AppLanguage.Thai -> "ปลดล็อกล่าสุด"
-            else -> "Recently unlocked"
         }
 
     private fun achievementTierHeroCard(
@@ -6468,7 +7054,15 @@ class MainActivity : AppCompatActivity() {
         detailCard(fillColor = "#EFFFFA", strokeColor = "#BFEFE5", cornerDp = 22).apply {
             addView(
                 badgeText(
-                    text = localText("当前段位", "Current Tier", "Rang actuel", "ระดับปัจจุบัน"),
+                    text = localText(
+                        "当前段位",
+                        "Current Tier",
+                        "Rang actuel",
+                        "ระดับปัจจุบัน",
+                        "Nivel actual",
+                        "Aktuelle Stufe",
+                        "현재 등급",
+                    ),
                     textColor = "#096D65",
                     fillColor = "#DFFFF7",
                 ),
@@ -6502,6 +7096,9 @@ class MainActivity : AppCompatActivity() {
                 "Best round: $bestRoundHits | $remaining hits to ${tierLabelForKey(tier.nextKey)}",
                 "Meilleur round : $bestRoundHits | Encore $remaining coups pour ${tierLabelForKey(tier.nextKey)}",
                 "รอบดีที่สุด: $bestRoundHits | อีก $remaining ครั้งจะถึง ${tierLabelForKey(tier.nextKey)}",
+                "Mejor ronda: $bestRoundHits | $remaining llega a ${tierLabelForKey(tier.nextKey)}",
+                "Beste Runde: $bestRoundHits | $remaining trifft auf ${tierLabelForKey(tier.nextKey)}",
+                "베스트 라운드: $bestRoundHits | ${remaining}가 ${tierLabelForKey(tier.nextKey)}에 도달했습니다.",
             )
         } else {
             localText(
@@ -6509,6 +7106,9 @@ class MainActivity : AppCompatActivity() {
                 "Best round: $bestRoundHits | Top tier reached",
                 "Meilleur round : $bestRoundHits | Rang maximum atteint",
                 "รอบดีที่สุด: $bestRoundHits | ถึงระดับสูงสุดแล้ว",
+                "Mejor ronda: $bestRoundHits | Nivel superior alcanzado",
+                "Beste Runde: $bestRoundHits | Höchste Stufe erreicht",
+                "베스트 라운드: $bestRoundHits | 최상위 등급에 도달함",
             )
         }
     }
@@ -6544,7 +7144,15 @@ class MainActivity : AppCompatActivity() {
             shareLeaderboardButton.isEnabled = false
             leaderboardMeTitleView.setTextColor(Color.parseColor("#096D65"))
             leaderboardMeTitleView.text =
-                localText("榜单竞技", "Leaderboard Arena", "Arène du classement", "สนามจัดอันดับ")
+                localText(
+                    "榜单竞技",
+                    "Leaderboard Arena",
+                    "Arène du classement",
+                    "สนามจัดอันดับ",
+                    "Arena de clasificación",
+                    "Bestenlisten-Arena",
+                    "리더보드 아레나",
+                )
             leaderboardMeView.text = ""
             leaderboardMeView.gravity = Gravity.START
             leaderboardMeCard.removeAllViews()
@@ -6566,13 +7174,24 @@ class MainActivity : AppCompatActivity() {
             leaderboardMeCard.addView(emptyHeader)
             leaderboardMeCard.addView(
                 emptyStateCard(
-                    badge = localText("竞技", "RANK", "RANG", "อันดับ"),
+                    badge = localText(
+                        "竞技",
+                        "RANK",
+                        "RANG",
+                        "อันดับ",
+                        "RANGO",
+                        "RANG",
+                        "순위",
+                    ),
                     title =
                         localText(
                             "等待第一份排名",
                             "Waiting for your first ranking",
                             "En attente de votre premier classement",
                             "รออันดับแรกของคุณ",
+                            "Esperando tu primer ranking",
+                            "Warten auf Ihr erstes Ranking",
+                            "첫 번째 순위를 기다리고 있습니다",
                         ),
                     message = tr("leaderboard_empty"),
                     accentColor = "#FF9A30",
@@ -6593,7 +7212,7 @@ class MainActivity : AppCompatActivity() {
                     entry = entry,
                     accentColor = podiumAccentForRank(entry.rank),
                     elevated = entry.rank == 1,
-                    leftMargin = if (index == 0) 0 else dp(10),
+                    leftMargin = if (index == 0) 0 else dp(4),
                 ),
             )
         }
@@ -6657,7 +7276,7 @@ class MainActivity : AppCompatActivity() {
             append("   |   ")
             append(tr("profile_language"))
             append(": ")
-            append(languageDisplayName(AppLanguage.fromStorage(profile.languageCode)))
+            append(languageDisplayName(selectedLanguage))
             val countryCode = normalizedCountryCode(profile.countryCode)
             if (countryCode != null) {
                 append('\n')
@@ -6687,15 +7306,39 @@ class MainActivity : AppCompatActivity() {
             append(": ")
             append(stats.totalHits)
             append('\n')
-            append(localText("锻炼时间", "Duration", "Durée", "เวลา"))
+            append(localText(
+                "锻炼时间",
+                "Duration",
+                "Durée",
+                "เวลา",
+                "Duración",
+                "Dauer",
+                "기간",
+            ))
             append(": ")
             append(formatTrainingDuration(stats.totalTrainingSeconds))
             append("   |   ")
-            append(localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด"))
+            append(localText(
+                "最高评分",
+                "Peak score",
+                "Score max",
+                "คะแนนสูงสุด",
+                "Puntuación máxima",
+                "Spitzenpunktzahl",
+                "최고점수",
+            ))
             append(": ")
             append(forceDisplay(stats.bestPeakForceN))
             append('\n')
-            append(localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย"))
+            append(localText(
+                "平均评分",
+                "Average score",
+                "Score moy.",
+                "คะแนนเฉลี่ย",
+                "Puntuación media",
+                "Durchschnittliche Punktzahl",
+                "평균 점수",
+            ))
             append(": ")
             append(forceDisplay(stats.bestAvgForceN))
             append('\n')
@@ -6792,6 +7435,33 @@ class MainActivity : AppCompatActivity() {
                     LeaderboardBoard.Calories -> "Calories"
                     LeaderboardBoard.FatBurned -> "Equivalent Fat"
                 }
+            AppLanguage.Spanish ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "Duración"
+                    LeaderboardBoard.TotalHits -> "Golpes"
+                    LeaderboardBoard.PeakForce -> "Punt. máxima"
+                    LeaderboardBoard.AvgForce -> "Punt. media"
+                    LeaderboardBoard.Calories -> "Calorías"
+                    LeaderboardBoard.FatBurned -> "Grasa eq."
+                }
+            AppLanguage.German ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "Dauer"
+                    LeaderboardBoard.TotalHits -> "Gesamtschläge"
+                    LeaderboardBoard.PeakForce -> "Max. Punktzahl"
+                    LeaderboardBoard.AvgForce -> "Ø Punktzahl"
+                    LeaderboardBoard.Calories -> "Kalorien"
+                    LeaderboardBoard.FatBurned -> "Fettäquivalent"
+                }
+            AppLanguage.Korean ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "시간"
+                    LeaderboardBoard.TotalHits -> "총 타격 수"
+                    LeaderboardBoard.PeakForce -> "최고 점수"
+                    LeaderboardBoard.AvgForce -> "평균 점수"
+                    LeaderboardBoard.Calories -> "칼로리"
+                    LeaderboardBoard.FatBurned -> "환산 지방"
+                }
         }
 
     private fun leaderboardBoardSubtitle(board: LeaderboardBoard): String =
@@ -6832,6 +7502,33 @@ class MainActivity : AppCompatActivity() {
                     LeaderboardBoard.Calories -> "Ranked by total calories burned"
                     LeaderboardBoard.FatBurned -> "Ranked by total equivalent fat burn"
                 }
+            AppLanguage.Spanish ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "Clasificación por tiempo total de entrenamiento"
+                    LeaderboardBoard.TotalHits -> "Clasificación por golpes acumulados"
+                    LeaderboardBoard.PeakForce -> "Clasificación por Puntuación de Potencia Relativa máxima"
+                    LeaderboardBoard.AvgForce -> "Clasificación por mejor Puntuación de Potencia Relativa media"
+                    LeaderboardBoard.Calories -> "Clasificación por calorías totales"
+                    LeaderboardBoard.FatBurned -> "Clasificación por grasa equivalente total"
+                }
+            AppLanguage.German ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "Rangfolge nach gesamter Trainingszeit"
+                    LeaderboardBoard.TotalHits -> "Rangfolge nach Schlägen insgesamt"
+                    LeaderboardBoard.PeakForce -> "Rangfolge nach maximaler Relative Power Score"
+                    LeaderboardBoard.AvgForce -> "Rangfolge nach bester durchschnittlicher Relative Power Score"
+                    LeaderboardBoard.Calories -> "Rangfolge nach verbrannten Kalorien"
+                    LeaderboardBoard.FatBurned -> "Rangfolge nach äquivalenter Fettverbrennung"
+                }
+            AppLanguage.Korean ->
+                when (board) {
+                    LeaderboardBoard.TrainingDuration -> "총 훈련 시간 순위"
+                    LeaderboardBoard.TotalHits -> "누적 타격 수 순위"
+                    LeaderboardBoard.PeakForce -> "최고 상대 파워 점수 순위"
+                    LeaderboardBoard.AvgForce -> "최고 평균 상대 파워 점수 순위"
+                    LeaderboardBoard.Calories -> "총 소모 칼로리 순위"
+                    LeaderboardBoard.FatBurned -> "총 환산 지방 소모량 순위"
+                }
         }
 
     private fun leaderboardBoardFromKey(key: String?): LeaderboardBoard =
@@ -6853,6 +7550,9 @@ class MainActivity : AppCompatActivity() {
                     "${entry.bestHits} total hits",
                     "${entry.bestHits} coups cumulés",
                     "รวม ${entry.bestHits} หมัด",
+                    "${entry.bestHits} golpes totales",
+                    "${entry.bestHits} Gesamttreffer",
+                    "총 ${entry.bestHits} 타격",
                 )
             LeaderboardBoard.PeakForce -> entry.scoreValue.roundToInt().toString()
             LeaderboardBoard.AvgForce -> entry.scoreValue.roundToInt().toString()
@@ -6868,6 +7568,9 @@ class MainActivity : AppCompatActivity() {
                     "${entry.totalHits} total hits",
                     "${entry.totalHits} coups cumulés",
                     "รวม ${entry.totalHits} หมัด",
+                    "${entry.totalHits} golpes totales",
+                    "${entry.totalHits} Gesamttreffer",
+                    "총 ${entry.totalHits} 타격",
                 )
             LeaderboardBoard.TotalHits ->
                 localText(
@@ -6875,6 +7578,9 @@ class MainActivity : AppCompatActivity() {
                     "Best burst ${entry.bestBurstCount}",
                     "Meilleure rafale ${entry.bestBurstCount}",
                     "เบิร์สต์สูงสุด ${entry.bestBurstCount}",
+                    "Mejor ráfaga ${entry.bestBurstCount}",
+                    "Bester Burst ${entry.bestBurstCount}",
+                    "베스트 버스트 ${entry.bestBurstCount}",
                 )
             LeaderboardBoard.PeakForce, LeaderboardBoard.AvgForce ->
                 localText(
@@ -6882,6 +7588,9 @@ class MainActivity : AppCompatActivity() {
                     "Best pace ${String.format(Locale.US, "%.2f", entry.averageFrequency)} hits/s",
                     "Meilleur rythme ${String.format(Locale.US, "%.2f", entry.averageFrequency)} coups/s",
                     "จังหวะสูงสุด ${String.format(Locale.US, "%.2f", entry.averageFrequency)} หมัด/วิ",
+                    "Mejor ritmo ${String.format(Locale.US, "%.2f", entry.averageFrequency)} golpes/s",
+                    "Bestes Tempo ${String.format(Locale.US, "%.2f", entry.averageFrequency)} Treffer/s",
+                    "최고 속도 ${String.format(Locale.US, "%.2f", entry.averageFrequency)} 히트/초",
                 )
         }
 
@@ -6897,6 +7606,9 @@ class MainActivity : AppCompatActivity() {
             when (selectedLanguage) {
                 AppLanguage.Chinese -> "MM-dd HH:mm"
                 AppLanguage.English -> "MMM dd, HH:mm"
+                AppLanguage.Spanish -> "MMM dd, HH:mm"
+                AppLanguage.German -> "MMM dd, HH:mm"
+                AppLanguage.Korean -> "MMM dd, HH:mm"
                 AppLanguage.French -> "dd MMM HH:mm"
                 AppLanguage.Thai -> "dd/MM HH:mm"
             }
@@ -6912,13 +7624,37 @@ class MainActivity : AppCompatActivity() {
             append('\n')
             append("${tr("total_hits")}: ${report.totalHits}")
             append('\n')
-            append("${localText("锻炼时间", "Duration", "Durée", "เวลา")}: ${formatTrainingDuration(report.durationSeconds)}")
+            append("${localText(
+                "锻炼时间",
+                "Duration",
+                "Durée",
+                "เวลา",
+                "Duración",
+                "Dauer",
+                "기간",
+            )}: ${formatTrainingDuration(report.durationSeconds)}")
             append('\n')
             append("${tr("average_frequency")}: $frequency ${tr("hits_per_second")}")
             append('\n')
-            append("${localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด")}: ${forceDisplay(report.peakForceN)}")
+            append("${localText(
+                "最高评分",
+                "Peak score",
+                "Score max",
+                "คะแนนสูงสุด",
+                "Puntuación máxima",
+                "Spitzenpunktzahl",
+                "최고점수",
+            )}: ${forceDisplay(report.peakForceN)}")
             append('\n')
-            append("${localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย")}: ${forceDisplay(report.avgForceN)}")
+            append("${localText(
+                "平均评分",
+                "Average score",
+                "Score moy.",
+                "คะแนนเฉลี่ย",
+                "Puntuación media",
+                "Durchschnittliche Punktzahl",
+                "평균 점수",
+            )}: ${forceDisplay(report.avgForceN)}")
             append('\n')
             append("${tr("calories_burned")}: ${formatCalories(report.caloriesBurned)}")
             append('\n')
@@ -6965,13 +7701,24 @@ class MainActivity : AppCompatActivity() {
         reportView.removeAllViews()
         reportView.addView(
             emptyStateCard(
-                badge = localText("战报", "REPORT", "RAPPORT", "รายงาน"),
+                badge = localText(
+                    "战报",
+                    "REPORT",
+                    "RAPPORT",
+                    "รายงาน",
+                    "INFORME",
+                    "BERICHT",
+                    "보고",
+                ),
                 title =
                     localText(
                         "等待首份训练战报",
                         "Waiting for your first report",
                         "En attente de votre premier rapport",
                         "รอรายงานการฝึกครั้งแรก",
+                        "Esperando su primer informe",
+                        "Warte auf deinen ersten Bericht",
+                        "첫 번째 보고서를 기다리는 중",
                     ),
                 message = tr("no_report"),
                 accentColor = "#FF9A30",
@@ -7095,7 +7842,15 @@ class MainActivity : AppCompatActivity() {
                         },
                     )
                     addView(
-                        bodyText(localText("家庭健身 · 燃脂拳击", "Home fitness · fat-burning boxing", "Fitness maison · boxe brûle-graisse", "ฟิตเนสที่บ้าน · มวยเผาผลาญ")).apply {
+                        bodyText(localText(
+                            "家庭健身 · 燃脂拳击",
+                            "Home fitness · fat-burning boxing",
+                            "Fitness maison · boxe brûle-graisse",
+                            "ฟิตเนสที่บ้าน · มวยเผาผลาญ",
+                            "Fitness en casa · boxeo quemagrasas",
+                            "Heimfitness · Boxen zur Fettverbrennung",
+                            "홈 피트니스 · 지방 연소 복싱",
+                        )).apply {
                             setTextColor(Color.parseColor("#4C7478"))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                             setPadding(0, dp(6), 0, 0)
@@ -7109,6 +7864,9 @@ class MainActivity : AppCompatActivity() {
                                     "10 minutes\nSweat easy!",
                                     "10 minutes\nTranspirez vite !",
                                     "10 นาที\nเหงื่อออกง่าย!",
+                                    "10 minutos\n¡Suda fácil!",
+                                    "10 Minuten\nSchweiß einfach!",
+                                    "10분\n땀이 쏙!",
                                 )
                             text =
                                 SpannableString(headline).apply {
@@ -7138,7 +7896,15 @@ class MainActivity : AppCompatActivity() {
                     )
                     addView(
                         TextView(this@MainActivity).apply {
-                            text = localText("健身 | 减压 | 燃脂", "Fitness | Stress relief | Fat burn", "Fitness | Décompression | Brûle-graisse", "ฟิต | คลายเครียด | เผาผลาญ")
+                            text = localText(
+                                "健身 | 减压 | 燃脂",
+                                "Fitness | Stress relief | Fat burn",
+                                "Fitness | Décompression | Brûle-graisse",
+                                "ฟิต | คลายเครียด | เผาผลาญ",
+                                "Fitness | Alivio del estrés | quemar grasa",
+                                "Fitness | Stressabbau | Fettverbrennung",
+                                "피트니스 | 스트레스 해소 | 지방 연소",
+                            )
                             setTextColor(Color.parseColor("#17343B"))
                             setTypeface(Typeface.DEFAULT_BOLD)
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
@@ -7175,7 +7941,15 @@ class MainActivity : AppCompatActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     addView(
-                        sectionLabel(localText("相对力量评分", "Relative Power Score", "Score de puissance relative", "คะแนนพลังสัมพัทธ์")).apply {
+                        sectionLabel(localText(
+                            "相对力量评分",
+                            "Relative Power Score",
+                            "Score de puissance relative",
+                            "คะแนนพลังสัมพัทธ์",
+                            "Relativo Power Score",
+                            "Relativ Power Score",
+                            "상대 Power Score",
+                        )).apply {
                             setTextColor(Color.parseColor("#17343B"))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                             layoutParams =
@@ -7200,10 +7974,42 @@ class MainActivity : AppCompatActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER
                     setPadding(0, dp(8), 0, 0)
-                    addView(homeForceLegendChip(localText("轻击", "Light", "Léger", "เบา"), "#45DCC8", marginRight = dp(8)))
-                    addView(homeForceLegendChip(localText("中击", "Medium", "Moyen", "กลาง"), "#9BE5C4", marginRight = dp(8)))
-                    addView(homeForceLegendChip(localText("重拳", "Heavy", "Fort", "หนัก"), "#FFD060", marginRight = dp(8)))
-                    addView(homeForceLegendChip(localText("爆发", "Burst", "Explosion", "ระเบิด"), "#FF7A45"))
+                    addView(homeForceLegendChip(localText(
+                        "轻击",
+                        "Light",
+                        "Léger",
+                        "เบา",
+                        "Luz",
+                        "Licht",
+                        "빛",
+                    ), "#45DCC8", marginRight = dp(8)))
+                    addView(homeForceLegendChip(localText(
+                        "中击",
+                        "Medium",
+                        "Moyen",
+                        "กลาง",
+                        "Medio",
+                        "Mittel",
+                        "중간",
+                    ), "#9BE5C4", marginRight = dp(8)))
+                    addView(homeForceLegendChip(localText(
+                        "重拳",
+                        "Heavy",
+                        "Fort",
+                        "หนัก",
+                        "pesado",
+                        "Schwer",
+                        "헤비",
+                    ), "#FFD060", marginRight = dp(8)))
+                    addView(homeForceLegendChip(localText(
+                        "爆发",
+                        "Burst",
+                        "Explosion",
+                        "ระเบิด",
+                        "Explosión",
+                        "Platzen",
+                        "버스트",
+                    ), "#FF7A45"))
                 },
             )
             addView(
@@ -7276,7 +8082,15 @@ class MainActivity : AppCompatActivity() {
                         )
                 }
             content.addView(
-                sectionLabel(localText("连接状态 / 最新战报", "Connection / Latest report", "Connexion / Dernier rapport", "สถานะ / รายงานล่าสุด")).apply {
+                sectionLabel(localText(
+                    "连接状态 / 最新战报",
+                    "Connection / Latest report",
+                    "Connexion / Dernier rapport",
+                    "สถานะ / รายงานล่าสุด",
+                    "Conexión / Último informe",
+                    "Verbindung / Neuester Bericht",
+                    "연결/최신 보고서",
+                )).apply {
                     setTextColor(Color.parseColor("#17343B"))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                 },
@@ -7300,9 +8114,33 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.HORIZONTAL
                     setPadding(0, dp(6), dp(28), 0)
-                    addView(homeV3MiniMetric(localText("本次拳数", "Hits", "Coups", "หมัด"), homeReportHitsValueView, dp(8)))
-                    addView(homeV3MiniMetric(localText("最高评分", "Peak", "Max", "สูงสุด"), homeReportPeakValueView, dp(8)))
-                    addView(homeV3MiniMetric(localText("平均评分", "Avg", "Moy.", "เฉลี่ย"), homeReportAvgValueView))
+                    addView(homeV3MiniMetric(localText(
+                        "本次拳数",
+                        "Hits",
+                        "Coups",
+                        "หมัด",
+                        "Golpes",
+                        "Treffer",
+                        "타격 수",
+                    ), homeReportHitsValueView, dp(8)))
+                    addView(homeV3MiniMetric(localText(
+                        "最高评分",
+                        "Peak",
+                        "Max",
+                        "สูงสุด",
+                        "pico",
+                        "Höhepunkt",
+                        "피크",
+                    ), homeReportPeakValueView, dp(8)))
+                    addView(homeV3MiniMetric(localText(
+                        "平均评分",
+                        "Avg",
+                        "Moy.",
+                        "เฉลี่ย",
+                        "promedio",
+                        "Durchschn",
+                        "평균",
+                    ), homeReportAvgValueView))
                 },
             )
             addView(content)
@@ -7347,7 +8185,15 @@ class MainActivity : AppCompatActivity() {
                             ViewGroup.LayoutParams.MATCH_PARENT,
                         )
                     addView(
-                        sectionLabel(localText("目标与成就", "Goals & achievements", "Objectifs & succès", "เป้าหมายและเหรียญ")).apply {
+                        sectionLabel(localText(
+                            "目标与成就",
+                            "Goals & achievements",
+                            "Objectifs & succès",
+                            "เป้าหมายและเหรียญ",
+                            "Metas y logros",
+                            "Ziele und Erfolge",
+                            "목표 및 성과",
+                        )).apply {
                             setTextColor(Color.parseColor("#17343B"))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                         },
@@ -7363,7 +8209,15 @@ class MainActivity : AppCompatActivity() {
                                     topMargin = dp(12)
                                 }
                             addView(
-                                bodyText(localText("今日已完成", "Today done", "Aujourd'hui", "วันนี้")).apply {
+                                bodyText(localText(
+                                    "今日已完成",
+                                    "Today done",
+                                    "Aujourd'hui",
+                                    "วันนี้",
+                                    "hoy hecho",
+                                    "Heute erledigt",
+                                    "오늘 완료",
+                                )).apply {
                                     setTextColor(Color.parseColor("#7FA0A3"))
                                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                                 },
@@ -7445,12 +8299,18 @@ class MainActivity : AppCompatActivity() {
                     "${device.name}·Battery ${currentBluetoothBatteryText()}·Connected",
                     "${device.name}·Batterie ${currentBluetoothBatteryText()}·Connecté",
                     "${device.name}·แบต ${currentBluetoothBatteryText()}·เชื่อมต่อแล้ว",
+                    "${device.name}·Batería ${currentBluetoothBatteryText()}·Conectada",
+                    "${device.name}·Batterie ${currentBluetoothBatteryText()}·Angeschlossen",
+                    "${device.name}·배터리 ${currentBluetoothBatteryText()}·연결됨",
                 )
             } ?: localText(
                 "没有连接蓝牙设备",
                 "No Bluetooth device connected",
                 "Aucun appareil Bluetooth connecté",
                 "ยังไม่ได้เชื่อมต่อบลูทูธ",
+                "No hay ningún dispositivo Bluetooth conectado",
+                "Kein Bluetooth-Gerät angeschlossen",
+                "연결된 Bluetooth 장치가 없습니다.",
             )
         val report = latestReport
         val showLive = trainingJob?.isActive == true || bluetoothTrainingCount > 0
@@ -7483,12 +8343,18 @@ class MainActivity : AppCompatActivity() {
                     "Next badge: ${achievementDisplayName(it.key)}",
                     "Prochain badge : ${achievementDisplayName(it.key)}",
                     "เหรียญถัดไป: ${achievementDisplayName(it.key)}",
+                    "Siguiente insignia: ${achievementDisplayName(it.key)}",
+                    "Nächstes Abzeichen: ${achievementDisplayName(it.key)}",
+                    "다음 배지: ${achievementDisplayName(it.key)}",
                 )
             } ?: localText(
                 "全部徽章已解锁",
                 "All badges unlocked",
                 "Tous les badges sont débloqués",
                 "ปลดล็อกครบแล้ว",
+                "Todas las insignias desbloqueadas",
+                "Alle Abzeichen freigeschaltet",
+                "모든 배지 잠금 해제",
             )
     }
 
@@ -7641,11 +8507,35 @@ class MainActivity : AppCompatActivity() {
         dashboardPeakValueView = metricValueView("--")
         dashboardRhythmValueView = metricValueView("--")
         dashboardRoundBadgeView =
-            badgeText(localText("第 1 回合", "Round 1", "Round 1", "รอบ 1"), textColor = "#096D65", fillColor = mintSoft)
+            badgeText(localText(
+                "第 1 回合",
+                "Round 1",
+                "Round 1",
+                "รอบ 1",
+                "Ronda 1",
+                "Runde 1",
+                "1라운드",
+            ), textColor = "#096D65", fillColor = mintSoft)
         dashboardPeakTagView =
-            badgeText(localText("最高评分 --", "Peak score --", "Score max --", "คะแนนสูงสุด --"), textColor = "#F06B22", fillColor = orangeSoft)
+            badgeText(localText(
+                "最高评分 --",
+                "Peak score --",
+                "Score max --",
+                "คะแนนสูงสุด --",
+                "Puntuación máxima -",
+                "Höchstpunktzahl –",
+                "최고 점수 --",
+            ), textColor = "#F06B22", fillColor = orangeSoft)
         dashboardGoalProgressView =
-            bodyText(localText("今日目标：500 拳 | 已完成 0 拳", "Today: 500 hits | Done 0 hits", "Aujourd'hui : 500 coups | 0 coups faits", "วันนี้ 500 หมัด | ทำแล้ว 0 หมัด")).apply {
+            bodyText(localText(
+                "今日目标：500 拳 | 已完成 0 拳",
+                "Today: 500 hits | Done 0 hits",
+                "Aujourd'hui : 500 coups | 0 coups faits",
+                "วันนี้ 500 หมัด | ทำแล้ว 0 หมัด",
+                "Hoy: 500 golpes | Completados 0",
+                "Heute: 500 Treffer | 0 geschafft",
+                "오늘: 타격 500회 | 0회 완료",
+            )).apply {
                 setTextColor(Color.parseColor(textPrimary))
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
@@ -7695,7 +8585,15 @@ class MainActivity : AppCompatActivity() {
                     if (trainingJob?.isActive == true) {
                         Toast.makeText(
                             this@MainActivity,
-                            localText("训练中不可修改训练设置。", "Training settings are locked during a session.", "Réglages verrouillés pendant l'entraînement.", "ล็อกการตั้งค่าระหว่างฝึก"),
+                            localText(
+                                "训练中不可修改训练设置。",
+                                "Training settings are locked during a session.",
+                                "Réglages verrouillés pendant l'entraînement.",
+                                "ล็อกการตั้งค่าระหว่างฝึก",
+                                "La configuración de entrenamiento está bloqueada durante una sesión.",
+                                "Die Trainingseinstellungen sind während einer Sitzung gesperrt.",
+                                "훈련 설정은 세션 중에 잠겨 있습니다.",
+                            ),
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
@@ -7712,10 +8610,25 @@ class MainActivity : AppCompatActivity() {
                     },
                 )
                 addView(
-                    bodyText(localText("训练设置", "Settings", "Réglages", "ตั้งค่า")).apply {
+                    bodyText(localText(
+                        "训练设置",
+                        "Settings",
+                        "Réglages",
+                        "ตั้งค่า",
+                        "Configuración",
+                        "Einstellungen",
+                        "설정",
+                    )).apply {
                         setTextColor(Color.parseColor(textPrimary))
                         setTypeface(Typeface.DEFAULT_BOLD)
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                        setSingleLine(true)
+                        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                            this,
+                            8,
+                            11,
+                            1,
+                            TypedValue.COMPLEX_UNIT_SP,
+                        )
                         gravity = Gravity.CENTER
                     },
                 )
@@ -7753,7 +8666,15 @@ class MainActivity : AppCompatActivity() {
                             ViewGroup.LayoutParams.WRAP_CONTENT,
                         )
                     addView(
-                        sectionLabel(localText("实时训练", "Live Training", "Entraînement live", "ฝึกสด")).apply {
+                        sectionLabel(localText(
+                            "实时训练",
+                            "Live Training",
+                            "Entraînement live",
+                            "ฝึกสด",
+                            "Entreno en vivo",
+                            "Live-Training",
+                            "실시간 훈련",
+                        )).apply {
                             setTextColor(Color.parseColor(textPrimary))
                             textSize = 16f
                             layoutParams =
@@ -7780,7 +8701,7 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         dashboardTrainingSettingsButton.apply {
                             layoutParams =
-                                LinearLayout.LayoutParams(dp(96), dp(38)).apply {
+                                LinearLayout.LayoutParams(dp(112), dp(38)).apply {
                                     gravity = Gravity.CENTER_VERTICAL
                                 }
                         },
@@ -7788,11 +8709,27 @@ class MainActivity : AppCompatActivity() {
                 },
             )
             startButton =
-                sideTrainingButton(localText("开始", "Start", "Démarrer", "เริ่ม"), mint, "#4CE0D2").apply {
+                sideTrainingButton(localText(
+                    "开始",
+                    "Start",
+                    "Démarrer",
+                    "เริ่ม",
+                    "Empezar",
+                    "Starten",
+                    "시작",
+                ), mint, "#4CE0D2").apply {
                     setOnClickListener { startTraining() }
                 }
             stopButton =
-                sideTrainingButton(localText("结束", "End", "Terminer", "จบ"), orange, "#FFC47D").apply {
+                sideTrainingButton(localText(
+                    "结束",
+                    "End",
+                    "Terminer",
+                    "จบ",
+                    "Fin",
+                    "Ende",
+                    "끝",
+                ), orange, "#FFC47D").apply {
                     isEnabled = false
                     alpha = 0.5f
                     setOnClickListener { stopTraining(showStoppedState = true) }
@@ -7841,7 +8778,23 @@ class MainActivity : AppCompatActivity() {
                     weightSum = 4f
                 }
             metricsRow.addView(
-                metricTile(R.drawable.home_metric_hits, localText("拳数", "Hits", "Coups", "หมัด"), dashboardPunchValueView, localText("次", "", "", "")).apply {
+                metricTile(R.drawable.home_metric_hits, localText(
+                    "拳数",
+                    "Hits",
+                    "Coups",
+                    "หมัด",
+                    "Golpes",
+                    "Treffer",
+                    "타격 수",
+                ), dashboardPunchValueView, localText(
+                    "次",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                )).apply {
                     layoutParams = LinearLayout.LayoutParams(0, dp(104), 1f).apply { rightMargin = dp(7) }
                 },
             )
@@ -7851,12 +8804,28 @@ class MainActivity : AppCompatActivity() {
                 },
             )
             metricsRow.addView(
-                metricTile(R.drawable.home_metric_calories, localText("卡路里", "Calories", "Calories", "แคลอรี"), dashboardCaloriesValueView, "Kcal").apply {
+                metricTile(R.drawable.home_metric_calories, localText(
+                    "卡路里",
+                    "Calories",
+                    "Calories",
+                    "แคลอรี",
+                    "calorías",
+                    "Kalorien",
+                    "칼로리",
+                ), dashboardCaloriesValueView, "Kcal").apply {
                     layoutParams = LinearLayout.LayoutParams(0, dp(104), 1f).apply { rightMargin = dp(7) }
                 },
             )
             metricsRow.addView(
-                metricTile(R.drawable.home_metric_fat, localText("等效燃脂", "Eq. fat", "Graisse", "ไขมัน"), dashboardFatValueView, "g").apply {
+                metricTile(R.drawable.home_metric_fat, localText(
+                    "等效燃脂",
+                    "Eq. fat",
+                    "Graisse",
+                    "ไขมัน",
+                    "Grasa eq.",
+                    "Gl. fett",
+                    "환산 지방",
+                ), dashboardFatValueView, "g").apply {
                     layoutParams = LinearLayout.LayoutParams(0, dp(104), 1f)
                 },
             )
@@ -7891,7 +8860,15 @@ class MainActivity : AppCompatActivity() {
                     addView(dashboardGoalProgressTrackView)
                 },
             )
-            addView(sectionHeader(localText("连击识别", "Combo recognition", "Combos détectés", "ตรวจจับคอมโบ")))
+            addView(sectionHeader(localText(
+                "连击识别",
+                "Combo recognition",
+                "Combos détectés",
+                "ตรวจจับคอมโบ",
+                "reconocimiento combinado",
+                "Kombierkennung",
+                "콤보 인식",
+            )))
             addView(
                 HorizontalScrollView(this@MainActivity).apply {
                     isHorizontalScrollBarEnabled = false
@@ -7958,7 +8935,15 @@ class MainActivity : AppCompatActivity() {
             }
 
         aiCoachStatusView =
-            badgeText(localText("待命", "Ready", "Prêt", "พร้อม"), textColor = "#096D65", fillColor = "#DFFFF7")
+            badgeText(localText(
+                "待命",
+                "Ready",
+                "Prêt",
+                "พร้อม",
+                "Listo",
+                "Bereit",
+                "준비",
+            ), textColor = "#096D65", fillColor = "#DFFFF7")
         aiCoachMessageView =
             bodyText("").apply {
                 setTextColor(Color.parseColor("#17343B"))
@@ -7996,7 +8981,15 @@ class MainActivity : AppCompatActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     addView(
-                        sectionLabel(localText("AI 教练实时指导", "AI Live Coach", "Coach IA live", "โค้ช AI สด")).apply {
+                        sectionLabel(localText(
+                            "AI 教练实时指导",
+                            "AI Live Coach",
+                            "Coach IA live",
+                            "โค้ช AI สด",
+                            "AI Entrenador en vivo",
+                            "AI Live-Coach",
+                            "AI 라이브 코치",
+                        )).apply {
                             setTextColor(Color.parseColor("#096D65"))
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                         },
@@ -8044,30 +9037,126 @@ class MainActivity : AppCompatActivity() {
                     val cues =
                         listOf(
                             arrayOf(
-                                localText("BPM 低于目标", "Low BPM", "BPM bas", "BPM ต่ำ"),
-                                localText("加快节奏，短一点、快一点，跟上节拍！", "Pick up the pace, shorter and faster, stay on beat.", "Accélérez, plus court et plus vite.", "เร่งจังหวะ สั้นและเร็วขึ้น"),
-                                localText("触发原因：BPM 低于目标", "Trigger: BPM below target", "Déclencheur : BPM bas", "สาเหตุ: BPM ต่ำกว่าเป้า"),
+                                localText(
+                                    "BPM 低于目标",
+                                    "Low BPM",
+                                    "BPM bas",
+                                    "BPM ต่ำ",
+                                    "Bajo BPM",
+                                    "Niedrig BPM",
+                                    "낮음 BPM",
+                                ),
+                                localText(
+                                    "加快节奏，短一点、快一点，跟上节拍！",
+                                    "Pick up the pace, shorter and faster, stay on beat.",
+                                    "Accélérez, plus court et plus vite.",
+                                    "เร่งจังหวะ สั้นและเร็วขึ้น",
+                                    "Acelera el ritmo, más corto y más rápido, mantén el ritmo.",
+                                    "Erhöhen Sie das Tempo, kürzer und schneller, bleiben Sie im Takt.",
+                                    "속도를 높이고 더 짧고 빠르게 비트를 유지하세요.",
+                                ),
+                                localText(
+                                    "触发原因：BPM 低于目标",
+                                    "Trigger: BPM below target",
+                                    "Déclencheur : BPM bas",
+                                    "สาเหตุ: BPM ต่ำกว่าเป้า",
+                                    "Activador: BPM por debajo del objetivo",
+                                    "Auslöser: BPM unter dem Zielwert",
+                                    "트리거: 목표보다 낮은 BPM",
+                                ),
                                 "#10BDAA",
                                 "#096D65",
                             ),
                             arrayOf(
-                                localText("连续命中 10 拳", "10-hit streak", "10 coups", "ต่อเนื่อง 10"),
-                                localText("漂亮！保持这个状态，再来一组！", "Great. Keep this state and give me one more set.", "Très bien, encore une série.", "เยี่ยม รักษาจังหวะแล้วต่ออีกชุด"),
-                                localText("触发原因：连续命中", "Trigger: hit streak", "Déclencheur : série de coups", "สาเหตุ: หมัดต่อเนื่อง"),
+                                localText(
+                                    "连续命中 10 拳",
+                                    "10-hit streak",
+                                    "10 coups",
+                                    "ต่อเนื่อง 10",
+                                    "racha de 10 hits",
+                                    "10-Treffer-Serie",
+                                    "10연속 안타",
+                                ),
+                                localText(
+                                    "漂亮！保持这个状态，再来一组！",
+                                    "Great. Keep this state and give me one more set.",
+                                    "Très bien, encore une série.",
+                                    "เยี่ยม รักษาจังหวะแล้วต่ออีกชุด",
+                                    "Genial. Mantén este estado y dame un juego más.",
+                                    "Großartig. Behalten Sie diesen Zustand bei und geben Sie mir noch einen Satz.",
+                                    "좋아요. 이 상태를 유지하고 한 세트 더 주세요.",
+                                ),
+                                localText(
+                                    "触发原因：连续命中",
+                                    "Trigger: hit streak",
+                                    "Déclencheur : série de coups",
+                                    "สาเหตุ: หมัดต่อเนื่อง",
+                                    "Desencadenante: racha de hits",
+                                    "Auslöser: Trefferserie",
+                                    "발동 : 연속 안타",
+                                ),
                                 "#16C8B5",
                                 "#096D65",
                             ),
                             arrayOf(
-                                localText("评分骤降", "Score drop", "Baisse du score", "คะแนนลดลง"),
-                                localText("注意发力，手腕锁住，保持动作完整。", "Keep your technique consistent, lock the wrist and land clean.", "Force : verrouillez le poignet.", "ระวังแรง ล็อกข้อมือแล้วออกหมัดให้แน่น"),
-                                localText("触发原因：评分低于近期均值", "Trigger: score below recent average", "Déclencheur : score sous la moyenne", "สาเหตุ: คะแนนต่ำกว่าค่าเฉลี่ย"),
+                                localText(
+                                    "评分骤降",
+                                    "Score drop",
+                                    "Baisse du score",
+                                    "คะแนนลดลง",
+                                    "Caída de puntuación",
+                                    "Punkterückgang",
+                                    "점수 하락",
+                                ),
+                                localText(
+                                    "注意发力，手腕锁住，保持动作完整。",
+                                    "Keep your technique consistent, lock the wrist and land clean.",
+                                    "Force : verrouillez le poignet.",
+                                    "ระวังแรง ล็อกข้อมือแล้วออกหมัดให้แน่น",
+                                    "Mantenga su técnica constante, bloquee la muñeca y aterrice limpio.",
+                                    "Halten Sie Ihre Technik konstant, spannen Sie das Handgelenk und landen Sie sauber.",
+                                    "기술을 일관되게 유지하고 손목을 잠그고 땅을 깨끗하게 유지하십시오.",
+                                ),
+                                localText(
+                                    "触发原因：评分低于近期均值",
+                                    "Trigger: score below recent average",
+                                    "Déclencheur : score sous la moyenne",
+                                    "สาเหตุ: คะแนนต่ำกว่าค่าเฉลี่ย",
+                                    "Desencadenante: puntuación por debajo del promedio reciente",
+                                    "Auslöser: Punktzahl unter dem aktuellen Durchschnitt",
+                                    "트리거: 최근 평균보다 낮은 점수",
+                                ),
                                 "#FF8A32",
                                 "#B65A18",
                             ),
                             arrayOf(
-                                localText("最后 10 秒", "Final 10s", "10 s restantes", "10 วิสุดท้าย"),
-                                localText("最后 10 秒，全力冲刺，把节奏顶住。", "Final 10 seconds, push hard and hold the rhythm.", "Dernières 10 s, poussez fort.", "10 วิสุดท้าย เร่งเต็มที่"),
-                                localText("触发原因：回合结束倒计时", "Trigger: round ending", "Déclencheur : fin de round", "สาเหตุ: ใกล้จบรอบ"),
+                                localText(
+                                    "最后 10 秒",
+                                    "Final 10s",
+                                    "10 s restantes",
+                                    "10 วิสุดท้าย",
+                                    "10 finales",
+                                    "Letzte 10er",
+                                    "마지막 10초",
+                                ),
+                                localText(
+                                    "最后 10 秒，全力冲刺，把节奏顶住。",
+                                    "Final 10 seconds, push hard and hold the rhythm.",
+                                    "Dernières 10 s, poussez fort.",
+                                    "10 วิสุดท้าย เร่งเต็มที่",
+                                    "Últimos 10 segundos, empuja con fuerza y mantén el ritmo.",
+                                    "Drücken Sie in den letzten 10 Sekunden kräftig und halten Sie den Rhythmus.",
+                                    "마지막 10초 동안 세게 밀면서 리듬을 유지하세요.",
+                                ),
+                                localText(
+                                    "触发原因：回合结束倒计时",
+                                    "Trigger: round ending",
+                                    "Déclencheur : fin de round",
+                                    "สาเหตุ: ใกล้จบรอบ",
+                                    "Desencadenante: final de ronda",
+                                    "Auslöser: Rundenende",
+                                    "트리거: 라운드 종료",
+                                ),
                                 "#E65A4F",
                                 "#B9433C",
                             ),
@@ -8114,15 +9203,47 @@ class MainActivity : AppCompatActivity() {
                 setPadding(dp(8), dp(6), dp(8), dp(6))
             }
 
-        rhythmFreeButton = optionButton(localText("自由", "Free", "Libre", "อิสระ"))
-        rhythmBeatButton = optionButton(localText("跟拍", "Beat", "Tempo", "ตามจังหวะ"))
-        beat40Button = optionButton("40")
-        beat65Button = optionButton("65")
-        beat80Button = optionButton("80")
+        rhythmFreeButton = optionButton(localText(
+            "自由",
+            "Free",
+            "Libre",
+            "อิสระ",
+            "Gratis",
+            "Kostenlos",
+            "무료",
+        ))
+        rhythmBeatButton = optionButton(localText(
+            "跟拍",
+            "Beat",
+            "Tempo",
+            "ตามจังหวะ",
+            "batir",
+            "Schlag",
+            "비트",
+        ))
         beat100Button = optionButton("100")
-        beat120Button = optionButton("120")
-        soundGymButton = optionButton(localText("拳击馆", "Gym", "Salle", "ยิม"))
-        soundStreetButton = optionButton(localText("街头", "Street", "Rue", "สตรีท"))
+        beat150Button = optionButton("150")
+        beat200Button = optionButton("200")
+        beat250Button = optionButton("250")
+        beat300Button = optionButton("300")
+        soundGymButton = optionButton(localText(
+            "拳击馆",
+            "Gym",
+            "Salle",
+            "ยิม",
+            "Gimnasio",
+            "Fitnessstudio",
+            "체육관",
+        ))
+        soundStreetButton = optionButton(localText(
+            "街头",
+            "Street",
+            "Rue",
+            "สตรีท",
+            "calle",
+            "Straße",
+            "거리",
+        ))
 
         val card =
             detailCard(fillColor = "#FFFFFF", strokeColor = "#BFEFE5", cornerDp = 22).apply {
@@ -8136,12 +9257,28 @@ class MainActivity : AppCompatActivity() {
                         bottomMargin = dp(10)
                     }
                 addView(
-                    sectionLabel(localText("音乐节拍 & 沉浸模式", "Music Beat & Immersion", "Tempo & immersion", "จังหวะเพลง")).apply {
+                    sectionLabel(localText(
+                        "音乐节拍 & 沉浸模式",
+                        "Music Beat & Immersion",
+                        "Tempo & immersion",
+                        "จังหวะเพลง",
+                        "Ritmo musical e inmersión",
+                        "Musikbeat & Immersion",
+                        "음악 비트 및 몰입",
+                    )).apply {
                         setTextColor(Color.parseColor("#096D65"))
                     },
                 )
                 addView(
-                    bodyText(localText("训练时自动播放鼓点音床、跟拍评分与击打音效。", "Auto drum groove, rhythm scoring, and hit sounds during training.", "Groove batterie, score rythme et sons de frappe pendant l'entraînement.", "เปิดจังหวะกลอง คะแนนจังหวะ และเสียงหมัดตอนฝึก")).apply {
+                    bodyText(localText(
+                        "训练时自动播放鼓点音床、跟拍评分与击打音效。",
+                        "Auto drum groove, rhythm scoring, and hit sounds during training.",
+                        "Groove batterie, score rythme et sons de frappe pendant l'entraînement.",
+                        "เปิดจังหวะกลอง คะแนนจังหวะ และเสียงหมัดตอนฝึก",
+                        "Groove de batería automático, puntuación de ritmo y sonidos de golpe durante el entrenamiento.",
+                        "Automatischer Drum-Groove, Rhythmus-Bewertung und Schlaggeräusche während des Trainings.",
+                        "훈련 중 자동 드럼 그루브, 리듬 채점 및 히트 사운드.",
+                    )).apply {
                         setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                         setPadding(0, dp(6), 0, dp(8))
@@ -8163,21 +9300,25 @@ class MainActivity : AppCompatActivity() {
         val bpmGroup =
             RadioGroup(this).apply {
                 orientation = RadioGroup.HORIZONTAL
-                addView(beat40Button)
-                addView(beat65Button)
-                addView(beat80Button)
                 addView(beat100Button)
-                addView(beat120Button)
+                addView(beat150Button)
+                addView(beat200Button)
+                addView(beat250Button)
+                addView(beat300Button)
                 setOnCheckedChangeListener { _, checkedId ->
                     selectedBeatBpm =
                         when (checkedId) {
-                            beat40Button.id -> 40
-                            beat65Button.id -> 65
-                            beat100Button.id -> 100
-                            beat120Button.id -> 120
-                            else -> 80
+                            beat150Button.id -> 150
+                            beat200Button.id -> 200
+                            beat250Button.id -> 250
+                            beat300Button.id -> 300
+                            else -> 100
                         }
-                    prefs.edit().putInt(KEY_BEAT_BPM, selectedBeatBpm).apply()
+                    trainingSessionSetup = trainingSessionSetup.copy(bpm = selectedBeatBpm)
+                    prefs.edit()
+                        .putInt(KEY_BEAT_BPM, selectedBeatBpm)
+                        .putInt(KEY_TRAINING_SETUP_BPM, selectedBeatBpm)
+                        .apply()
                     refreshMusicImmersionControls()
                 }
             }
@@ -8192,11 +9333,27 @@ class MainActivity : AppCompatActivity() {
                     refreshMusicImmersionControls()
                 }
             }
-        card.addView(sectionSubtitle(localText("训练方式", "Mode", "Mode", "โหมด")))
+        card.addView(sectionSubtitle(localText(
+            "训练方式",
+            "Mode",
+            "Mode",
+            "โหมด",
+            "Modo",
+            "Modus",
+            "모드",
+        )))
         card.addView(rhythmGroup)
         card.addView(sectionSubtitle("BPM"))
         card.addView(bpmGroup)
-        card.addView(sectionSubtitle(localText("音效包", "Sound pack", "Sons", "ชุดเสียง")))
+        card.addView(sectionSubtitle(localText(
+            "音效包",
+            "Sound pack",
+            "Sons",
+            "ชุดเสียง",
+            "paquete de sonido",
+            "Soundpaket",
+            "사운드 팩",
+        )))
         card.addView(soundGroup)
         refreshMusicImmersionControls()
         return card
@@ -8207,6 +9364,9 @@ class MainActivity : AppCompatActivity() {
             when (selectedLanguage) {
                 AppLanguage.Chinese -> "MM-dd HH:mm"
                 AppLanguage.English -> "MMM dd, HH:mm"
+                AppLanguage.Spanish -> "MMM dd, HH:mm"
+                AppLanguage.German -> "MMM dd, HH:mm"
+                AppLanguage.Korean -> "MMM dd, HH:mm"
                 AppLanguage.French -> "dd MMM HH:mm"
                 AppLanguage.Thai -> "dd/MM HH:mm"
             }
@@ -8251,10 +9411,6 @@ class MainActivity : AppCompatActivity() {
             dashboardTrainingSettingsButton.isEnabled = !isBusy
             dashboardTrainingSettingsButton.alpha = if (isBusy) 0.5f else 1.0f
         }
-        activateButton.isEnabled = !isBusy && !activated && activationInputsValid
-        activateButton.alpha = if (activateButton.isEnabled) 1.0f else 0.6f
-        serialInput.isEnabled = !isBusy && !activated
-        codeInput.isEnabled = !isBusy && !activated
         for (index in 0 until modeGroup.childCount) {
             modeGroup.getChildAt(index).isEnabled = !isBusy
             modeGroup.getChildAt(index).alpha = if (isBusy) 0.6f else 1.0f
@@ -8371,12 +9527,36 @@ class MainActivity : AppCompatActivity() {
         fun renderBpmSection() {
             root.addView(
                 settingsSectionHeader(
-                    title = localText("BPM 节拍速度", "BPM Tempo", "Tempo BPM", "จังหวะ BPM"),
+                    title = localText(
+                        "BPM 节拍速度",
+                        "BPM Tempo",
+                        "Tempo BPM",
+                        "จังหวะ BPM",
+                        "Tempo BPM",
+                        "BPM-Tempo",
+                        "BPM 템포",
+                    ),
                     subtitle =
                         if (pending.rhythmMode == TrainingRhythmMode.Rhythm) {
-                            localText("跟拍模式下用于节拍评分和训练音床。", "Used for rhythm scoring and the training groove.", "Utilisé pour le score de rythme.", "ใช้ให้คะแนนจังหวะ")
+                            localText(
+                                "跟拍模式下用于节拍评分和训练音床。",
+                                "Used for rhythm scoring and the training groove.",
+                                "Utilisé pour le score de rythme.",
+                                "ใช้ให้คะแนนจังหวะ",
+                                "Se utiliza para la puntuación del ritmo y el ritmo de entrenamiento.",
+                                "Wird für die Rhythmusbewertung und den Trainingsgroove verwendet.",
+                                "리듬 채점 및 트레이닝 그루브에 사용됩니다.",
+                            )
                     } else {
-                        localText("自由模式下 BPM 仅作为参考节拍，不参与评分。", "In free mode BPM is only a reference metronome.", "En mode libre, BPM sert de référence.", "โหมดอิสระ BPM เป็นข้อมูลอ้างอิง")
+                        localText(
+                            "自由模式下 BPM 仅作为参考节拍，不参与评分。",
+                            "In free mode BPM is only a reference metronome.",
+                            "En mode libre, BPM sert de référence.",
+                            "โหมดอิสระ BPM เป็นข้อมูลอ้างอิง",
+                            "En modo libre BPM es sólo un metrónomo de referencia.",
+                            "Im freien Modus ist BPM nur ein Referenzmetronom.",
+                            "자유 모드에서 BPM는 참조 메트로놈일 뿐입니다.",
+                        )
                     },
                     accentColor = "#10BDAA",
                 ),
@@ -8394,22 +9574,22 @@ class MainActivity : AppCompatActivity() {
                                 compactActionButton("-", "#F4FFFC").apply {
                                     applySettingsNeutralButtonChrome(this)
                                     setOnClickListener {
-                                        pending = pending.copy(bpm = (pending.bpm - 5).coerceAtLeast(40))
+                                        pending = pending.copy(bpm = (pending.bpm - 5).coerceAtLeast(MIN_TRAINING_BPM))
                                         render()
                                     }
                                 },
                             )
                             addView(
                                 SeekBar(this@MainActivity).apply {
-                                    max = 100
-                                    progress = pending.bpm.coerceIn(40, 140) - 40
+                                    max = MAX_TRAINING_BPM - MIN_TRAINING_BPM
+                                    progress = pending.bpm.coerceIn(MIN_TRAINING_BPM, MAX_TRAINING_BPM) - MIN_TRAINING_BPM
                                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                                     setOnSeekBarChangeListener(
                                         object : SeekBar.OnSeekBarChangeListener {
                                             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                                                 if (fromUser) {
-                                                    val stepped = ((progress + 40) / 5) * 5
-                                                    pending = pending.copy(bpm = stepped.coerceIn(40, 140))
+                                                    val stepped = ((progress + MIN_TRAINING_BPM) / 5) * 5
+                                                    pending = pending.copy(bpm = stepped.coerceIn(MIN_TRAINING_BPM, MAX_TRAINING_BPM))
                                                     render()
                                                 }
                                             }
@@ -8424,7 +9604,7 @@ class MainActivity : AppCompatActivity() {
                                 compactActionButton("+", "#F4FFFC").apply {
                                     applySettingsNeutralButtonChrome(this)
                                     setOnClickListener {
-                                        pending = pending.copy(bpm = (pending.bpm + 5).coerceAtMost(140))
+                                        pending = pending.copy(bpm = (pending.bpm + 5).coerceAtMost(MAX_TRAINING_BPM))
                                         render()
                                     }
                                 },
@@ -8444,11 +9624,51 @@ class MainActivity : AppCompatActivity() {
                             orientation = LinearLayout.HORIZONTAL
                             setPadding(0, dp(8), 0, 0)
                             listOf(
-                                52 to localText("热身", "Warm-up", "Échauff.", "วอร์ม"),
-                                80 to localText("标准", "Standard", "Standard", "มาตรฐาน"),
-                                96 to localText("进阶", "Advanced", "Avancé", "ขั้นสูง"),
-                                110 to localText("冲刺", "Sprint", "Sprint", "สปรินต์"),
-                                128 to localText("极速", "Max", "Max", "เร็วสุด"),
+                                100 to localText(
+                                    "热身",
+                                    "Warm-up",
+                                    "Échauff.",
+                                    "วอร์ม",
+                                    "Calentamiento",
+                                    "Aufwärmen",
+                                    "워밍업",
+                                ),
+                                150 to localText(
+                                    "标准",
+                                    "Standard",
+                                    "Standard",
+                                    "มาตรฐาน",
+                                    "Estándar",
+                                    "Standard",
+                                    "표준",
+                                ),
+                                200 to localText(
+                                    "进阶",
+                                    "Advanced",
+                                    "Avancé",
+                                    "ขั้นสูง",
+                                    "Avanzado",
+                                    "Fortgeschritten",
+                                    "고급",
+                                ),
+                                250 to localText(
+                                    "冲刺",
+                                    "Sprint",
+                                    "Sprint",
+                                    "สปรินต์",
+                                    "Sprint",
+                                    "Sprint",
+                                    "스프린트",
+                                ),
+                                300 to localText(
+                                    "极速",
+                                    "Max",
+                                    "Max",
+                                    "เร็วสุด",
+                                    "Máximo",
+                                    "Maximum",
+                                    "최대",
+                                ),
                             ).forEach { (value, label) ->
                                 addView(
                                     bodyText("$value\n$label").apply {
@@ -8484,15 +9704,34 @@ class MainActivity : AppCompatActivity() {
             val totalText = if (totalMinutes % 1f == 0f) "${totalMinutes.toInt()}" else String.format(Locale.US, "%.1f", totalMinutes)
             val modeText =
                 if (pending.rhythmMode == TrainingRhythmMode.Rhythm) {
-                    localText("跟拍模式", "Beat mode", "Mode tempo", "โหมดจังหวะ")
+                    localText(
+                        "跟拍模式",
+                        "Beat mode",
+                        "Mode tempo",
+                        "โหมดจังหวะ",
+                        "Modo de ritmo",
+                        "Taktmodus",
+                        "비트 모드",
+                    )
                 } else {
-                    localText("自由模式", "Free mode", "Mode libre", "โหมดอิสระ")
+                    localText(
+                        "自由模式",
+                        "Free mode",
+                        "Mode libre",
+                        "โหมดอิสระ",
+                        "Modo libre",
+                        "Freier Modus",
+                        "자유 모드",
+                    )
                 }
             return localText(
                 "回合设置：${pending.workMinutes} 分打 | $rest 分休 | ${pending.rounds} 局\n训练方式：$modeText\n节拍速度：${if (pending.rhythmMode == TrainingRhythmMode.Rhythm) "${pending.bpm} BPM" else "自由参考"}\n预计总时长：$totalText 分钟",
                 "Rounds: ${pending.workMinutes} min work | $rest min rest | ${pending.rounds} rounds\nMode: $modeText\nTempo: ${if (pending.rhythmMode == TrainingRhythmMode.Rhythm) "${pending.bpm} BPM" else "free reference"}\nEstimated total: $totalText min",
                 "Rounds : ${pending.workMinutes} min travail | $rest min repos | ${pending.rounds}\nMode : $modeText\nTempo : ${if (pending.rhythmMode == TrainingRhythmMode.Rhythm) "${pending.bpm} BPM" else "référence libre"}\nTotal estimé : $totalText min",
                 "รอบ: ชก ${pending.workMinutes} นาที | พัก $rest นาที | ${pending.rounds} รอบ\nโหมด: $modeText\nจังหวะ: ${if (pending.rhythmMode == TrainingRhythmMode.Rhythm) "${pending.bpm} BPM" else "อ้างอิงอิสระ"}\nเวลารวม: $totalText นาที",
+                "Rondas: ${pending.workMinutes} min de trabajo | $rest min de descanso | ${pending.rounds} rondas\nModo: $modeText\nTempo: ${if (pending.rhythmMode == TrainingRhythmMode.Rhythm) "${pending.bpm} BPM" else "referencia libre"}\nTotal estimado: $totalText min",
+                "Runden: ${pending.workMinutes} Min. Training | $rest Min. Pause | ${pending.rounds} Runden\nModus: $modeText\nTempo: ${if (pending.rhythmMode == TrainingRhythmMode.Rhythm) "${pending.bpm} BPM" else "freie Referenz"}\nGeschätzte Gesamtdauer: $totalText Min.",
+                "라운드: 운동 ${pending.workMinutes}분 | 휴식 ${rest}분 | ${pending.rounds}라운드\n모드: $modeText\n템포: ${if (pending.rhythmMode == TrainingRhythmMode.Rhythm) "${pending.bpm} BPM" else "자유 기준"}\n예상 총시간: ${totalText}분",
             )
         }
 
@@ -8500,11 +9739,43 @@ class MainActivity : AppCompatActivity() {
             root.removeAllViews()
             root.addView(
                 settingsDialogTitleBlock(
-                    title = localText("训练设置", "Training Settings", "Réglages", "ตั้งค่าการฝึก"),
-                    subtitle = localText("设置回合、休息、训练方式和节拍速度。", "Set rounds, rest, training mode, and tempo.", "Réglez les rounds, le repos, le mode et le tempo.", "ตั้งค่ารอบ พัก โหมด และจังหวะ"),
+                    title = localText(
+                        "训练设置",
+                        "Training Settings",
+                        "Réglages",
+                        "ตั้งค่าการฝึก",
+                        "Ajustes de entrenamiento",
+                        "Trainingseinstellungen",
+                        "훈련 설정",
+                    ),
+                    subtitle = localText(
+                        "设置回合、休息、训练方式和节拍速度。",
+                        "Set rounds, rest, training mode, and tempo.",
+                        "Réglez les rounds, le repos, le mode et le tempo.",
+                        "ตั้งค่ารอบ พัก โหมด และจังหวะ",
+                        "Configura rondas, descanso, modo de entrenamiento y tempo.",
+                        "Runden, Pausen, Trainingsmodus und Tempo einstellen.",
+                        "라운드, 휴식, 훈련 모드와 템포를 설정하세요.",
+                    ),
                 ),
             )
-            root.addView(settingsSectionHeader(localText("回合预设", "Round presets", "Préréglages", "พรีเซ็ตรอบ"), localText("选择一个常用结构，也可以继续微调。", "Choose a structure, then fine tune.", "Choisissez puis ajustez.", "เลือกแล้วปรับต่อได้"), "#10BDAA"))
+            root.addView(settingsSectionHeader(localText(
+                "回合预设",
+                "Round presets",
+                "Préréglages",
+                "พรีเซ็ตรอบ",
+                "Preajustes de rondas",
+                "Rundenvorlagen",
+                "라운드 프리셋",
+            ), localText(
+                "选择一个常用结构，也可以继续微调。",
+                "Choose a structure, then fine tune.",
+                "Choisissez puis ajustez.",
+                "เลือกแล้วปรับต่อได้",
+                "Elige una estructura y después ajusta los detalles.",
+                "Struktur auswählen und anschließend fein abstimmen.",
+                "구성을 선택한 뒤 세부 설정을 조정하세요.",
+            ), "#10BDAA"))
             root.addView(
                 LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
@@ -8512,8 +9783,24 @@ class MainActivity : AppCompatActivity() {
                         LinearLayout(this@MainActivity).apply {
                             orientation = LinearLayout.HORIZONTAL
                             listOf(
-                                Triple("1/0.5", localText("初学者", "Beginner", "Débutant", "มือใหม่"), pending.copy(workMinutes = 1, restHalfMinutes = 1, rounds = 3)),
-                                Triple("2/0.5", localText("经典", "Classic", "Classique", "คลาสสิก"), pending.copy(workMinutes = 2, restHalfMinutes = 1, rounds = 3)),
+                                Triple("1/0.5", localText(
+                                    "初学者",
+                                    "Beginner",
+                                    "Débutant",
+                                    "มือใหม่",
+                                    "Principiante",
+                                    "Anfänger",
+                                    "초급",
+                                ), pending.copy(workMinutes = 1, restHalfMinutes = 1, rounds = 3)),
+                                Triple("2/0.5", localText(
+                                    "经典",
+                                    "Classic",
+                                    "Classique",
+                                    "คลาสสิก",
+                                    "Clásico",
+                                    "Klassisch",
+                                    "클래식",
+                                ), pending.copy(workMinutes = 2, restHalfMinutes = 1, rounds = 3)),
                             ).forEach { (title, subtitle, setup) ->
                                 addView(presetCard(title, subtitle, setup).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(6) } })
                             }
@@ -8524,7 +9811,15 @@ class MainActivity : AppCompatActivity() {
                             orientation = LinearLayout.HORIZONTAL
                             setPadding(0, dp(7), 0, dp(10))
                             listOf(
-                                Triple("5/1", localText("高强度", "High intensity", "Haute intensité", "เข้มข้น"), pending.copy(workMinutes = 5, restHalfMinutes = 2, rounds = 3)),
+                                Triple("5/1", localText(
+                                    "高强度",
+                                    "High intensity",
+                                    "Haute intensité",
+                                    "เข้มข้น",
+                                    "Alta intensidad",
+                                    "Hohe Intensität",
+                                    "고강도",
+                                ), pending.copy(workMinutes = 5, restHalfMinutes = 2, rounds = 3)),
                                 Triple("1/1", "HIIT", pending.copy(workMinutes = 1, restHalfMinutes = 2, rounds = 6)),
                             ).forEach { (title, subtitle, setup) ->
                                 addView(presetCard(title, subtitle, setup).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(6) } })
@@ -8536,12 +9831,28 @@ class MainActivity : AppCompatActivity() {
             root.addView(
                 LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
-                    addView(stepper(localText("训练时长", "Work", "Travail", "ชก"), "${pending.workMinutes} min", {
+                    addView(stepper(localText(
+                        "训练时长",
+                        "Work",
+                        "Travail",
+                        "ชก",
+                        "Trabajo",
+                        "Training",
+                        "운동",
+                    ), "${pending.workMinutes} min", {
                         pending = pending.copy(workMinutes = (pending.workMinutes - 1).coerceAtLeast(1)); render()
                     }, {
                         pending = pending.copy(workMinutes = (pending.workMinutes + 1).coerceAtMost(10)); render()
                     }).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) } })
-                    addView(stepper(localText("休息时长", "Rest", "Repos", "พัก"), "${TrainingSessionSetup.restHalfMinutesLabel(pending.restHalfMinutes)} min", {
+                    addView(stepper(localText(
+                        "休息时长",
+                        "Rest",
+                        "Repos",
+                        "พัก",
+                        "Descanso",
+                        "Ruhe dich aus",
+                        "휴식",
+                    ), "${TrainingSessionSetup.restHalfMinutesLabel(pending.restHalfMinutes)} min", {
                         pending = pending.copy(restHalfMinutes = (pending.restHalfMinutes - 1).coerceAtLeast(0)); render()
                     }, {
                         pending = pending.copy(restHalfMinutes = (pending.restHalfMinutes + 1).coerceAtMost(10)); render()
@@ -8549,18 +9860,74 @@ class MainActivity : AppCompatActivity() {
                 },
             )
             root.addView(
-                stepper(localText("回合数", "Rounds", "Rounds", "จำนวนรอบ"), "${pending.rounds}", {
+                stepper(localText(
+                    "回合数",
+                    "Rounds",
+                    "Rounds",
+                    "จำนวนรอบ",
+                    "Rondas",
+                    "Runden",
+                    "라운드",
+                ), "${pending.rounds}", {
                     pending = pending.copy(rounds = (pending.rounds - 1).coerceAtLeast(1)); render()
                 }, {
                     pending = pending.copy(rounds = (pending.rounds + 1).coerceAtMost(10)); render()
                 }).apply { (layoutParams as? LinearLayout.LayoutParams)?.topMargin = dp(8) },
             )
-            root.addView(settingsSectionHeader(localText("训练方式", "Training mode", "Mode", "โหมดฝึก"), localText("自由模式不计算节拍分；跟拍模式启用 Perfect/Good/Miss。", "Free mode skips beat scoring; beat mode enables Perfect/Good/Miss.", "Libre sans score; tempo avec score.", "อิสระไม่ให้คะแนนจังหวะ"), "#10BDAA"))
+            root.addView(settingsSectionHeader(localText(
+                "训练方式",
+                "Training mode",
+                "Mode",
+                "โหมดฝึก",
+                "Modo de entrenamiento",
+                "Trainingsmodus",
+                "훈련 모드",
+            ), localText(
+                "自由模式不计算节拍分；跟拍模式启用 Perfect/Good/Miss。",
+                "Free mode skips beat scoring; beat mode enables Perfect/Good/Miss.",
+                "Libre sans score; tempo avec score.",
+                "อิสระไม่ให้คะแนนจังหวะ",
+                "El modo libre omite la puntuación rítmica; el modo de ritmo activa Perfecto/Bien/Fallo.",
+                "Im freien Modus entfällt die Taktwertung; der Taktmodus aktiviert Perfekt/Gut/Verfehlt.",
+                "자유 모드는 비트 채점을 사용하지 않으며, 비트 모드는 완벽/좋음/놓침을 평가합니다.",
+            ), "#10BDAA"))
             root.addView(
                 LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
-                    addView(modeCard(localText("自由模式", "Free", "Libre", "อิสระ"), localText("记录拳数、相对力量评分和 BPM", "Track hits, Relative Power Score, and BPM", "Coups, score de puissance relative et BPM", "นับหมัด คะแนนพลังสัมพัทธ์ และ BPM"), TrainingRhythmMode.Free).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) } })
-                    addView(modeCard(localText("跟拍模式", "Beat", "Tempo", "จังหวะ"), localText("音乐节拍与跟拍评分", "Beat scoring with groove", "Score sur tempo", "คะแนนตามจังหวะ"), TrainingRhythmMode.Rhythm).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
+                    addView(modeCard(localText(
+                        "自由模式",
+                        "Free",
+                        "Libre",
+                        "อิสระ",
+                        "Gratis",
+                        "Kostenlos",
+                        "무료",
+                    ), localText(
+                        "记录拳数、相对力量评分和 BPM",
+                        "Track hits, Relative Power Score, and BPM",
+                        "Coups, score de puissance relative et BPM",
+                        "นับหมัด คะแนนพลังสัมพัทธ์ และ BPM",
+                        "Registra golpes, Puntuación de Potencia Relativa y BPM",
+                        "Schläge, Relative Power Score und BPM erfassen",
+                        "타격 수, 상대 파워 점수와 BPM 기록",
+                    ), TrainingRhythmMode.Free).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) } })
+                    addView(modeCard(localText(
+                        "跟拍模式",
+                        "Beat",
+                        "Tempo",
+                        "จังหวะ",
+                        "batir",
+                        "Schlag",
+                        "비트",
+                    ), localText(
+                        "音乐节拍与跟拍评分",
+                        "Beat scoring with groove",
+                        "Score sur tempo",
+                        "คะแนนตามจังหวะ",
+                        "Puntuación rítmica con groove",
+                        "Taktwertung mit Groove",
+                        "그루브 기반 비트 채점",
+                    ), TrainingRhythmMode.Rhythm).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
                 },
             )
             renderBpmSection()
@@ -8583,7 +9950,15 @@ class MainActivity : AppCompatActivity() {
             AlertDialog.Builder(this)
                 .setView(ScrollView(this).apply { addView(root) })
                 .setNegativeButton(tr("cancel"), null)
-                .setNeutralButton(localText("重置", "Reset", "Réinitialiser", "รีเซ็ต"), null)
+                .setNeutralButton(localText(
+                    "重置",
+                    "Reset",
+                    "Réinitialiser",
+                    "รีเซ็ต",
+                    "Reiniciar",
+                    "Zurücksetzen",
+                    "재설정",
+                ), null)
                 .setPositiveButton(tr("save"), null)
                 .create()
         dialog.setOnShowListener {
@@ -8604,21 +9979,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyTrainingSessionSetup(setup: TrainingSessionSetup) {
-        trainingSessionSetup = setup
-        selectedRhythmMode = setup.rhythmMode
-        selectedBeatBpm = setup.bpm
+        val normalizedSetup = setup.copy(bpm = setup.bpm.coerceIn(MIN_TRAINING_BPM, MAX_TRAINING_BPM))
+        trainingSessionSetup = normalizedSetup
+        selectedRhythmMode = normalizedSetup.rhythmMode
+        selectedBeatBpm = normalizedSetup.bpm
         prefs.edit()
-            .putInt(KEY_TRAINING_SETUP_WORK_MINUTES, setup.workMinutes)
-            .putInt(KEY_TRAINING_SETUP_REST_HALF_MINUTES, setup.restHalfMinutes)
-            .putInt(KEY_TRAINING_SETUP_ROUNDS, setup.rounds)
-            .putString(KEY_TRAINING_SETUP_RHYTHM_MODE, setup.rhythmMode.name)
-            .putInt(KEY_TRAINING_SETUP_BPM, setup.bpm)
-            .putString(KEY_RHYTHM_MODE, setup.rhythmMode.name)
-            .putInt(KEY_BEAT_BPM, setup.bpm)
+            .putInt(KEY_TRAINING_SETUP_WORK_MINUTES, normalizedSetup.workMinutes)
+            .putInt(KEY_TRAINING_SETUP_REST_HALF_MINUTES, normalizedSetup.restHalfMinutes)
+            .putInt(KEY_TRAINING_SETUP_ROUNDS, normalizedSetup.rounds)
+            .putString(KEY_TRAINING_SETUP_RHYTHM_MODE, normalizedSetup.rhythmMode.name)
+            .putInt(KEY_TRAINING_SETUP_BPM, normalizedSetup.bpm)
+            .putString(KEY_RHYTHM_MODE, normalizedSetup.rhythmMode.name)
+            .putInt(KEY_BEAT_BPM, normalizedSetup.bpm)
             .apply()
         currentTrainingRound = 1
-        currentTrainingRoundCount = setup.rounds
-        currentRoundDurationMs = setup.workSeconds * 1_000L
+        currentTrainingRoundCount = normalizedSetup.rounds
+        currentRoundDurationMs = normalizedSetup.workSeconds * 1_000L
         currentRoundRemainingMs = currentRoundDurationMs
         trainingResting = false
         updateDashboardViews(currentRoundRemainingMs)
@@ -8630,45 +10006,6 @@ class MainActivity : AppCompatActivity() {
             activationCard.removeCallbacks(hideActivationCardRunnable)
         }
         activationCard.visibility = if (visible) View.VISIBLE else View.GONE
-    }
-
-    private fun setActivationBusy(isBusy: Boolean) {
-        val allowInput = !isBusy && !isActivated()
-        activateButton.isEnabled = allowInput && activationInputsValid
-        activateButton.alpha = if (activateButton.isEnabled) 1.0f else 0.6f
-        serialInput.isEnabled = allowInput
-        codeInput.isEnabled = allowInput
-    }
-
-    private fun updateActivationInputState() {
-        val serialDigits = normalizeDigits(serialInput.text?.toString())
-        val codeDigits = normalizeDigits(codeInput.text?.toString())
-        val serialRaw = serialInput.text?.toString().orEmpty()
-        val codeRaw = codeInput.text?.toString().orEmpty()
-        val serialOk = serialDigits.length == 11
-        val codeOk = codeDigits.length == 8
-
-        if (serialRaw.isEmpty() || serialOk) {
-            serialInputErrorView.text = ""
-            serialInputErrorView.visibility = View.GONE
-        } else {
-            serialInputErrorView.text = tr("serial_invalid")
-            serialInputErrorView.visibility = View.VISIBLE
-        }
-        if (codeRaw.isEmpty() || codeOk) {
-            codeInputErrorView.text = ""
-            codeInputErrorView.visibility = View.GONE
-        } else {
-            codeInputErrorView.text = tr("code_invalid")
-            codeInputErrorView.visibility = View.VISIBLE
-        }
-
-        activationInputsValid = serialOk && codeOk
-        val activated = isActivated()
-        val busy = activationJob?.isActive == true || trainingJob?.isActive == true
-        val enabled = !activated && !busy && activationInputsValid
-        activateButton.isEnabled = enabled
-        activateButton.alpha = if (enabled) 1.0f else 0.6f
     }
 
     private fun showFormalSettingsDialog() {
@@ -8689,6 +10026,9 @@ class MainActivity : AppCompatActivity() {
                         "Connect the SENBALL# device and choose the app language.",
                         "Connectez l'appareil SENBALL# et choisissez la langue.",
                         "เชื่อมต่ออุปกรณ์ SENBALL# และเลือกภาษาแอป",
+                        "Conecte el dispositivo SENBALL# y elija el idioma de la aplicación.",
+                        "Schließen Sie das SENBALL#-Gerät an und wählen Sie die App-Sprache.",
+                        "SENBALL# 장치를 연결하고 앱 언어를 선택하세요.",
                     ),
             ),
         )
@@ -8736,6 +10076,27 @@ class MainActivity : AppCompatActivity() {
                 isChecked = selectedLanguage == AppLanguage.French
                 styleSettingsRadioButton(this)
             }
+        val esOption =
+            RadioButton(this).apply {
+                id = View.generateViewId()
+                text = tr("language_spanish")
+                isChecked = selectedLanguage == AppLanguage.Spanish
+                styleSettingsRadioButton(this)
+            }
+        val deOption =
+            RadioButton(this).apply {
+                id = View.generateViewId()
+                text = tr("language_german")
+                isChecked = selectedLanguage == AppLanguage.German
+                styleSettingsRadioButton(this)
+            }
+        val koOption =
+            RadioButton(this).apply {
+                id = View.generateViewId()
+                text = tr("language_korean")
+                isChecked = selectedLanguage == AppLanguage.Korean
+                styleSettingsRadioButton(this)
+            }
         val thOption =
             RadioButton(this).apply {
                 id = View.generateViewId()
@@ -8744,11 +10105,14 @@ class MainActivity : AppCompatActivity() {
                 styleSettingsRadioButton(this)
             }
         languageGroup.setOnCheckedChangeListener { _, _ ->
-            listOf(zhOption, enOption, frOption, thOption).forEach(::styleSettingsRadioButton)
+            listOf(zhOption, enOption, frOption, esOption, deOption, koOption, thOption).forEach(::styleSettingsRadioButton)
         }
         languageGroup.addView(zhOption)
         languageGroup.addView(enOption)
         languageGroup.addView(frOption)
+        languageGroup.addView(esOption)
+        languageGroup.addView(deOption)
+        languageGroup.addView(koOption)
         languageGroup.addView(thOption)
         languageCard.addView(languageGroup)
         dialogRoot.addView(languageCard)
@@ -8803,13 +10167,24 @@ class MainActivity : AppCompatActivity() {
                     }
                 addView(
                     settingsSectionHeader(
-                        title = localText("云端音效", "Cloud Sound Effects", "Sons cloud", "เสียงบนคลาวด์"),
+                        title = localText(
+                            "云端音效",
+                            "Cloud Sound Effects",
+                            "Sons cloud",
+                            "เสียงบนคลาวด์",
+                            "Efectos de sonido de la nube",
+                            "Cloud-Soundeffekte",
+                            "클라우드 사운드 효과",
+                        ),
                         subtitle =
                             localText(
                                 "试听后选择一个拳击音效，训练击打时会使用所选音效。",
                                 "Preview and choose one punch sound for training hits.",
                                 "Écoutez puis choisissez un son pour les frappes.",
                                 "ฟังตัวอย่างแล้วเลือกเสียงหมัดสำหรับการฝึก",
+                                "Obtenga una vista previa y elija un sonido de golpe para entrenar golpes.",
+                                "Sehen Sie sich eine Vorschau an und wählen Sie einen Schlagsound für Trainingsschläge aus.",
+                                "트레이닝 히트에 대한 원펀치 사운드를 미리 보고 선택하세요.",
                             ),
                         accentColor = selectedPalette.accentSoft,
                     ),
@@ -8831,7 +10206,15 @@ class MainActivity : AppCompatActivity() {
             )
         }
         soundEffectCard.addView(
-            compactActionButton(localText("刷新音效", "Refresh Effects", "Actualiser", "รีเฟรชเสียง"), selectedPalette.button).apply {
+            compactActionButton(localText(
+                "刷新音效",
+                "Refresh Effects",
+                "Actualiser",
+                "รีเฟรชเสียง",
+                "Actualizar efectos",
+                "Effekte aktualisieren",
+                "새로 고침 효과",
+            ), selectedPalette.button).apply {
                 setOnClickListener {
                     fetchCloudSoundEffects { rerenderSoundEffects() }
                     rerenderSoundEffects()
@@ -8853,13 +10236,24 @@ class MainActivity : AppCompatActivity() {
                     }
                 addView(
                     settingsSectionHeader(
-                        title = localText("背景音乐", "Background Music", "Musique", "เพลงพื้นหลัง"),
+                        title = localText(
+                            "背景音乐",
+                            "Background Music",
+                            "Musique",
+                            "เพลงพื้นหลัง",
+                            "Música de fondo",
+                            "Hintergrundmusik",
+                            "배경음악",
+                        ),
                         subtitle =
                             localText(
                                 "试听后选择一首训练背景音乐，训练时会自动循环播放。",
                                 "Preview and choose one looped training background track.",
                                 "Écoutez puis choisissez une musique de fond pour l'entraînement.",
                                 "ฟังตัวอย่างแล้วเลือกเพลงพื้นหลังที่จะวนระหว่างฝึก",
+                                "Obtenga una vista previa y elija una pista de fondo de entrenamiento en bucle.",
+                                "Sehen Sie sich eine Vorschau an und wählen Sie einen geloopten Hintergrund-Trainingstrack aus.",
+                                "반복되는 교육 배경 트랙 하나를 미리 보고 선택하세요.",
                             ),
                         accentColor = selectedPalette.success,
                     ),
@@ -8881,7 +10275,15 @@ class MainActivity : AppCompatActivity() {
             )
         }
         backgroundMusicCard.addView(
-            compactActionButton(localText("刷新音乐", "Refresh Music", "Actualiser", "รีเฟรชเพลง"), selectedPalette.button).apply {
+            compactActionButton(localText(
+                "刷新音乐",
+                "Refresh Music",
+                "Actualiser",
+                "รีเฟรชเพลง",
+                "Actualizar música",
+                "Musik aktualisieren",
+                "음악 새로 고침",
+            ), selectedPalette.button).apply {
                 setOnClickListener {
                     fetchBackgroundMusic {
                         if (selectedBackgroundMusicHolder[0].isBlank()) {
@@ -8917,6 +10319,9 @@ class MainActivity : AppCompatActivity() {
                         when (languageGroup.checkedRadioButtonId) {
                             enOption.id -> AppLanguage.English
                             frOption.id -> AppLanguage.French
+                            esOption.id -> AppLanguage.Spanish
+                            deOption.id -> AppLanguage.German
+                            koOption.id -> AppLanguage.Korean
                             thOption.id -> AppLanguage.Thai
                             else -> AppLanguage.Chinese
                     },
@@ -8960,6 +10365,19 @@ class MainActivity : AppCompatActivity() {
                     accentColor = "#10BDAA",
                 ),
             )
+            addView(
+                bodyText(bluetoothWakeBeforeScanHint()).apply {
+                    setTextColor(Color.parseColor("#7A3E00"))
+                    setTypeface(Typeface.DEFAULT_BOLD)
+                    setPadding(dp(12), dp(10), dp(12), dp(10))
+                    background = roundedBackground("#FFF4D6", "#F0B64D", 16)
+                    layoutParams =
+                        LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply { topMargin = dp(10) }
+                },
+            )
             bluetoothStatusView =
                 bodyText(bluetoothStatusMessage).apply {
                     setTextColor(Color.parseColor("#12333A"))
@@ -8982,6 +10400,7 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         compactActionButton(bluetoothScanLabel(), selectedPalette.button).apply {
                             bluetoothScanButton = this
+                            configureSingleLineCompactButton(this)
                             applySettingsButtonChrome(this)
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
@@ -8995,6 +10414,7 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         compactActionButton(bluetoothConnectLabel(), "#F4FFFC").apply {
                             bluetoothConnectButton = this
+                            configureSingleLineCompactButton(this)
                             applySettingsNeutralButtonChrome(this)
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
@@ -9015,6 +10435,7 @@ class MainActivity : AppCompatActivity() {
                     addView(
                         compactActionButton(bluetoothDisconnectLabel(), selectedPalette.danger).apply {
                             bluetoothDisconnectButton = this
+                            configureSingleLineCompactButton(this)
                             applySettingsButtonChrome(this, fillColor = "#E65A4F", highlightColor = "#FFB4A6", strokeColor = "#FFD2C9")
                             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                             setOnClickListener {
@@ -9148,7 +10569,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun paletteSettingTitle(): String =
-        localText("配色选择", "Color Theme", "Thème couleur", "ธีมสี")
+        localText(
+            "配色选择",
+            "Color Theme",
+            "Thème couleur",
+            "ธีมสี",
+            "Tema de color",
+            "Farbthema",
+            "색상 테마",
+        )
 
     private fun paletteSettingSubtitle(): String =
         localText(
@@ -9156,13 +10585,32 @@ class MainActivity : AppCompatActivity() {
             "Choose one color theme. It applies after saving without changing the layout.",
             "Choisissez un thème. Il s'applique après l'enregistrement sans modifier la mise en page.",
             "เลือกธีมสีหนึ่งชุด บันทึกแล้วใช้ทันที โดยไม่เปลี่ยนโครงสร้างหน้าจอ",
+            "Elija un tema de color. Se aplica después de guardar sin cambiar el diseño.",
+            "Wählen Sie ein Farbthema. Es gilt nach dem Speichern ohne Änderung des Layouts.",
+            "하나의 색상 테마를 선택하세요. 레이아웃을 변경하지 않고 저장 후 적용됩니다.",
         )
 
     private fun paletteCurrentDefaultLabel(): String =
-        localText("默认", "Default", "Défaut", "ค่าเริ่มต้น")
+        localText(
+            "默认",
+            "Default",
+            "Défaut",
+            "ค่าเริ่มต้น",
+            "Predeterminado",
+            "Standard",
+            "기본값",
+        )
 
     private fun paletteSelectedLabel(): String =
-        localText("已选择", "Selected", "Sélectionné", "เลือกแล้ว")
+        localText(
+            "已选择",
+            "Selected",
+            "Sélectionné",
+            "เลือกแล้ว",
+            "Seleccionado",
+            "Ausgewählt",
+            "선택됨",
+        )
 
     private fun renderPaletteSettings(
         container: LinearLayout,
@@ -9352,9 +10800,33 @@ class MainActivity : AppCompatActivity() {
             return
         }
         waveformView.setLabelText(
-            empty = localText("等待相对力量评分", "Waiting for Relative Power Score", "En attente du score de puissance relative", "รอคะแนนพลังสัมพัทธ์"),
-            latest = localText("最新", "Latest", "Dernier", "ล่าสุด"),
-            peak = localText("峰值", "Peak", "Pic", "สูงสุด"),
+            empty = localText(
+                "等待相对力量评分",
+                "Waiting for Relative Power Score",
+                "En attente du score de puissance relative",
+                "รอคะแนนพลังสัมพัทธ์",
+                "Esperando la Puntuación de Potencia Relativa",
+                "Warten auf die Relative Power Score",
+                "상대 파워 점수 대기 중",
+            ),
+            latest = localText(
+                "最新",
+                "Latest",
+                "Dernier",
+                "ล่าสุด",
+                "Lo último",
+                "Neueste",
+                "최신",
+            ),
+            peak = localText(
+                "峰值",
+                "Peak",
+                "Pic",
+                "สูงสุด",
+                "pico",
+                "Höhepunkt",
+                "피크",
+            ),
         )
     }
 
@@ -9476,7 +10948,15 @@ class MainActivity : AppCompatActivity() {
         batteryHeaderView.setTextColor(Color.parseColor(if (connected) "#FFFFFF" else "#AAB3C2"))
         batteryHeaderView.setBackgroundResource(R.drawable.battery_status_background)
         batteryHeaderView.contentDescription =
-            localText("电量 $batteryText", "Battery $batteryText", "Batterie $batteryText", "แบตเตอรี่ $batteryText")
+            localText(
+                "电量 $batteryText",
+                "Battery $batteryText",
+                "Batterie $batteryText",
+                "แบตเตอรี่ $batteryText",
+                "Batería $batteryText",
+                "Batterie $batteryText",
+                "배터리 $batteryText",
+            )
     }
 
     private fun updateBluetoothActionButtons() {
@@ -9497,10 +10977,34 @@ class MainActivity : AppCompatActivity() {
 
     private fun bluetoothBatteryDisplayText(raw: Int, chargingFlagRaw: Int? = bluetoothChargingFlagRaw): String =
         when {
-            raw == 101 -> localText("充电", "Charging", "En charge", "กำลังชาร์จ")
-            raw == 102 -> localText("充满", "Full", "Chargée", "เต็มแล้ว")
+            raw == 101 -> localText(
+                "充电",
+                "Charging",
+                "En charge",
+                "กำลังชาร์จ",
+                "Cargando",
+                "Aufladen",
+                "충전 중",
+            )
+            raw == 102 -> localText(
+                "充满",
+                "Full",
+                "Chargée",
+                "เต็มแล้ว",
+                "completo",
+                "Voll",
+                "전체",
+            )
             raw in 0..100 && chargingFlagRaw == 1 ->
-                localText("充电 $raw%", "Charging $raw%", "En charge $raw%", "กำลังชาร์จ $raw%")
+                localText(
+                    "充电 $raw%",
+                    "Charging $raw%",
+                    "En charge $raw%",
+                    "กำลังชาร์จ $raw%",
+                    "Cargando $raw%",
+                    "Laden $raw%",
+                    "$raw% 충전 중",
+                )
             raw in 0..100 -> "$raw%"
             else -> "--"
         }
@@ -9512,49 +11016,209 @@ class MainActivity : AppCompatActivity() {
                 bluetoothDevicesFoundText(count)
             }
             message.startsWith("扫描失败：") ->
-                localText("扫描失败：${message.substringAfter("扫描失败：")}", "Scan failed: ${message.substringAfter("扫描失败：")}", "Échec du scan : ${message.substringAfter("扫描失败：")}", "สแกนไม่สำเร็จ: ${message.substringAfter("扫描失败：")}")
+                localText(
+                    "扫描失败：${message.substringAfter("扫描失败：")}",
+                    "Scan failed: ${message.substringAfter("扫描失败：")}",
+                    "Échec du scan : ${message.substringAfter("扫描失败：")}",
+                    "สแกนไม่สำเร็จ: ${message.substringAfter("扫描失败：")}",
+                    "Error de escaneo: ${message.substringAfter("扫描失败：")}",
+                    "Suche fehlgeschlagen: ${message.substringAfter("扫描失败：")}",
+                    "스캔 실패: ${message.substringAfter("扫描失败：")}",
+                )
             message == "蓝牙未开启" ->
-                localText("蓝牙未开启", "Bluetooth is off", "Bluetooth désactivé", "บลูทูธปิดอยู่")
+                localText(
+                    "蓝牙未开启",
+                    "Bluetooth is off",
+                    "Bluetooth désactivé",
+                    "บลูทูธปิดอยู่",
+                    "Bluetooth está apagado",
+                    "Bluetooth ist ausgeschaltet",
+                    "Bluetooth가 꺼져 있습니다",
+                )
             message == "正在扫描 SENBALL# 设备..." ->
-                localText("正在扫描 SENBALL# 设备...", "Scanning SENBALL# devices...", "Scan des appareils SENBALL#...", "กำลังสแกนอุปกรณ์ SENBALL#...")
+                localText(
+                    "正在扫描 SENBALL# 设备...",
+                    "Scanning SENBALL# devices...",
+                    "Scan des appareils SENBALL#...",
+                    "กำลังสแกนอุปกรณ์ SENBALL#...",
+                    "Buscando dispositivos SENBALL#...",
+                    "SENBALL#-Geräte werden gesucht...",
+                    "SENBALL# 기기 검색 중...",
+                )
             message == "设备地址无效" ->
-                localText("设备地址无效", "Invalid device address", "Adresse appareil invalide", "ที่อยู่อุปกรณ์ไม่ถูกต้อง")
+                localText(
+                    "设备地址无效",
+                    "Invalid device address",
+                    "Adresse appareil invalide",
+                    "ที่อยู่อุปกรณ์ไม่ถูกต้อง",
+                    "Dirección de dispositivo no válida",
+                    "Ungültige Geräteadresse",
+                    "잘못된 장치 주소",
+                )
             message.startsWith("正在连接 ") ->
-                localText("正在连接 ${message.substringAfter("正在连接 ")}", "Connecting ${message.substringAfter("正在连接 ")}", "Connexion ${message.substringAfter("正在连接 ")}", "กำลังเชื่อมต่อ ${message.substringAfter("正在连接 ")}")
+                localText(
+                    "正在连接 ${message.substringAfter("正在连接 ")}",
+                    "Connecting ${message.substringAfter("正在连接 ")}",
+                    "Connexion ${message.substringAfter("正在连接 ")}",
+                    "กำลังเชื่อมต่อ ${message.substringAfter("正在连接 ")}",
+                    "Conexión de ${message.substringAfter("正在连接 ")}",
+                    "Anschluss ${message.substringAfter("正在连接 ")}",
+                    "${message.substringAfter("正在连接 ")} 연결하기",
+                )
             message == "请先连接蓝牙设备" ->
                 bluetoothConnectFirstText()
             message == "未找到可写入的蓝牙通道" ->
-                localText("未找到可写入的蓝牙通道", "No writable Bluetooth channel found", "Aucun canal Bluetooth inscriptible", "ไม่พบช่องบลูทูธที่เขียนได้")
+                localText(
+                    "未找到可写入的蓝牙通道",
+                    "No writable Bluetooth channel found",
+                    "Aucun canal Bluetooth inscriptible",
+                    "ไม่พบช่องบลูทูธที่เขียนได้",
+                    "No se encontró un canal Bluetooth de escritura",
+                    "Kein beschreibbarer Bluetooth-Kanal gefunden",
+                    "쓰기 가능한 Bluetooth 채널을 찾지 못했습니다",
+                )
             message == "开启陀螺仪指令等待蓝牙通道就绪" ->
-                localText("开启陀螺仪指令等待蓝牙通道就绪", "Gyro on command is waiting for the Bluetooth channel", "Commande gyroscope en attente du canal Bluetooth", "คำสั่งเปิดไจโรรอช่องบลูทูธพร้อม")
+                localText(
+                    "开启陀螺仪指令等待蓝牙通道就绪",
+                    "Gyro on command is waiting for the Bluetooth channel",
+                    "Commande gyroscope en attente du canal Bluetooth",
+                    "คำสั่งเปิดไจโรรอช่องบลูทูธพร้อม",
+                    "Gyro al comando está esperando el canal Bluetooth",
+                    "Gyro auf Befehl wartet auf den Bluetooth-Kanal",
+                    "자이로 명령이 Bluetooth 채널을 기다리고 있습니다.",
+                )
             message == "关闭陀螺仪指令等待蓝牙通道就绪" ->
-                localText("关闭陀螺仪指令等待蓝牙通道就绪", "Gyro off command is waiting for the Bluetooth channel", "Arrêt gyroscope en attente du canal Bluetooth", "คำสั่งปิดไจโรรอช่องบลูทูธพร้อม")
+                localText(
+                    "关闭陀螺仪指令等待蓝牙通道就绪",
+                    "Gyro off command is waiting for the Bluetooth channel",
+                    "Arrêt gyroscope en attente du canal Bluetooth",
+                    "คำสั่งปิดไจโรรอช่องบลูทูธพร้อม",
+                    "El comando de apagado del giroscopio está esperando el canal Bluetooth",
+                    "Der Gyro-Aus-Befehl wartet auf den Bluetooth-Kanal",
+                    "자이로 끄기 명령이 Bluetooth 채널을 기다리고 있습니다.",
+                )
             message == "已发送开启陀螺仪指令" ->
-                localText("已发送开启陀螺仪指令", "Gyro on command sent", "Commande gyroscope envoyée", "ส่งคำสั่งเปิดไจโรแล้ว")
+                localText(
+                    "已发送开启陀螺仪指令",
+                    "Gyro on command sent",
+                    "Commande gyroscope envoyée",
+                    "ส่งคำสั่งเปิดไจโรแล้ว",
+                    "Giroscopio al comando enviado",
+                    "Kreisel auf Befehl gesendet",
+                    "명령에 따라 자이로가 전송됨",
+                )
             message == "已发送关闭陀螺仪指令" ->
-                localText("已发送关闭陀螺仪指令", "Gyro off command sent", "Commande arrêt gyroscope envoyée", "ส่งคำสั่งปิดไจโรแล้ว")
+                localText(
+                    "已发送关闭陀螺仪指令",
+                    "Gyro off command sent",
+                    "Commande arrêt gyroscope envoyée",
+                    "ส่งคำสั่งปิดไจโรแล้ว",
+                    "Se envió el comando de apagado del giroscopio.",
+                    "Gyro-Aus-Befehl gesendet",
+                    "자이로 꺼짐 명령이 전송됨",
+                )
             message == "陀螺仪指令未发送，请保持设备连接后重试" ->
-                localText("陀螺仪指令未发送，请保持设备连接后重试", "Gyro command was not sent. Keep the device connected and retry.", "Commande gyroscope non envoyée. Gardez l'appareil connecté puis réessayez.", "ยังไม่ได้ส่งคำสั่งไจโร โปรดเชื่อมต่ออุปกรณ์แล้วลองใหม่")
+                localText(
+                    "陀螺仪指令未发送，请保持设备连接后重试",
+                    "Gyro command was not sent. Keep the device connected and retry.",
+                    "Commande gyroscope non envoyée. Gardez l'appareil connecté puis réessayez.",
+                    "ยังไม่ได้ส่งคำสั่งไจโร โปรดเชื่อมต่ออุปกรณ์แล้วลองใหม่",
+                    "El comando giroscópico no fue enviado. Mantenga el dispositivo conectado y vuelva a intentarlo.",
+                    "Gyro-Befehl wurde nicht gesendet. Lassen Sie das Gerät angeschlossen und versuchen Sie es erneut.",
+                    "자이로 명령이 전송되지 않았습니다. 장치를 연결된 상태로 유지하고 다시 시도하세요.",
+                )
             message == "蓝牙串口已就绪" ->
-                localText("蓝牙串口已就绪", "Bluetooth serial ready", "Port série Bluetooth prêt", "พอร์ตบลูทูธพร้อม")
+                localText(
+                    "蓝牙串口已就绪",
+                    "Bluetooth serial ready",
+                    "Port série Bluetooth prêt",
+                    "พอร์ตบลูทูธพร้อม",
+                    "Bluetooth listo para serie",
+                    "Bluetooth serienmäßig bereit",
+                    "Bluetooth 직렬 준비",
+                )
             message == "经典蓝牙连接失败" ->
-                localText("经典蓝牙连接失败", "Classic Bluetooth connection failed", "Connexion Bluetooth classique échouée", "เชื่อมต่อบลูทูธคลาสสิกไม่สำเร็จ")
+                localText(
+                    "经典蓝牙连接失败",
+                    "Classic Bluetooth connection failed",
+                    "Connexion Bluetooth classique échouée",
+                    "เชื่อมต่อบลูทูธคลาสสิกไม่สำเร็จ",
+                    "Error en la conexión clásica Bluetooth",
+                    "Die klassische Bluetooth-Verbindung ist fehlgeschlagen",
+                    "클래식 Bluetooth 연결 실패",
+                )
             message == "已连接，正在发现服务..." ->
-                localText("已连接，正在发现服务...", "Connected. Discovering services...", "Connecté. Recherche des services...", "เชื่อมต่อแล้ว กำลังค้นหาบริการ...")
+                localText(
+                    "已连接，正在发现服务...",
+                    "Connected. Discovering services...",
+                    "Connecté. Recherche des services...",
+                    "เชื่อมต่อแล้ว กำลังค้นหาบริการ...",
+                    "Conectado. Descubriendo servicios...",
+                    "Verbunden. Dienstleistungen entdecken...",
+                    "연결되었습니다. 서비스를 검색하는 중...",
+                )
             message.startsWith("服务发现失败：") ->
-                localText("服务发现失败：${message.substringAfter("服务发现失败：")}", "Service discovery failed: ${message.substringAfter("服务发现失败：")}", "Échec découverte services : ${message.substringAfter("服务发现失败：")}", "ค้นหาบริการไม่สำเร็จ: ${message.substringAfter("服务发现失败：")}")
+                localText(
+                    "服务发现失败：${message.substringAfter("服务发现失败：")}",
+                    "Service discovery failed: ${message.substringAfter("服务发现失败：")}",
+                    "Échec découverte services : ${message.substringAfter("服务发现失败：")}",
+                    "ค้นหาบริการไม่สำเร็จ: ${message.substringAfter("服务发现失败：")}",
+                    "Error en el descubrimiento del servicio: ${message.substringAfter("服务发现失败：")}",
+                    "Diensterkennung fehlgeschlagen: ${message.substringAfter("服务发现失败：")}",
+                    "서비스 검색 실패: ${message.substringAfter("服务发现失败：")}",
+                )
             message.startsWith("蓝牙已就绪，通知通道 ") && message.endsWith(" 个") -> {
                 val count = message.substringAfter("蓝牙已就绪，通知通道 ").substringBefore(" 个").toIntOrNull() ?: 0
-                localText("蓝牙已就绪，通知通道 $count 个", "Bluetooth ready, $count notify channel(s)", "Bluetooth prêt, $count canal(aux) de notification", "บลูทูธพร้อม ช่องแจ้งเตือน $count ช่อง")
+                localText(
+                    "蓝牙已就绪，通知通道 $count 个",
+                    "Bluetooth ready, $count notify channel(s)",
+                    "Bluetooth prêt, $count canal(aux) de notification",
+                    "บลูทูธพร้อม ช่องแจ้งเตือน $count ช่อง",
+                    "Bluetooth listo, $count notificar canal(es)",
+                    "Bluetooth bereit, $count Kanal(e) benachrichtigen",
+                    "Bluetooth 준비됨, $count 알림 채널",
+                )
             }
             message == "BLE连接失败，尝试经典蓝牙..." ->
-                localText("BLE连接失败，尝试经典蓝牙...", "BLE failed. Trying Classic Bluetooth...", "BLE échoué. Essai Bluetooth classique...", "BLE ไม่สำเร็จ กำลังลองบลูทูธคลาสสิก...")
+                localText(
+                    "BLE连接失败，尝试经典蓝牙...",
+                    "BLE failed. Trying Classic Bluetooth...",
+                    "BLE échoué. Essai Bluetooth classique...",
+                    "BLE ไม่สำเร็จ กำลังลองบลูทูธคลาสสิก...",
+                    "BLE falló. Probando el clásico Bluetooth...",
+                    "BLE ist fehlgeschlagen. Ich versuche es mit Classic Bluetooth...",
+                    "BLE가 실패했습니다. 클래식 Bluetooth를 사용해 보세요...",
+                )
             message == "自动连接仅使用 BLE，请在设置中手动连接经典蓝牙设备" ->
-                localText("自动连接仅使用 BLE，请在设置中手动连接经典蓝牙设备", "Auto-connect uses BLE only. Connect Classic Bluetooth manually in Settings.", "La connexion auto utilise seulement BLE. Connectez le Bluetooth classique dans les paramètres.", "เชื่อมต่ออัตโนมัติใช้เฉพาะ BLE โปรดเชื่อมต่อคลาสสิกในตั้งค่า")
+                localText(
+                    "自动连接仅使用 BLE，请在设置中手动连接经典蓝牙设备",
+                    "Auto-connect uses BLE only. Connect Classic Bluetooth manually in Settings.",
+                    "La connexion auto utilise seulement BLE. Connectez le Bluetooth classique dans les paramètres.",
+                    "เชื่อมต่ออัตโนมัติใช้เฉพาะ BLE โปรดเชื่อมต่อคลาสสิกในตั้งค่า",
+                    "La conexión automática utiliza BLE únicamente. Conecte Classic Bluetooth manualmente en Configuración.",
+                    "Die automatische Verbindung verwendet nur BLE. Verbinden Sie Classic Bluetooth manuell in den Einstellungen.",
+                    "자동 연결은 BLE만 사용합니다. 설정에서 Classic Bluetooth를 수동으로 연결하세요.",
+                )
             message == "已取消蓝牙配对请求，HitRise 将继续使用免配对 BLE 连接" ->
-                localText("已取消蓝牙配对请求，HitRise 将继续使用免配对 BLE 连接", "Pairing request canceled. HitRise will keep using BLE without pairing.", "Demande d'appairage annulée. HitRise continue en BLE sans appairage.", "ยกเลิกคำขอจับคู่แล้ว HitRise จะใช้ BLE แบบไม่จับคู่ต่อ")
+                localText(
+                    "已取消蓝牙配对请求，HitRise 将继续使用免配对 BLE 连接",
+                    "Pairing request canceled. HitRise will keep using BLE without pairing.",
+                    "Demande d'appairage annulée. HitRise continue en BLE sans appairage.",
+                    "ยกเลิกคำขอจับคู่แล้ว HitRise จะใช้ BLE แบบไม่จับคู่ต่อ",
+                    "Solicitud de emparejamiento cancelada. HitRise seguirá usando BLE sin emparejamiento.",
+                    "Kopplungsanfrage abgebrochen. HitRise verwendet BLE weiterhin ohne Kopplung.",
+                    "페어링 요청이 취소되었습니다. HitRise는 페어링 없이 BLE를 계속 사용합니다.",
+                )
             message == "已阻止 SENBALL# 设备进入配对流程" ->
-                localText("已阻止 SENBALL# 设备进入配对流程", "SENBALL# pairing flow blocked", "Appairage SENBALL# bloqué", "บล็อกขั้นตอนจับคู่ SENBALL# แล้ว")
+                localText(
+                    "已阻止 SENBALL# 设备进入配对流程",
+                    "SENBALL# pairing flow blocked",
+                    "Appairage SENBALL# bloqué",
+                    "บล็อกขั้นตอนจับคู่ SENBALL# แล้ว",
+                    "SENBALL# flujo de emparejamiento bloqueado",
+                    "SENBALL# Kopplungsfluss blockiert",
+                    "SENBALL# 페어링 흐름이 차단됨",
+                )
             else -> message
         }
 
@@ -9722,7 +11386,15 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun bluetoothSectionTitle(): String =
-        localText("蓝牙连接", "Bluetooth Connection", "Connexion Bluetooth", "การเชื่อมต่อบลูทูธ")
+        localText(
+            "蓝牙连接",
+            "Bluetooth Connection",
+            "Connexion Bluetooth",
+            "การเชื่อมต่อบลูทูธ",
+            "Conexión Bluetooth",
+            "Bluetooth-Verbindung",
+            "Bluetooth 연결",
+        )
 
     private fun bluetoothSectionSubtitle(): String =
         localText(
@@ -9730,34 +11402,112 @@ class MainActivity : AppCompatActivity() {
             "Scan for a SENBALL# device first. Training is available after connection.",
             "Scannez d'abord un appareil SENBALL#. L'entraînement sera disponible après connexion.",
             "โปรดสแกนอุปกรณ์ SENBALL# ก่อน เมื่อเชื่อมต่อแล้วจึงเริ่มฝึกได้",
+            "Busca primero un dispositivo SENBALL#. El entrenamiento estará disponible después de conectarlo.",
+            "Zuerst nach einem SENBALL#-Gerät suchen. Nach der Verbindung ist das Training verfügbar.",
+            "먼저 SENBALL# 기기를 검색하세요. 연결 후 훈련을 시작할 수 있습니다.",
+        )
+
+    private fun bluetoothWakeBeforeScanHint(): String =
+        localText(
+            "设备静止 1 分钟后会自动进入低功耗状态，连接蓝牙前请先击打一下设备以唤醒蓝牙，避免出现蓝牙设备搜索不到的情况。",
+            "The device automatically enters low-power mode after 1 minute without movement. Before connecting, strike the device once to wake Bluetooth and prevent it from being missed during scanning.",
+            "L'appareil passe automatiquement en mode basse consommation après 1 minute d'inactivité. Avant la connexion, frappez-le une fois pour réveiller le Bluetooth et éviter qu'il ne soit introuvable lors du scan.",
+            "อุปกรณ์จะเข้าสู่โหมดประหยัดพลังงานโดยอัตโนมัติหลังจากไม่มีการเคลื่อนไหว 1 นาที ก่อนเชื่อมต่อ โปรดตีอุปกรณ์หนึ่งครั้งเพื่อปลุก Bluetooth และป้องกันไม่ให้ค้นหาอุปกรณ์ไม่พบ",
+            "El dispositivo entra automáticamente en modo de bajo consumo después de 1 minuto sin movimiento. Antes de conectarse, golpee el dispositivo una vez para activar Bluetooth y evitar que se pierda durante el escaneo.",
+            "Nach 1 Minute ohne Bewegung wechselt das Gerät automatisch in den Energiesparmodus. Drücken Sie vor dem Anschließen einmal auf das Gerät, um Bluetooth zu aktivieren und zu verhindern, dass es beim Scannen übersehen wird.",
+            "장치는 1분 동안 움직이지 않으면 자동으로 저전력 모드로 전환됩니다. 연결하기 전에 장치를 한 번 두드려 Bluetooth를 깨우고 스캔 중에 장치를 놓치지 않도록 하세요.",
         )
 
     private fun bluetoothScanLabel(): String =
-        localText("扫描", "Scan", "Scanner", "สแกน")
+        localText(
+            "扫描",
+            "Scan",
+            "Scanner",
+            "สแกน",
+            "Escanear",
+            "Scannen",
+            "스캔",
+        )
 
     private fun bluetoothConnectLabel(): String =
-        localText("连接", "Connect", "Connecter", "เชื่อมต่อ")
+        localText(
+            "连接",
+            "Connect",
+            "Connecter",
+            "เชื่อมต่อ",
+            "Conectar",
+            "Verbinden",
+            "연결하다",
+        )
 
     private fun bluetoothDisconnectLabel(): String =
-        localText("断开", "Disconnect", "Déconnecter", "ตัดการเชื่อมต่อ")
+        localText(
+            "断开",
+            "Disconnect",
+            "Déconnecter",
+            "ตัดการเชื่อมต่อ",
+            "Desconectar",
+            "Trennen",
+            "연결 끊기",
+        )
 
     private fun bluetoothBatteryLabel(): String =
-        localText("电量", "Battery", "Batterie", "แบตเตอรี่")
+        localText(
+            "电量",
+            "Battery",
+            "Batterie",
+            "แบตเตอรี่",
+            "Batería",
+            "Batterie",
+            "배터리",
+        )
 
     private fun bluetoothHitCountLabel(): String =
-        localText("拳击次数", "Punch Count", "Nombre de coups", "จำนวนหมัด")
+        localText(
+            "拳击次数",
+            "Punch Count",
+            "Nombre de coups",
+            "จำนวนหมัด",
+            "Conteo de golpes",
+            "Schlaganzahl",
+            "펀치 횟수",
+        )
 
 
 
 
     private fun bluetoothGyroOnLabel(): String =
-        localText("开启", "Enable", "Activer", "เปิด")
+        localText(
+            "开启",
+            "Enable",
+            "Activer",
+            "เปิด",
+            "Habilitar",
+            "Aktivieren",
+            "활성화",
+        )
 
     private fun bluetoothGyroOffLabel(): String =
-        localText("关闭", "Disable", "Désactiver", "ปิด")
+        localText(
+            "关闭",
+            "Disable",
+            "Désactiver",
+            "ปิด",
+            "Desactivar",
+            "Deaktivieren",
+            "비활성화",
+        )
 
     private fun bluetoothGyroOnStateText(): String =
-        localText("陀螺仪已开启", "Gyro on", "Gyroscope activé", "ไจโรเปิดอยู่")
+        localText(
+            "陀螺仪已开启",
+            "Gyro on",
+            "Gyroscope activé",
+            "ไจโรเปิดอยู่",
+            "Giroscopio encendido",
+            "Gyro an",
+            "자이로 온",
+        )
 
 
 
@@ -9765,28 +11515,92 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun bluetoothNoDeviceText(): String =
-        localText("未扫描到 SENBALL# 设备", "No SENBALL# devices found", "Aucun appareil SENBALL# trouvé", "ไม่พบอุปกรณ์ SENBALL#")
+        localText(
+            "未扫描到 SENBALL# 设备",
+            "No SENBALL# devices found",
+            "Aucun appareil SENBALL# trouvé",
+            "ไม่พบอุปกรณ์ SENBALL#",
+            "No se encontraron dispositivos SENBALL#",
+            "Keine SENBALL#-Geräte gefunden",
+            "SENBALL# 장치를 찾을 수 없습니다.",
+        )
 
     private fun bluetoothSelectDeviceText(): String =
-        localText("请先扫描并选择设备", "Scan and select a device first", "Scannez puis sélectionnez un appareil", "โปรดสแกนและเลือกอุปกรณ์ก่อน")
+        localText(
+            "请先扫描并选择设备",
+            "Scan and select a device first",
+            "Scannez puis sélectionnez un appareil",
+            "โปรดสแกนและเลือกอุปกรณ์ก่อน",
+            "Escanee y seleccione un dispositivo primero",
+            "Scannen Sie zunächst ein Gerät und wählen Sie es aus",
+            "먼저 장치를 스캔하고 선택하세요",
+        )
 
     private fun bluetoothDeviceSelectedText(name: String): String =
-        localText("已选择 $name", "Selected $name", "$name sélectionné", "เลือก $name แล้ว")
+        localText(
+            "已选择 $name",
+            "Selected $name",
+            "$name sélectionné",
+            "เลือก $name แล้ว",
+            "Seleccionado $name",
+            "Ausgewählte $name",
+            "${name}를 선택했습니다.",
+        )
 
     private fun bluetoothPermissionDeniedText(): String =
-        localText("未获得蓝牙权限，无法连接设备。", "Bluetooth permission is required to connect.", "L'autorisation Bluetooth est nécessaire pour se connecter.", "ต้องอนุญาตบลูทูธเพื่อเชื่อมต่อ")
+        localText(
+            "未获得蓝牙权限，无法连接设备。",
+            "Bluetooth permission is required to connect.",
+            "L'autorisation Bluetooth est nécessaire pour se connecter.",
+            "ต้องอนุญาตบลูทูธเพื่อเชื่อมต่อ",
+            "Se requiere permiso Bluetooth para conectarse.",
+            "Für die Verbindung ist die Berechtigung Bluetooth erforderlich.",
+            "연결하려면 Bluetooth 권한이 필요합니다.",
+        )
 
     private fun bluetoothConnectFirstText(): String =
-        localText("请先在设置中连接蓝牙设备。", "Connect the Bluetooth device in Settings first.", "Connectez d'abord l'appareil Bluetooth dans les paramètres.", "โปรดเชื่อมต่ออุปกรณ์บลูทูธในตั้งค่าก่อน")
+        localText(
+            "请先在设置中连接蓝牙设备。",
+            "Connect the Bluetooth device in Settings first.",
+            "Connectez d'abord l'appareil Bluetooth dans les paramètres.",
+            "โปรดเชื่อมต่ออุปกรณ์บลูทูธในตั้งค่าก่อน",
+            "Conecte primero el dispositivo Bluetooth en Configuración.",
+            "Verbinden Sie zunächst das Bluetooth-Gerät in den Einstellungen.",
+            "먼저 설정에서 Bluetooth 장치를 연결하세요.",
+        )
 
     private fun bluetoothAutoSelectedText(name: String): String =
-        localText("已自动选择 $name", "Auto-selected $name", "$name sélectionné automatiquement", "เลือก $name โดยอัตโนมัติ")
+        localText(
+            "已自动选择 $name",
+            "Auto-selected $name",
+            "$name sélectionné automatiquement",
+            "เลือก $name โดยอัตโนมัติ",
+            "$name seleccionado automáticamente",
+            "Automatisch ausgewählt $name",
+            "자동 선택 $name",
+        )
 
     private fun bluetoothDevicesFoundText(count: Int): String =
-        localText("已扫描到 $count 个设备，请选择设备", "$count devices found. Select one.", "$count appareils trouvés. Sélectionnez-en un.", "พบอุปกรณ์ $count เครื่อง โปรดเลือกอุปกรณ์")
+        localText(
+            "已扫描到 $count 个设备，请选择设备",
+            "$count devices found. Select one.",
+            "$count appareils trouvés. Sélectionnez-en un.",
+            "พบอุปกรณ์ $count เครื่อง โปรดเลือกอุปกรณ์",
+            "Dispositivos $count encontrados. Seleccione uno.",
+            "$count-Geräte gefunden. Wählen Sie eine aus.",
+            "$count 장치를 찾았습니다. 하나를 선택하세요.",
+        )
 
     private fun bluetoothConnectedText(name: String): String =
-        localText("已连接 $name", "Connected to $name", "Connecté à $name", "เชื่อมต่อกับ $name แล้ว")
+        localText(
+            "已连接 $name",
+            "Connected to $name",
+            "Connecté à $name",
+            "เชื่อมต่อกับ $name แล้ว",
+            "Conectado a $name",
+            "Verbunden mit $name",
+            "${name}에 연결됨",
+        )
 
     private fun bluetoothTrainingReconnectText(): String =
         localText(
@@ -9794,6 +11608,9 @@ class MainActivity : AppCompatActivity() {
             "Bluetooth dropped during training. Reconnecting...",
             "Bluetooth coupé pendant l'entraînement. Reconnexion...",
             "บลูทูธหลุดระหว่างฝึก กำลังเชื่อมต่อใหม่...",
+            "Bluetooth cayó durante el entrenamiento. Reconectando...",
+            "Bluetooth wurde während des Trainings gelöscht. Verbindung wird wieder hergestellt...",
+            "훈련 중에 Bluetooth가 떨어졌습니다. 다시 연결하는 중...",
         )
 
     private fun bluetoothTrainingReconnectedText(name: String): String =
@@ -9802,22 +11619,65 @@ class MainActivity : AppCompatActivity() {
             "Reconnected during training: $name",
             "Reconnecté pendant l'entraînement : $name",
             "เชื่อมต่อใหม่ระหว่างฝึก: $name",
+            "Reconectado durante el entrenamiento: $name",
+            "Während des Trainings erneut verbunden: $name",
+            "훈련 중에 다시 연결됨: $name",
         )
 
     private fun bluetoothDisconnectedText(): String =
-        localText("蓝牙已断开", "Bluetooth disconnected", "Bluetooth déconnecté", "ตัดการเชื่อมต่อบลูทูธแล้ว")
+        localText(
+            "蓝牙已断开",
+            "Bluetooth disconnected",
+            "Bluetooth déconnecté",
+            "ตัดการเชื่อมต่อบลูทูธแล้ว",
+            "Bluetooth desconectado",
+            "Bluetooth getrennt",
+            "Bluetooth 연결이 끊어졌습니다",
+        )
 
     private fun bluetoothPacketReceivedText(packetIndex: Int): String =
-        localText("已接收数据包 $packetIndex", "Packet $packetIndex received", "Paquet $packetIndex reçu", "ได้รับแพ็กเก็ต $packetIndex แล้ว")
+        localText(
+            "已接收数据包 $packetIndex",
+            "Packet $packetIndex received",
+            "Paquet $packetIndex reçu",
+            "ได้รับแพ็กเก็ต $packetIndex แล้ว",
+            "Paquete $packetIndex recibido",
+            "Paket $packetIndex empfangen",
+            "패킷 $packetIndex 수신됨",
+        )
 
     private fun bluetoothAutoConnectingText(name: String): String =
-        localText("正在自动连接上次设备 $name...", "Auto-connecting last device $name...", "Connexion automatique au dernier appareil $name...", "กำลังเชื่อมต่ออุปกรณ์ล่าสุด $name อัตโนมัติ...")
+        localText(
+            "正在自动连接上次设备 $name...",
+            "Auto-connecting last device $name...",
+            "Connexion automatique au dernier appareil $name...",
+            "กำลังเชื่อมต่ออุปกรณ์ล่าสุด $name อัตโนมัติ...",
+            "Conexión automática del último dispositivo $name...",
+            "Letztes Gerät automatisch verbinden $name...",
+            "마지막 장치 $name 자동 연결 중...",
+        )
 
     private fun settingsDialogTitle(): String =
-        localText("蓝牙与语言设置", "Bluetooth and Language", "Bluetooth et langue", "บลูทูธและภาษา")
+        localText(
+            "蓝牙与语言设置",
+            "Bluetooth and Language",
+            "Bluetooth et langue",
+            "บลูทูธและภาษา",
+            "Bluetooth e idioma",
+            "Bluetooth und Sprache",
+            "Bluetooth 및 언어",
+        )
 
     private fun bluetoothFirstUseGuideTitle(): String =
-        localText("连接蓝牙设备", "Connect Bluetooth Device", "Connecter l'appareil Bluetooth", "เชื่อมต่ออุปกรณ์บลูทูธ")
+        localText(
+            "连接蓝牙设备",
+            "Connect Bluetooth Device",
+            "Connecter l'appareil Bluetooth",
+            "เชื่อมต่ออุปกรณ์บลูทูธ",
+            "Conecte el dispositivo Bluetooth",
+            "Schließen Sie das Bluetooth-Gerät an",
+            "Bluetooth 장치 연결",
+        )
 
     private fun bluetoothFirstUseGuideMessage(): String =
         localText(
@@ -9825,6 +11685,9 @@ class MainActivity : AppCompatActivity() {
             "Before your first session, open Settings to scan and connect your HitRise device.",
             "Avant la première séance, ouvrez les paramètres pour scanner et connecter votre appareil HitRise.",
             "ก่อนใช้งานครั้งแรก โปรดเปิดตั้งค่าเพื่อสแกนและเชื่อมต่ออุปกรณ์ HitRise",
+            "Antes de la primera sesión, abre Ajustes para buscar y conectar tu dispositivo HitRise.",
+            "Vor der ersten Einheit die Einstellungen öffnen, um das HitRise-Gerät zu suchen und zu verbinden.",
+            "첫 훈련 전에 설정을 열어 HitRise 기기를 검색하고 연결하세요.",
         )
 
     private fun bluetoothFirstUseGuideHint(): String =
@@ -9833,13 +11696,32 @@ class MainActivity : AppCompatActivity() {
             "After connection, the top Bluetooth icon turns blue and shows battery level.",
             "Après connexion, l'icône Bluetooth en haut devient bleue et affiche la batterie.",
             "หลังเชื่อมต่อ ไอคอนบลูทูธด้านบนจะเป็นสีน้ำเงินและแสดงแบตเตอรี่",
+            "Después de la conexión, el icono superior Bluetooth se vuelve azul y muestra el nivel de la batería.",
+            "Nach der Verbindung wird das obere Bluetooth-Symbol blau und zeigt den Akkustand an.",
+            "연결 후 상단 Bluetooth 아이콘이 파란색으로 바뀌고 배터리 잔량이 표시됩니다.",
         )
 
     private fun bluetoothFirstUseOpenSettingsLabel(): String =
-        localText("去设置", "Open Settings", "Ouvrir les paramètres", "ไปที่ตั้งค่า")
+        localText(
+            "去设置",
+            "Open Settings",
+            "Ouvrir les paramètres",
+            "ไปที่ตั้งค่า",
+            "Abrir configuración",
+            "Öffnen Sie Einstellungen",
+            "설정 열기",
+        )
 
     private fun bluetoothFirstUseLaterLabel(): String =
-        localText("稍后", "Later", "Plus tard", "ภายหลัง")
+        localText(
+            "稍后",
+            "Later",
+            "Plus tard",
+            "ภายหลัง",
+            "Más tarde",
+            "Später",
+            "나중에",
+        )
 
     private fun SensorBallDevice.transportLabel(): String =
         when {
@@ -9894,6 +11776,27 @@ class MainActivity : AppCompatActivity() {
                 isChecked = selectedLanguage == AppLanguage.French
                 setTextColor(Color.WHITE)
             }
+        val esOption =
+            RadioButton(this).apply {
+                id = View.generateViewId()
+                text = tr("language_spanish")
+                isChecked = selectedLanguage == AppLanguage.Spanish
+                setTextColor(Color.WHITE)
+            }
+        val deOption =
+            RadioButton(this).apply {
+                id = View.generateViewId()
+                text = tr("language_german")
+                isChecked = selectedLanguage == AppLanguage.German
+                setTextColor(Color.WHITE)
+            }
+        val koOption =
+            RadioButton(this).apply {
+                id = View.generateViewId()
+                text = tr("language_korean")
+                isChecked = selectedLanguage == AppLanguage.Korean
+                setTextColor(Color.WHITE)
+            }
         val thOption =
             RadioButton(this).apply {
                 id = View.generateViewId()
@@ -9904,10 +11807,21 @@ class MainActivity : AppCompatActivity() {
         languageGroup.addView(zhOption)
         languageGroup.addView(enOption)
         languageGroup.addView(frOption)
+        languageGroup.addView(esOption)
+        languageGroup.addView(deOption)
+        languageGroup.addView(koOption)
         languageGroup.addView(thOption)
         dialogRoot.addView(languageGroup)
 
-        dialogRoot.addView(sectionLabel(localText("云端音效", "Cloud Sound Effects", "Sons cloud", "เสียงบนคลาวด์")))
+        dialogRoot.addView(sectionLabel(localText(
+            "云端音效",
+            "Cloud Sound Effects",
+            "Sons cloud",
+            "เสียงบนคลาวด์",
+            "Efectos de sonido de la nube",
+            "Cloud-Soundeffekte",
+            "클라우드 사운드 효과",
+        )))
         dialogRoot.addView(
             bodyText(
                 localText(
@@ -9915,6 +11829,9 @@ class MainActivity : AppCompatActivity() {
                     "Preview and choose one punch sound for training hits.",
                     "Écoutez puis choisissez un son pour les frappes.",
                     "ฟังตัวอย่างแล้วเลือกเสียงหมัดสำหรับการฝึก",
+                    "Obtenga una vista previa y elija un sonido de golpe para entrenar golpes.",
+                    "Sehen Sie sich eine Vorschau an und wählen Sie einen Schlagsound für Trainingsschläge aus.",
+                    "트레이닝 히트에 대한 원펀치 사운드를 미리 보고 선택하세요.",
                 ),
             ).apply {
                 setTextColor(Color.parseColor("#B7CFE0"))
@@ -9939,7 +11856,15 @@ class MainActivity : AppCompatActivity() {
             )
         }
         val refreshEffectsButton =
-            compactActionButton(localText("刷新音效", "Refresh Effects", "Actualiser", "รีเฟรชเสียง"), "#17354A").apply {
+            compactActionButton(localText(
+                "刷新音效",
+                "Refresh Effects",
+                "Actualiser",
+                "รีเฟรชเสียง",
+                "Actualizar efectos",
+                "Effekte aktualisieren",
+                "새로 고침 효과",
+            ), "#17354A").apply {
                 setOnClickListener {
                     fetchCloudSoundEffects { rerenderSoundEffects() }
                     rerenderSoundEffects()
@@ -9952,7 +11877,15 @@ class MainActivity : AppCompatActivity() {
             fetchCloudSoundEffects { rerenderSoundEffects() }
         }
 
-        dialogRoot.addView(sectionLabel(localText("背景音乐", "Background Music", "Musique", "เพลงพื้นหลัง")))
+        dialogRoot.addView(sectionLabel(localText(
+            "背景音乐",
+            "Background Music",
+            "Musique",
+            "เพลงพื้นหลัง",
+            "Música de fondo",
+            "Hintergrundmusik",
+            "배경음악",
+        )))
         dialogRoot.addView(
             bodyText(
                 localText(
@@ -9960,6 +11893,9 @@ class MainActivity : AppCompatActivity() {
                     "Preview and choose one looped training background track.",
                     "Écoutez puis choisissez une musique de fond pour l'entraînement.",
                     "ฟังตัวอย่างแล้วเลือกเพลงพื้นหลังที่จะวนระหว่างฝึก",
+                    "Obtenga una vista previa y elija una pista de fondo de entrenamiento en bucle.",
+                    "Sehen Sie sich eine Vorschau an und wählen Sie einen geloopten Hintergrund-Trainingstrack aus.",
+                    "반복되는 교육 배경 트랙 하나를 미리 보고 선택하세요.",
                 ),
             ).apply {
                 setTextColor(Color.parseColor("#B7CFE0"))
@@ -9984,7 +11920,15 @@ class MainActivity : AppCompatActivity() {
             )
         }
         dialogRoot.addView(
-            compactActionButton(localText("刷新音乐", "Refresh Music", "Actualiser", "รีเฟรชเพลง"), "#174A2C").apply {
+            compactActionButton(localText(
+                "刷新音乐",
+                "Refresh Music",
+                "Actualiser",
+                "รีเฟรชเพลง",
+                "Actualizar música",
+                "Musik aktualisieren",
+                "음악 새로 고침",
+            ), "#174A2C").apply {
                 setOnClickListener {
                     fetchBackgroundMusic {
                         selectedBackgroundMusicHolder[0] = selectedBackgroundMusicId
@@ -10022,6 +11966,9 @@ class MainActivity : AppCompatActivity() {
                         when (languageGroup.checkedRadioButtonId) {
                             enOption.id -> AppLanguage.English
                             frOption.id -> AppLanguage.French
+                            esOption.id -> AppLanguage.Spanish
+                            deOption.id -> AppLanguage.German
+                            koOption.id -> AppLanguage.Korean
                             thOption.id -> AppLanguage.Thai
                             else -> AppLanguage.Chinese
                         },
@@ -10058,6 +12005,9 @@ class MainActivity : AppCompatActivity() {
                         "Waiting for the cloud sound list.",
                         "En attente de la liste des sons cloud.",
                         "กำลังรอรายการเสียงบนคลาวด์",
+                        "Esperando la lista de sonidos de la nube.",
+                        "Warten auf die Cloud-Soundliste.",
+                        "클라우드 사운드 목록을 기다리고 있습니다.",
                     ),
                 ).apply {
                     setTextColor(Color.parseColor(selectedPalette.textMuted))
@@ -10120,7 +12070,15 @@ class MainActivity : AppCompatActivity() {
                 },
             )
             row.addView(
-                compactActionButton(localText("试听", "Preview", "Écouter", "ลองฟัง"), selectedPalette.button).apply {
+                compactActionButton(localText(
+                    "试听",
+                    "Preview",
+                    "Écouter",
+                    "ลองฟัง",
+                    "Vista previa",
+                    "Vorschau",
+                    "미리보기",
+                ), selectedPalette.button).apply {
                     setOnClickListener { onPreview(effect) }
                 },
             )
@@ -10149,7 +12107,15 @@ class MainActivity : AppCompatActivity() {
         if (cloudSoundEffectsLoadingJob?.isActive == true) {
             return
         }
-        cloudSoundEffectsMessage = localText("正在拉取云端音效...", "Fetching cloud effects...", "Chargement des sons cloud...", "กำลังโหลดเสียงบนคลาวด์...")
+        cloudSoundEffectsMessage = localText(
+            "正在拉取云端音效...",
+            "Fetching cloud effects...",
+            "Chargement des sons cloud...",
+            "กำลังโหลดเสียงบนคลาวด์...",
+            "Obteniendo efectos de nube...",
+            "Wolkeneffekte werden abgerufen...",
+            "클라우드 효과를 가져오는 중...",
+        )
         cloudSoundEffectsLoadingJob =
             lifecycleScope.launch(Dispatchers.IO) {
                 val result = cloudSyncService.fetchSoundEffects()
@@ -10163,6 +12129,9 @@ class MainActivity : AppCompatActivity() {
                                 "Loaded ${cloudSoundEffects.size} cloud effects.",
                                 "${cloudSoundEffects.size} sons chargés.",
                                 "โหลดเสียงแล้ว ${cloudSoundEffects.size} รายการ",
+                                "Se cargaron efectos de nube ${cloudSoundEffects.size}.",
+                                "${cloudSoundEffects.size}-Cloud-Effekte geladen.",
+                                "${cloudSoundEffects.size} 클라우드 효과를 로드했습니다.",
                             )
                         val selected = cloudSoundEffects.firstOrNull { it.id == selectedCloudSoundEffectId }
                         when {
@@ -10178,6 +12147,9 @@ class MainActivity : AppCompatActivity() {
                                     "Cloud unavailable. Using 5 bundled effects.",
                                     "Cloud indisponible. 5 sons intégrés utilisés.",
                                     "คลาวด์ไม่พร้อม ใช้เสียงในเครื่อง 5 รายการ",
+                                    "Nube no disponible. Usando 5 efectos agrupados.",
+                                    "Cloud nicht verfügbar. Verwendung von 5 gebündelten Effekten.",
+                                    "클라우드를 사용할 수 없습니다. 5개의 번들 효과를 사용합니다.",
                                 )
                             } else {
                                 localText(
@@ -10185,6 +12157,9 @@ class MainActivity : AppCompatActivity() {
                                     "Cloud effects failed: ${result.message}",
                                     "Échec des sons cloud : ${result.message}",
                                     "โหลดเสียงไม่สำเร็จ: ${result.message}",
+                                    "Los efectos de la nube fallaron: ${result.message}",
+                                    "Wolkeneffekte fehlgeschlagen: ${result.message}",
+                                    "구름 효과 실패: ${result.message}",
                                 )
                             }
                     }
@@ -10198,6 +12173,9 @@ class MainActivity : AppCompatActivity() {
             ?: when (selectedLanguage) {
                 AppLanguage.Chinese -> effect.nameZh.ifBlank { effect.nameEn }
                 AppLanguage.English,
+                AppLanguage.Spanish,
+                AppLanguage.German,
+                AppLanguage.Korean,
                 AppLanguage.French,
                 AppLanguage.Thai,
                 -> effect.nameEn.ifBlank { effect.nameZh }
@@ -10208,6 +12186,9 @@ class MainActivity : AppCompatActivity() {
             ?: when (selectedLanguage) {
                 AppLanguage.Chinese -> effect.descriptionZh.ifBlank { effect.descriptionEn }
                 AppLanguage.English,
+                AppLanguage.Spanish,
+                AppLanguage.German,
+                AppLanguage.Korean,
                 AppLanguage.French,
                 AppLanguage.Thai,
                 -> effect.descriptionEn.ifBlank { effect.descriptionZh }
@@ -10215,11 +12196,51 @@ class MainActivity : AppCompatActivity() {
 
     private fun localizedCloudSoundEffectName(id: String): String? =
         when (id) {
-            "htr_punch_arena_thunder" -> localText("赛场雷击", "Arena Thunder", "Tonnerre du ring", "สนามสายฟ้า")
-            "htr_punch_street_spark" -> localText("街头火花", "Street Spark", "Étincelle urbaine", "ประกายสตรีท")
-            "htr_punch_iron_hook" -> localText("铁拳冲击", "Iron Hook", "Crochet d'acier", "ฮุกเหล็ก")
-            "htr_punch_neon_jab" -> localText("霓虹快拳", "Neon Jab", "Direct néon", "แย็บนีออน")
-            "htr_punch_bass_smash" -> localText("低频重锤", "Bass Smash", "Frappe basse", "เบสสแมช")
+            "htr_punch_arena_thunder" -> localText(
+                "赛场雷击",
+                "Arena Thunder",
+                "Tonnerre du ring",
+                "สนามสายฟ้า",
+                "Trueno de arena",
+                "Arena-Donner",
+                "아레나 썬더",
+            )
+            "htr_punch_street_spark" -> localText(
+                "街头火花",
+                "Street Spark",
+                "Étincelle urbaine",
+                "ประกายสตรีท",
+                "Chispa de la calle",
+                "Straßenfunke",
+                "스트리트 스파크",
+            )
+            "htr_punch_iron_hook" -> localText(
+                "铁拳冲击",
+                "Iron Hook",
+                "Crochet d'acier",
+                "ฮุกเหล็ก",
+                "Gancho de hierro",
+                "Eisenhaken",
+                "철 갈고리",
+            )
+            "htr_punch_neon_jab" -> localText(
+                "霓虹快拳",
+                "Neon Jab",
+                "Direct néon",
+                "แย็บนีออน",
+                "Golpe de neón",
+                "Neon Jab",
+                "네온 잽",
+            )
+            "htr_punch_bass_smash" -> localText(
+                "低频重锤",
+                "Bass Smash",
+                "Frappe basse",
+                "เบสสแมช",
+                "Golpe de bajo",
+                "Bass-Smash",
+                "베이스 스매시",
+            )
             else -> null
         }
 
@@ -10231,6 +12252,9 @@ class MainActivity : AppCompatActivity() {
                     "Arena impact sound for about 100 BPM training.",
                     "Impact de ring pour un entraînement autour de 100 BPM.",
                     "เสียงกระแทกสนามสำหรับการฝึกราว 100 BPM",
+                    "Sonido de impacto en la arena para aproximadamente 100 entrenamientos BPM.",
+                    "Arena-Trittschall für ca. 100 BPM-Training.",
+                    "약 100개의 BPM 훈련을 위한 경기장 충격음.",
                 )
             "htr_punch_street_spark" ->
                 localText(
@@ -10238,6 +12262,9 @@ class MainActivity : AppCompatActivity() {
                     "Crisp street impact for about 110 BPM training.",
                     "Impact urbain net pour un entraînement autour de 110 BPM.",
                     "เสียงกระแทกสตรีทชัดเจนสำหรับราว 110 BPM",
+                    "Impacto nítido en la calle durante aproximadamente 110 entrenamientos BPM.",
+                    "Knackiger Straßenaufprall für etwa 110 BPM Training.",
+                    "약 110 BPM 훈련을 위한 선명한 거리 임팩트.",
                 )
             "htr_punch_iron_hook" ->
                 localText(
@@ -10245,6 +12272,9 @@ class MainActivity : AppCompatActivity() {
                     "Metal impact sound for steady training around 95 BPM.",
                     "Impact métallique pour un rythme stable autour de 95 BPM.",
                     "เสียงโลหะหนักสำหรับจังหวะมั่นคงราว 95 BPM",
+                    "Sonido de impacto metálico para un entrenamiento constante alrededor de 95 BPM.",
+                    "Metallschlagschall für gleichmäßiges Training um 95 BPM.",
+                    "95 BPM 주변의 꾸준한 훈련을 위한 금속 충격음.",
                 )
             "htr_punch_neon_jab" ->
                 localText(
@@ -10252,6 +12282,9 @@ class MainActivity : AppCompatActivity() {
                     "Fast bright impact for combo drills around 120 BPM.",
                     "Impact vif pour les combos autour de 120 BPM.",
                     "เสียงเร็วสดใสสำหรับคอมโบราว 120 BPM",
+                    "Impacto rápido y brillante para taladros combinados de alrededor de 120 BPM.",
+                    "Schneller, heller Schlag für Kombibohrer um 120 BPM.",
+                    "120 BPM 주변의 콤보 드릴에 대한 빠르고 밝은 충격.",
                 )
             "htr_punch_bass_smash" ->
                 localText(
@@ -10259,6 +12292,9 @@ class MainActivity : AppCompatActivity() {
                     "Bass-heavy impact for power work around 90 BPM.",
                     "Impact grave pour le travail de puissance autour de 90 BPM.",
                     "เสียงเบสหนักสำหรับฝึกพลังราว 90 BPM",
+                    "Impacto de graves intensos para trabajos de potencia alrededor de 90 BPM.",
+                    "Basslastiger Schlag für Kraftarbeit um die 90 BPM.",
+                    "90 BPM 주변의 파워 작업을 위한 저음이 강한 임팩트입니다.",
                 )
             else -> null
         }
@@ -10332,6 +12368,9 @@ class MainActivity : AppCompatActivity() {
                         "Waiting for the cloud background music list.",
                         "En attente de la musique cloud.",
                         "กำลังรอรายการเพลงพื้นหลังบนคลาวด์",
+                        "Esperando la lista de música de fondo de la nube.",
+                        "Warten auf die Cloud-Hintergrundmusikliste.",
+                        "클라우드 배경음악 목록을 기다리고 있습니다.",
                     ),
                 ).apply {
                     setTextColor(Color.parseColor(selectedPalette.textMuted))
@@ -10395,7 +12434,23 @@ class MainActivity : AppCompatActivity() {
             )
             row.addView(
                 compactActionButton(
-                    if (isNoMusic) localText("无", "Off", "Sans", "ปิด") else localText("试听", "Preview", "Écouter", "ลองฟัง"),
+                    if (isNoMusic) localText(
+                        "无",
+                        "Off",
+                        "Sans",
+                        "ปิด",
+                        "Apagado",
+                        "Aus",
+                        "끄기",
+                    ) else localText(
+                        "试听",
+                        "Preview",
+                        "Écouter",
+                        "ลองฟัง",
+                        "Vista previa",
+                        "Vorschau",
+                        "미리보기",
+                    ),
                     if (isNoMusic) selectedPalette.cardAlt else selectedPalette.button,
                 ).apply {
                     isEnabled = !isNoMusic
@@ -10414,7 +12469,15 @@ class MainActivity : AppCompatActivity() {
         if (cloudBackgroundMusicLoadingJob?.isActive == true) {
             return
         }
-        cloudBackgroundMusicMessage = localText("正在拉取云端背景音乐...", "Fetching background music...", "Chargement de la musique cloud...", "กำลังโหลดเพลงพื้นหลัง...")
+        cloudBackgroundMusicMessage = localText(
+            "正在拉取云端背景音乐...",
+            "Fetching background music...",
+            "Chargement de la musique cloud...",
+            "กำลังโหลดเพลงพื้นหลัง...",
+            "Recuperando música de fondo...",
+            "Hintergrundmusik wird abgerufen...",
+            "배경 음악을 가져오는 중...",
+        )
         cloudBackgroundMusicLoadingJob =
             lifecycleScope.launch(Dispatchers.IO) {
                 val result = cloudSyncService.fetchBackgroundMusic()
@@ -10428,6 +12491,9 @@ class MainActivity : AppCompatActivity() {
                                 "Loaded ${cloudBackgroundMusic.size} background tracks.",
                                 "${cloudBackgroundMusic.size} musiques chargées.",
                                 "โหลดเพลงพื้นหลังแล้ว ${cloudBackgroundMusic.size} รายการ",
+                                "Pistas de fondo ${cloudBackgroundMusic.size} cargadas.",
+                                "${cloudBackgroundMusic.size}-Hintergrundspuren geladen.",
+                                "${cloudBackgroundMusic.size} 배경 트랙을 로드했습니다.",
                             )
                     } else {
                         cloudBackgroundMusic = bundledBackgroundMusic()
@@ -10438,6 +12504,9 @@ class MainActivity : AppCompatActivity() {
                                     "Cloud unavailable. Using 5 bundled tracks.",
                                     "Cloud indisponible. 5 musiques intégrées utilisées.",
                                     "คลาวด์ไม่พร้อม ใช้เพลงในเครื่อง 5 รายการ",
+                                    "Nube no disponible. Usando 5 pistas empaquetadas.",
+                                    "Cloud nicht verfügbar. Verwendung von 5 gebündelten Titeln.",
+                                    "클라우드를 사용할 수 없습니다. 5개의 번들 트랙을 사용합니다.",
                                 )
                             } else {
                                 localText(
@@ -10445,6 +12514,9 @@ class MainActivity : AppCompatActivity() {
                                     "Background music failed: ${result.message}",
                                     "Échec musique : ${result.message}",
                                     "โหลดเพลงไม่สำเร็จ: ${result.message}",
+                                    "La música de fondo falló: ${result.message}",
+                                    "Hintergrundmusik fehlgeschlagen: ${result.message}",
+                                    "배경 음악 실패: ${result.message}",
                                 )
                             }
                     }
@@ -10459,6 +12531,9 @@ class MainActivity : AppCompatActivity() {
             ?: when (selectedLanguage) {
                 AppLanguage.Chinese -> track.nameZh.ifBlank { track.nameEn }
                 AppLanguage.English,
+                AppLanguage.Spanish,
+                AppLanguage.German,
+                AppLanguage.Korean,
                 AppLanguage.French,
                 AppLanguage.Thai,
                 -> track.nameEn.ifBlank { track.nameZh }
@@ -10469,6 +12544,9 @@ class MainActivity : AppCompatActivity() {
             ?: when (selectedLanguage) {
                 AppLanguage.Chinese -> track.descriptionZh.ifBlank { track.descriptionEn }
                 AppLanguage.English,
+                AppLanguage.Spanish,
+                AppLanguage.German,
+                AppLanguage.Korean,
                 AppLanguage.French,
                 AppLanguage.Thai,
                 -> track.descriptionEn.ifBlank { track.descriptionZh }
@@ -10476,12 +12554,60 @@ class MainActivity : AppCompatActivity() {
 
     private fun localizedBackgroundMusicName(id: String): String? =
         when (id) {
-            BACKGROUND_MUSIC_NONE_ID -> localText("无背景音乐", "No background music", "Sans musique", "ไม่มีเพลงพื้นหลัง")
-            "htr_music_champion_rush" -> localText("冠军冲刺", "Champion Rush", "Sprint champion", "แชมป์รัช")
-            "htr_music_ring_voltage" -> localText("擂台电光", "Ring Voltage", "Voltage du ring", "ริงโวลเทจ")
-            "htr_music_street_ignite" -> localText("街区开场", "Street Ignite", "Allumage urbain", "สตรีทอิกไนต์")
-            "htr_music_iron_drive" -> localText("钢铁律动", "Iron Drive", "Élan d'acier", "ไอรอนไดรฟ์")
-            "htr_music_neon_combo" -> localText("霓虹连击", "Neon Combo", "Combo néon", "นีออนคอมโบ")
+            BACKGROUND_MUSIC_NONE_ID -> localText(
+                "无背景音乐",
+                "No background music",
+                "Sans musique",
+                "ไม่มีเพลงพื้นหลัง",
+                "Sin música de fondo",
+                "Keine Hintergrundmusik",
+                "배경음악 없음",
+            )
+            "htr_music_champion_rush" -> localText(
+                "冠军冲刺",
+                "Champion Rush",
+                "Sprint champion",
+                "แชมป์รัช",
+                "Carrera de campeones",
+                "Champion Rush",
+                "챔피언 러시",
+            )
+            "htr_music_ring_voltage" -> localText(
+                "擂台电光",
+                "Ring Voltage",
+                "Voltage du ring",
+                "ริงโวลเทจ",
+                "Voltaje de anillo",
+                "Ringspannung",
+                "링 전압",
+            )
+            "htr_music_street_ignite" -> localText(
+                "街区开场",
+                "Street Ignite",
+                "Allumage urbain",
+                "สตรีทอิกไนต์",
+                "Encender la calle",
+                "Street Ignite",
+                "스트리트 이그나이트",
+            )
+            "htr_music_iron_drive" -> localText(
+                "钢铁律动",
+                "Iron Drive",
+                "Élan d'acier",
+                "ไอรอนไดรฟ์",
+                "Unidad de hierro",
+                "Eisenantrieb",
+                "아이언 드라이브",
+            )
+            "htr_music_neon_combo" -> localText(
+                "霓虹连击",
+                "Neon Combo",
+                "Combo néon",
+                "นีออนคอมโบ",
+                "Combinación de neón",
+                "Neon-Combo",
+                "네온 콤보",
+            )
             else -> null
         }
 
@@ -10493,6 +12619,9 @@ class MainActivity : AppCompatActivity() {
                     "No background music during training. Beat and punch sounds remain available.",
                     "Aucune musique pendant l'entraînement. Le tempo et les impacts restent actifs.",
                     "ไม่เล่นเพลงพื้นหลังระหว่างฝึก ยังมีจังหวะและเสียงหมัด",
+                    "Sin música de fondo durante el entrenamiento. Los sonidos de ritmo y golpe siguen estando disponibles.",
+                    "Keine Hintergrundmusik während des Trainings. Beat- und Punch-Sounds bleiben weiterhin verfügbar.",
+                    "훈련 중에는 배경 음악이 없습니다. 비트 및 펀치 사운드는 계속 사용할 수 있습니다.",
                 )
             "htr_music_champion_rush" ->
                 localText(
@@ -10500,6 +12629,9 @@ class MainActivity : AppCompatActivity() {
                     "Bright electro melody for energetic warm-up pushes. Around 122 BPM.",
                     "Mélodie électro lumineuse pour accélérer après l'échauffement. Environ 122 BPM.",
                     "ทำนองอิเล็กทรอนิกส์สดใส เหมาะเร่งหลังวอร์ม ราว 122 BPM",
+                    "Brillante melodía electro para enérgicos empujones de calentamiento. Alrededor de 122 BPM.",
+                    "Helle Elektromelodie für energiegeladene Aufwärmübungen. Etwa 122 BPM.",
+                    "에너지 넘치는 워밍업을 위한 밝은 일렉트로 멜로디. 약 122 BPM.",
                 )
             "htr_music_ring_voltage" ->
                 localText(
@@ -10507,6 +12639,9 @@ class MainActivity : AppCompatActivity() {
                     "Pop fitness groove with light drums and clean motion. Around 118 BPM.",
                     "Groove fitness pop avec batterie légère. Environ 118 BPM.",
                     "กรูฟป๊อปฟิตเนสพร้อมกลองเบา ราว 118 BPM",
+                    "Pop fitness groove con tambores ligeros y movimientos limpios. Alrededor de 118 BPM.",
+                    "Pop-Fitness-Groove mit leichten Trommeln und sauberer Bewegung. Etwa 118 BPM.",
+                    "가벼운 드럼과 깔끔한 모션이 돋보이는 팝 피트니스 그루브입니다. 약 118 BPM.",
                 )
             "htr_music_street_ignite" ->
                 localText(
@@ -10514,6 +12649,9 @@ class MainActivity : AppCompatActivity() {
                     "Light rock rhythm with guitar-like strums and easy drums. Around 112 BPM.",
                     "Rythme rock léger avec accords façon guitare. Environ 112 BPM.",
                     "จังหวะไลท์ร็อกพร้อมกีตาร์และกลองสบาย ราว 112 BPM",
+                    "Ritmo de rock ligero con rasgueos parecidos a una guitarra y batería fácil. Alrededor de 112 BPM.",
+                    "Leichter Rockrhythmus mit gitarrenähnlichen Klängen und leichtem Schlagzeug. Etwa 112 BPM.",
+                    "기타 같은 스트럼과 쉬운 드럼이 어우러진 가벼운 록 리듬입니다. 약 112 BPM.",
                 )
             "htr_music_iron_drive" ->
                 localText(
@@ -10521,6 +12659,9 @@ class MainActivity : AppCompatActivity() {
                     "Pop-rock drive that feels athletic without heavy impact. Around 116 BPM.",
                     "Élan pop-rock sportif, puissant sans être agressif. Environ 116 BPM.",
                     "ป๊อปร็อกขับเคลื่อน ฟังสนุกไม่หนักเกิน ราว 116 BPM",
+                    "Unidad pop-rock que se siente atlética sin gran impacto. Alrededor de 116 BPM.",
+                    "Pop-Rock-Antrieb, der sich athletisch anfühlt, ohne großen Aufprall. Etwa 116 BPM.",
+                    "큰 임팩트 없이 애슬레틱한 느낌을 주는 팝록 드라이브. 약 116 BPM.",
                 )
             "htr_music_neon_combo" ->
                 localText(
@@ -10528,6 +12669,9 @@ class MainActivity : AppCompatActivity() {
                     "Bouncy synth colors for combo drills. Around 124 BPM.",
                     "Synthés rebondissants pour les exercices de combo. Environ 124 BPM.",
                     "ซินธ์เด้งสดใส เหมาะฝึกคอมโบ ราว 124 BPM",
+                    "Colores de sintetizador hinchables para ejercicios combinados. Alrededor de 124 BPM.",
+                    "Schwungvolle Synthesizerfarben für Combo-Übungen. Etwa 124 BPM.",
+                    "콤보 드릴을 위한 탄력 있는 신디 색상입니다. 약 124 BPM.",
                 )
             else -> null
         }
@@ -10717,10 +12861,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun profileHeroTagText(): String =
-        localText("拳击训练档案", "FIGHTER PROFILE", "DOSSIER DU BOXEUR", "โปรไฟล์นักชก")
+        localText(
+            "拳击训练档案",
+            "FIGHTER PROFILE",
+            "DOSSIER DU BOXEUR",
+            "โปรไฟล์นักชก",
+            "PERFIL DEL LUCHADOR",
+            "KÄMPFERPROFIL",
+            "파이터 프로필",
+        )
 
     private fun historyEmptyBadgeText(): String =
-        localText("记录", "HISTORY", "HISTORIQUE", "ประวัติ")
+        localText(
+            "记录",
+            "HISTORY",
+            "HISTORIQUE",
+            "ประวัติ",
+            "HISTORIA",
+            "GESCHICHTE",
+            "역사",
+        )
 
     private fun historyEmptyTitleText(): String =
         localText(
@@ -10728,6 +12888,9 @@ class MainActivity : AppCompatActivity() {
             "No training history yet",
             "Aucun historique pour le moment",
             "ยังไม่มีประวัติการฝึก",
+            "Aún no hay historial de entrenamiento",
+            "Noch keine Trainingshistorie",
+            "아직 훈련 기록이 없습니다.",
         )
 
     private fun updateEmptyStateCardText(
@@ -10766,11 +12929,19 @@ class MainActivity : AppCompatActivity() {
         updateDashboardViews(currentRemainingMillis())
         startButton.text = tr("start")
         stopButton.text = tr("stop")
-        pageTrainingButton.text = tr("page_training_center")
-        pageAchievementsButton.text = tr("page_training_achievements")
-        pageLeaderboardButton.text = tr("page_leaderboard")
-        pageProfileButton.text = tr("page_profile")
-        reportTitleView.text = localText("回合训练战报", "Round Training Report", "Rapport par round", "รายงานรายรอบ")
+        pageTrainingButton.text = homeNavigationLabel(HomePage.TrainingCenter)
+        pageAchievementsButton.text = homeNavigationLabel(HomePage.TrainingAchievements)
+        pageLeaderboardButton.text = homeNavigationLabel(HomePage.Leaderboard)
+        pageProfileButton.text = homeNavigationLabel(HomePage.Profile)
+        reportTitleView.text = localText(
+            "回合训练战报",
+            "Round Training Report",
+            "Rapport par round",
+            "รายงานรายรอบ",
+            "Informe de entrenamiento por rondas",
+            "Runden-Trainingsbericht",
+            "라운드 훈련 보고서",
+        )
         profileTitleView.text = tr("profile_title")
         profileSubtitleView.text = profilePageSubtitle()
         profileSubtitleView.visibility = View.VISIBLE
@@ -10800,13 +12971,8 @@ class MainActivity : AppCompatActivity() {
         leaderboardAvgForceButton.text = leaderboardBoardLabel(LeaderboardBoard.AvgForce)
         leaderboardCaloriesButton.text = leaderboardBoardLabel(LeaderboardBoard.Calories)
         leaderboardFatButton.text = leaderboardBoardLabel(LeaderboardBoard.FatBurned)
-        when (leaderboardBoard) {
-            LeaderboardBoard.TrainingDuration -> leaderboardDurationButton.isChecked = true
-            LeaderboardBoard.TotalHits -> leaderboardTotalHitsButton.isChecked = true
-            LeaderboardBoard.PeakForce -> leaderboardPeakForceButton.isChecked = true
-            LeaderboardBoard.AvgForce -> leaderboardAvgForceButton.isChecked = true
-            LeaderboardBoard.Calories -> leaderboardCaloriesButton.isChecked = true
-            LeaderboardBoard.FatBurned -> leaderboardFatButton.isChecked = true
+        leaderboardFilterButtons().forEach { (button, board) ->
+            button.isChecked = board == leaderboardBoard
         }
         editProfileButton.text = tr("profile_edit")
         refreshCloudButton.text = tr("cloud_refresh")
@@ -10818,9 +12984,6 @@ class MainActivity : AppCompatActivity() {
         settingsButton.contentDescription = tr("settings")
         quietIconView.contentDescription = tr("keep_quiet")
         refreshActivationCardState()
-        if (::serialInput.isInitialized && ::codeInput.isInitialized) {
-            updateActivationInputState()
-        }
         refreshHomePageVisibility()
         if (latestReport == null) {
             renderEmptyReport()
@@ -10895,6 +13058,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "分享战报"
             AppLanguage.English -> "Share Report"
+            AppLanguage.Spanish -> "Compartir informe"
+            AppLanguage.German -> "Bericht teilen"
+            AppLanguage.Korean -> "보고서 공유"
             AppLanguage.French -> "Partager"
             AppLanguage.Thai -> "แชร์"
         }
@@ -10903,6 +13069,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "分享荣誉"
             AppLanguage.English -> "Share Honors"
+            AppLanguage.Spanish -> "Compartir honores"
+            AppLanguage.German -> "Ehrungen teilen"
+            AppLanguage.Korean -> "명예를 공유하세요"
             AppLanguage.French -> "Partager"
             AppLanguage.Thai -> "แชร์"
         }
@@ -10911,6 +13080,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "分享排名"
             AppLanguage.English -> "Share Rank"
+            AppLanguage.Spanish -> "Compartir rango"
+            AppLanguage.German -> "Rang teilen"
+            AppLanguage.Korean -> "순위 공유"
             AppLanguage.French -> "Partager"
             AppLanguage.Thai -> "แชร์"
         }
@@ -11128,7 +13300,15 @@ class MainActivity : AppCompatActivity() {
         val root = posterRoot(accentColor)
         root.addView(
             TextView(this).apply {
-                text = localText("训练战报", "TRAINING REPORT", "RAPPORT", "รายงานการฝึก")
+                text = localText(
+                    "训练战报",
+                    "TRAINING REPORT",
+                    "RAPPORT",
+                    "รายงานการฝึก",
+                    "TRAINING INFORME",
+                    "TRAINING-BERICHT",
+                    "TRAINING 보고서",
+                )
                 setTextColor(Color.WHITE)
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
@@ -11158,13 +13338,29 @@ class MainActivity : AppCompatActivity() {
                             )
                     }
                 leftColumn.addView(
-                    bodyText(localText("本次训练成绩", "SESSION RESULT", "RÉSULTAT", "ผลการฝึก")).apply {
+                    bodyText(localText(
+                        "本次训练成绩",
+                        "SESSION RESULT",
+                        "RÉSULTAT",
+                        "ผลการฝึก",
+                        "RESULTADO DE LA SESIÓN",
+                        "SITZUNGSERGEBNIS",
+                        "세션 결과",
+                    )).apply {
                         setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     },
                 )
                 leftColumn.addView(
-                    titleText(localText("训练战报", "Training Report", "Rapport entraînement", "รายงานการฝึก"), 30f).apply {
+                    titleText(localText(
+                        "训练战报",
+                        "Training Report",
+                        "Rapport entraînement",
+                        "รายงานการฝึก",
+                        "Informe de formación",
+                        "Trainingsbericht",
+                        "훈련 보고서",
+                    ), 30f).apply {
                         gravity = Gravity.START
                         setTextColor(Color.parseColor("#17343B"))
                         setPadding(0, dp(10), 0, 0)
@@ -11207,7 +13403,15 @@ class MainActivity : AppCompatActivity() {
                                                 ViewGroup.LayoutParams.MATCH_PARENT,
                                         )
                                         addView(
-                                            bodyText(localText("拳数", "PUNCHES", "COUPS", "หมัด")).apply {
+                                            bodyText(localText(
+                                                "拳数",
+                                                "PUNCHES",
+                                                "COUPS",
+                                                "หมัด",
+                                                "GOLPES",
+                                                "SCHLÄGE",
+                                                "펀치",
+                                            )).apply {
                                                 gravity = Gravity.CENTER
                                                 setTextColor(Color.parseColor("#EFFFFA"))
                                                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
@@ -11256,7 +13460,15 @@ class MainActivity : AppCompatActivity() {
                 )
                 statusRow.addView(
                     badgeText(
-                        text = localText("最高评分 ${forceDisplay(report.peakForceN)}", "Peak ${forceDisplay(report.peakForceN)}", "Max ${forceDisplay(report.peakForceN)}", "สูงสุด ${forceDisplay(report.peakForceN)}"),
+                        text = localText(
+                            "最高评分 ${forceDisplay(report.peakForceN)}",
+                            "Peak ${forceDisplay(report.peakForceN)}",
+                            "Max ${forceDisplay(report.peakForceN)}",
+                            "สูงสุด ${forceDisplay(report.peakForceN)}",
+                            "Pico ${forceDisplay(report.peakForceN)}",
+                            "Spitze ${forceDisplay(report.peakForceN)}",
+                            "피크 ${forceDisplay(report.peakForceN)}",
+                        ),
                         textColor = "#FFFFFF",
                         fillColor = "#FF8A32",
                     ).apply {
@@ -11284,7 +13496,15 @@ class MainActivity : AppCompatActivity() {
             }
         metricsRow1.addView(
             posterMetricCard(
-                localText("累计锻炼时间", "Total duration", "Durée totale", "เวลารวม"),
+                localText(
+                    "累计锻炼时间",
+                    "Total duration",
+                    "Durée totale",
+                    "เวลารวม",
+                    "Duración total",
+                    "Gesamtdauer",
+                    "총 기간",
+                ),
                 formatTrainingDuration(report.durationSeconds),
                 "#16C8B5",
             ).apply {
@@ -11293,7 +13513,15 @@ class MainActivity : AppCompatActivity() {
             },
         )
         metricsRow1.addView(
-            posterMetricCard(localText("累计击拳数", "Total punches", "Coups cumulés", "หมัดรวม"), "${report.totalHits} ${tr("hits")}", "#16C8B5").apply {
+            posterMetricCard(localText(
+                "累计击拳数",
+                "Total punches",
+                "Coups cumulés",
+                "หมัดรวม",
+                "Golpes totales",
+                "Totale Schläge",
+                "총 펀치",
+            ), "${report.totalHits} ${tr("hits")}", "#16C8B5").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             },
@@ -11309,13 +13537,29 @@ class MainActivity : AppCompatActivity() {
                     ).apply { topMargin = dp(10) }
             }
         metricsRow2.addView(
-            posterMetricCard(localText("最高评分", "Peak score", "Score max", "คะแนนสูงสุด"), forceDisplay(report.peakForceN), "#FF8A32").apply {
+            posterMetricCard(localText(
+                "最高评分",
+                "Peak score",
+                "Score max",
+                "คะแนนสูงสุด",
+                "Puntuación máxima",
+                "Spitzenpunktzahl",
+                "최고점수",
+            ), forceDisplay(report.peakForceN), "#FF8A32").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(10) }
             },
         )
         metricsRow2.addView(
-            posterMetricCard(localText("平均评分", "Average score", "Score moy.", "คะแนนเฉลี่ย"), forceDisplay(report.avgForceN), "#9BE5C4").apply {
+            posterMetricCard(localText(
+                "平均评分",
+                "Average score",
+                "Score moy.",
+                "คะแนนเฉลี่ย",
+                "Puntuación media",
+                "Durchschnittliche Punktzahl",
+                "평균 점수",
+            ), forceDisplay(report.avgForceN), "#9BE5C4").apply {
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             },
@@ -11346,7 +13590,15 @@ class MainActivity : AppCompatActivity() {
         root.addView(
             posterIdentityCard(
                 nickname = cloudProfile?.nickname.orEmpty().ifBlank { "Fighter" },
-                subline = localText("成果已同步到六项榜单", "Synced to six leaderboard metrics", "Synchronisé avec 6 classements", "ซิงก์กับอันดับ 6 รายการ"),
+                subline = localText(
+                    "成果已同步到六项榜单",
+                    "Synced to six leaderboard metrics",
+                    "Synchronisé avec 6 classements",
+                    "ซิงก์กับอันดับ 6 รายการ",
+                    "Sincronizado con seis métricas de la tabla de clasificación",
+                    "Synchronisiert mit sechs Bestenlisten-Metriken",
+                    "6개의 리더보드 지표와 동기화됨",
+                ),
                 accentColor = "#16C8B5",
             ).apply {
                 layoutParams =
@@ -11370,7 +13622,15 @@ class MainActivity : AppCompatActivity() {
         val root = posterRoot(accentColor, "#BDEFE6")
         root.addView(
             TextView(this).apply {
-                text = localText("新徽章解锁", "NEW HONOR", "NOUVEL HONNEUR", "เกียรติยศใหม่")
+                text = localText(
+                    "新徽章解锁",
+                    "NEW HONOR",
+                    "NOUVEL HONNEUR",
+                    "เกียรติยศใหม่",
+                    "NUEVO HONOR",
+                    "NEUE EHRE",
+                    "새로운 명예",
+                )
                 setTextColor(Color.WHITE)
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
@@ -11448,7 +13708,15 @@ class MainActivity : AppCompatActivity() {
                         addView(ribbonRow)
                         addView(
                             badgeText(
-                                text = localText("荣誉馆珍藏", "HONOR VAULT", "GALERIE D'HONNEUR", "หอเกียรติยศ"),
+                                text = localText(
+                                    "荣誉馆珍藏",
+                                    "HONOR VAULT",
+                                    "GALERIE D'HONNEUR",
+                                    "หอเกียรติยศ",
+                                    "BÓVEDA DE HONOR",
+                                    "Ehrengewölbe",
+                                    "명예 금고",
+                                ),
                                 textColor = "#096D65",
                                 fillColor = "#DFFFF7",
                             ).apply {
@@ -11466,14 +13734,30 @@ class MainActivity : AppCompatActivity() {
                     },
                 )
                 addView(
-                    bodyText(localText("当前段位：${currentTierShareLabel()}", "Current tier: ${currentTierShareLabel()}", "Rang actuel : ${currentTierShareLabel()}", "ระดับปัจจุบัน: ${currentTierShareLabel()}")).apply {
+                    bodyText(localText(
+                        "当前段位：${currentTierShareLabel()}",
+                        "Current tier: ${currentTierShareLabel()}",
+                        "Rang actuel : ${currentTierShareLabel()}",
+                        "ระดับปัจจุบัน: ${currentTierShareLabel()}",
+                        "Nivel actual: ${currentTierShareLabel()}",
+                        "Aktuelle Stufe: ${currentTierShareLabel()}",
+                        "현재 계층: ${currentTierShareLabel()}",
+                    )).apply {
                         gravity = Gravity.CENTER
                         setTextColor(Color.parseColor("#557A7D"))
                         setPadding(0, dp(10), 0, 0)
                     },
                 )
                 addView(
-                    bodyText(localText("已解锁徽章：$unlockedCount / ${cloudAchievements.size}", "Unlocked badges: $unlockedCount / ${cloudAchievements.size}", "Badges débloqués : $unlockedCount / ${cloudAchievements.size}", "เหรียญที่ปลดล็อก: $unlockedCount / ${cloudAchievements.size}")).apply {
+                    bodyText(localText(
+                        "已解锁徽章：$unlockedCount / ${cloudAchievements.size}",
+                        "Unlocked badges: $unlockedCount / ${cloudAchievements.size}",
+                        "Badges débloqués : $unlockedCount / ${cloudAchievements.size}",
+                        "เหรียญที่ปลดล็อก: $unlockedCount / ${cloudAchievements.size}",
+                        "Insignias desbloqueadas: $unlockedCount / ${cloudAchievements.size}",
+                        "Freigeschaltete Abzeichen: $unlockedCount / ${cloudAchievements.size}",
+                        "잠금 해제된 배지: $unlockedCount / ${cloudAchievements.size}",
+                    )).apply {
                         gravity = Gravity.CENTER
                         setTextColor(Color.parseColor("#096D65"))
                         setPadding(0, dp(8), 0, 0)
@@ -11490,7 +13774,15 @@ class MainActivity : AppCompatActivity() {
                                     ViewGroup.LayoutParams.WRAP_CONTENT,
                                 ).apply { topMargin = dp(16) }
                             addView(
-                                bodyText(localText("下一枚目标", "NEXT TARGET", "PROCHAIN OBJECTIF", "เป้าหมายถัดไป")).apply {
+                                bodyText(localText(
+                                    "下一枚目标",
+                                    "NEXT TARGET",
+                                    "PROCHAIN OBJECTIF",
+                                    "เป้าหมายถัดไป",
+                                    "PRÓXIMO OBJETIVO",
+                                    "NÄCHSTES ZIEL",
+                                    "다음 목표",
+                                )).apply {
                                     setTextColor(Color.parseColor("#557A7D"))
                                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                                 },
@@ -11522,7 +13814,15 @@ class MainActivity : AppCompatActivity() {
         root.addView(
             posterIdentityCard(
                 nickname = cloudProfile?.nickname.orEmpty().ifBlank { "Fighter" },
-                subline = localText("每一次训练都在积累成长", "Every session adds to your growth", "Chaque séance nourrit votre progression", "ทุกการฝึกช่วยเพิ่มพัฒนาการ"),
+                subline = localText(
+                    "每一次训练都在积累成长",
+                    "Every session adds to your growth",
+                    "Chaque séance nourrit votre progression",
+                    "ทุกการฝึกช่วยเพิ่มพัฒนาการ",
+                    "Cada sesión contribuye a tu crecimiento.",
+                    "Jede Sitzung trägt zu Ihrem Wachstum bei",
+                    "모든 세션이 귀하의 성장을 촉진합니다",
+                ),
                 accentColor = accentColor,
             ).apply {
                 layoutParams =
@@ -11568,7 +13868,15 @@ class MainActivity : AppCompatActivity() {
                             ).apply { rightMargin = dp(14) }
                     }
                 rankBlock.addView(
-                    bodyText(localText("当前排名", "CURRENT RANK", "RANG ACTUEL", "อันดับปัจจุบัน")).apply {
+                    bodyText(localText(
+                        "当前排名",
+                        "CURRENT RANK",
+                        "RANG ACTUEL",
+                        "อันดับปัจจุบัน",
+                        "RANGO ACTUAL",
+                        "AKTUELLER RANG",
+                        "현재 순위",
+                    )).apply {
                         setTextColor(Color.parseColor("#557A7D"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     },
@@ -11581,7 +13889,15 @@ class MainActivity : AppCompatActivity() {
                     },
                 )
                 rankBlock.addView(
-                    bodyText(me?.let { leaderboardPrimaryValueText(it) } ?: localText("准备冲榜", "Ready to climb", "Prêt à monter", "พร้อมไต่อันดับ")).apply {
+                    bodyText(me?.let { leaderboardPrimaryValueText(it) } ?: localText(
+                        "准备冲榜",
+                        "Ready to climb",
+                        "Prêt à monter",
+                        "พร้อมไต่อันดับ",
+                        "Listo para escalar",
+                        "Bereit zum Klettern",
+                        "등반 준비",
+                    )).apply {
                         setTextColor(Color.parseColor("#096D65"))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                         setPadding(0, dp(8), 0, 0)
@@ -11733,7 +14049,15 @@ class MainActivity : AppCompatActivity() {
         root.addView(
             posterIdentityCard(
                 nickname = cloudProfile?.nickname.orEmpty().ifBlank { "Fighter" },
-                subline = localText("来挑战我的成绩", "Come challenge my score", "Venez défier mon score", "มาท้าคะแนนของฉัน"),
+                subline = localText(
+                    "来挑战我的成绩",
+                    "Come challenge my score",
+                    "Venez défier mon score",
+                    "มาท้าคะแนนของฉัน",
+                    "Ven a desafiar mi puntaje",
+                    "Kommen Sie und fordern Sie meine Punktzahl heraus",
+                    "내 점수에 도전해 보세요",
+                ),
                 accentColor = accentColor,
             ).apply {
                 layoutParams =
@@ -11755,6 +14079,9 @@ class MainActivity : AppCompatActivity() {
                     "I just finished a HitRise ${roundReportBadgeText(report)} report: total ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} punches, peak ${forceDisplay(report.peakForceN)}, avg ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, and ${formatFatGrams(report.fatBurnedGrams)} equivalent fat burn.",
                     "Rapport HitRise ${roundReportBadgeText(report)} terminé : total ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} coups, max ${forceDisplay(report.peakForceN)}, moy. ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, ${formatFatGrams(report.fatBurnedGrams)} graisse équivalente.",
                     "รายงาน HitRise ${roundReportBadgeText(report)}: รวม ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} หมัด, สูงสุด ${forceDisplay(report.peakForceN)}, เฉลี่ย ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, ไขมันเทียบเท่า ${formatFatGrams(report.fatBurnedGrams)}",
+                    "Acabo de completar un informe ${roundReportBadgeText(report)} de HitRise: ${formatTrainingDuration(report.durationSeconds)} en total, ${report.totalHits} golpes, pico ${forceDisplay(report.peakForceN)}, media ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)} y ${formatFatGrams(report.fatBurnedGrams)} de grasa equivalente.",
+                    "Ich habe gerade einen HitRise-Bericht ${roundReportBadgeText(report)} abgeschlossen: insgesamt ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits} Schläge, Spitze ${forceDisplay(report.peakForceN)}, Durchschnitt ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)} und ${formatFatGrams(report.fatBurnedGrams)} äquivalente Fettverbrennung.",
+                    "HitRise ${roundReportBadgeText(report)} 보고서를 완료했습니다. 총 ${formatTrainingDuration(report.durationSeconds)}, ${report.totalHits}회 타격, 최고 ${forceDisplay(report.peakForceN)}, 평균 ${forceDisplay(report.avgForceN)}, ${formatCalories(report.caloriesBurned)}, 환산 지방 소모량 ${formatFatGrams(report.fatBurnedGrams)}입니다.",
                 )
             } else {
                 localText(
@@ -11762,6 +14089,9 @@ class MainActivity : AppCompatActivity() {
                     "My HitRise training is on. A training report will be generated after the session.",
                     "Mon entraînement HitRise a commencé. Un rapport sera généré après la séance.",
                     "เริ่มฝึก HitRise แล้ว รายงานจะถูกสร้างหลังจบการฝึก",
+                    "Mi entrenamiento HitRise está en marcha. Al finalizar se generará un informe.",
+                    "Mein HitRise-Training läuft. Nach der Einheit wird ein Trainingsbericht erstellt.",
+                    "HitRise 훈련이 진행 중입니다. 세션이 끝나면 훈련 보고서가 생성됩니다.",
                 )
             }
         if (report == null) {
@@ -11791,6 +14121,9 @@ class MainActivity : AppCompatActivity() {
                     "I unlocked ${recent.size} new training badges: $names. Current tier: ${currentTierShareLabel()}.",
                     "J'ai débloqué ${recent.size} nouveau(x) badge(s) : $names. Rang actuel : ${currentTierShareLabel()}.",
                     "ฉันปลดล็อกเหรียญใหม่ ${recent.size} เหรียญ: $names ระดับปัจจุบัน: ${currentTierShareLabel()}",
+                    "Desbloqueé ${recent.size} nuevas insignias de entrenamiento: $names. Nivel actual: ${currentTierShareLabel()}.",
+                    "Ich habe die neuen Trainingsabzeichen ${recent.size} freigeschaltet: $names. Aktuelle Stufe: ${currentTierShareLabel()}.",
+                    "${recent.size}개의 새로운 훈련 배지 ${names}를 잠금 해제했습니다. 현재 계층: ${currentTierShareLabel()}.",
                 )
             } else {
                 localText(
@@ -11798,6 +14131,9 @@ class MainActivity : AppCompatActivity() {
                     "I am progressing through HitRise training and my next badge is on the way.",
                     "Je progresse avec HitRise et mon prochain badge arrive bientôt.",
                     "ฉันกำลังก้าวหน้าในการฝึก HitRise เหรียญถัดไปกำลังมา",
+                    "Sigo progresando con HitRise y mi próxima insignia está cada vez más cerca.",
+                    "Ich mache mit HitRise Fortschritte und das nächste Abzeichen ist schon in Reichweite.",
+                    "HitRise 훈련을 통해 성장하고 있으며 다음 배지도 곧 획득할 수 있습니다.",
                 )
             }
         runCatching {
@@ -11821,6 +14157,9 @@ class MainActivity : AppCompatActivity() {
                     "I am ranked ${me.rank} on the ${leaderboardBoardLabel(leaderboardBoard)} with ${leaderboardPrimaryValueText(me)}. Come challenge my score.",
                     "Je suis ${me.rank}e du classement ${leaderboardBoardLabel(leaderboardBoard)} avec ${leaderboardPrimaryValueText(me)}. Venez me défier.",
                     "ฉันอยู่อันดับ ${me.rank} ใน${leaderboardBoardLabel(leaderboardBoard)} ด้วยคะแนน ${leaderboardPrimaryValueText(me)} มาท้าฉันได้เลย",
+                    "Estoy clasificado como ${me.rank} en ${leaderboardBoardLabel(leaderboardBoard)} con ${leaderboardPrimaryValueText(me)}. Ven a desafiar mi puntuación.",
+                    "Ich habe den Rang ${me.rank} auf dem Platz ${leaderboardBoardLabel(leaderboardBoard)} mit ${leaderboardPrimaryValueText(me)}. Kommen Sie und fordern Sie meine Punktzahl heraus.",
+                    "저는 ${leaderboardPrimaryValueText(me)}로 ${leaderboardBoardLabel(leaderboardBoard)}에서 ${me.rank} 등급을 받았습니다. 내 점수에 도전해 보세요.",
                 )
             } else {
                 localText(
@@ -11828,6 +14167,9 @@ class MainActivity : AppCompatActivity() {
                     "I am climbing the ${leaderboardBoardLabel(leaderboardBoard)}. Come challenge me.",
                     "Je vise le classement ${leaderboardBoardLabel(leaderboardBoard)}. Venez me défier.",
                     "ฉันกำลังไต่อันดับ${leaderboardBoardLabel(leaderboardBoard)} มาท้ากันได้",
+                    "Estoy subiendo al ${leaderboardBoardLabel(leaderboardBoard)}. Ven a desafiarme.",
+                    "Ich besteige den ${leaderboardBoardLabel(leaderboardBoard)}. Komm und fordere mich heraus.",
+                    "나는 ${leaderboardBoardLabel(leaderboardBoard)}를 등반하고 있습니다. 나에게 도전해 보세요.",
                 )
             }
         runCatching {
@@ -11845,6 +14187,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "${value} 秒后开始..."
             AppLanguage.English -> "Starting in $value..."
+            AppLanguage.Spanish -> "A partir de $value..."
+            AppLanguage.German -> "Ab $value..."
+            AppLanguage.Korean -> "${value}에서 시작 중..."
             AppLanguage.French -> "Départ dans $value..."
             AppLanguage.Thai -> "เริ่มใน $value..."
         }
@@ -11853,6 +14198,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "开始"
             AppLanguage.English -> "Go"
+            AppLanguage.Spanish -> "ir"
+            AppLanguage.German -> "Geh"
+            AppLanguage.Korean -> "이동"
             AppLanguage.French -> "Go"
             AppLanguage.Thai -> "ไป"
         }
@@ -11861,6 +14209,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "开始"
             AppLanguage.English -> "GO"
+            AppLanguage.Spanish -> "IR"
+            AppLanguage.German -> "GEHEN"
+            AppLanguage.Korean -> "GO"
             AppLanguage.French -> "GO"
             AppLanguage.Thai -> "ไป"
         }
@@ -11875,12 +14226,32 @@ class MainActivity : AppCompatActivity() {
                     TrainingMode.Burst15 -> "15 秒爆发"
                 }
 
-            AppLanguage.English ->
-                when (mode) {
+            AppLanguage.English -> when (mode) {
                     TrainingMode.Seconds30 -> "30 sec"
                     TrainingMode.Seconds60 -> "60 sec"
                     TrainingMode.Burst10 -> "10 sec burst"
                     TrainingMode.Burst15 -> "15 sec burst"
+                }
+
+            AppLanguage.Spanish -> when (mode) {
+                    TrainingMode.Seconds30 -> "30 s"
+                    TrainingMode.Seconds60 -> "60 s"
+                    TrainingMode.Burst10 -> "Explosión 10 s"
+                    TrainingMode.Burst15 -> "Explosión 15 s"
+                }
+
+            AppLanguage.German -> when (mode) {
+                    TrainingMode.Seconds30 -> "30 Sek."
+                    TrainingMode.Seconds60 -> "60 Sek."
+                    TrainingMode.Burst10 -> "10 Sek. Sprint"
+                    TrainingMode.Burst15 -> "15 Sek. Sprint"
+                }
+
+            AppLanguage.Korean -> when (mode) {
+                    TrainingMode.Seconds30 -> "30초"
+                    TrainingMode.Seconds60 -> "60초"
+                    TrainingMode.Burst10 -> "10초 폭발"
+                    TrainingMode.Burst15 -> "15초 폭발"
                 }
 
             AppLanguage.French ->
@@ -11905,6 +14276,9 @@ class MainActivity : AppCompatActivity() {
         return when (selectedLanguage) {
             AppLanguage.Chinese -> String.format(Locale.US, "剩余 %.1f 秒", seconds)
             AppLanguage.English -> String.format(Locale.US, "%.1fs left", seconds)
+            AppLanguage.Spanish -> String.format(Locale.US, "Quedan %.1f s", seconds)
+            AppLanguage.German -> String.format(Locale.US, "Noch %.1f Sek.", seconds)
+            AppLanguage.Korean -> String.format(Locale.US, "%.1f초 남음", seconds)
             AppLanguage.French -> String.format(Locale.US, "%.1fs restantes", seconds)
             AppLanguage.Thai -> String.format(Locale.US, "เหลือ %.1f วินาที", seconds)
         }
@@ -11933,7 +14307,7 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(KEY_RHYTHM_MODE_ENABLED_ONCE, true)
                 .apply()
         }
-        selectedBeatBpm = prefs.getInt(KEY_BEAT_BPM, 80).coerceIn(40, 140)
+        selectedBeatBpm = prefs.getInt(KEY_BEAT_BPM, 100).coerceIn(MIN_TRAINING_BPM, MAX_TRAINING_BPM)
         selectedSoundPack =
             runCatching {
                 SoundPack.valueOf(prefs.getString(KEY_SOUND_PACK, SoundPack.Gym.name).orEmpty())
@@ -11965,7 +14339,7 @@ class MainActivity : AppCompatActivity() {
                     runCatching {
                         TrainingRhythmMode.valueOf(prefs.getString(KEY_TRAINING_SETUP_RHYTHM_MODE, selectedRhythmMode.name).orEmpty())
                     }.getOrDefault(selectedRhythmMode),
-                bpm = prefs.getInt(KEY_TRAINING_SETUP_BPM, 80).coerceIn(40, 140),
+                bpm = prefs.getInt(KEY_TRAINING_SETUP_BPM, 100).coerceIn(MIN_TRAINING_BPM, MAX_TRAINING_BPM),
             )
         if (!prefs.getBoolean(KEY_TRAINING_SETUP_BEGINNER_DEFAULT_APPLIED, false)) {
             val hasStoredTrainingSetup =
@@ -12072,12 +14446,17 @@ class MainActivity : AppCompatActivity() {
                     Locale.ENGLISH,
                 )
 
-            AppLanguage.English ->
-                linkedSetOf(
+            AppLanguage.English -> linkedSetOf(
                     Locale.US,
                     Locale.UK,
                     Locale.ENGLISH,
                 )
+
+            AppLanguage.Spanish -> linkedSetOf(Locale("es", "ES"), Locale("es"), Locale.US, Locale.ENGLISH)
+
+            AppLanguage.German -> linkedSetOf(Locale.GERMANY, Locale.GERMAN, Locale.US, Locale.ENGLISH)
+
+            AppLanguage.Korean -> linkedSetOf(Locale.KOREA, Locale.KOREAN, Locale.US, Locale.ENGLISH)
 
             AppLanguage.French ->
                 linkedSetOf(
@@ -12097,10 +14476,43 @@ class MainActivity : AppCompatActivity() {
                 )
         }
 
+    private fun countdownTtsLocales(): LinkedHashSet<Locale> =
+        if (selectedLanguage == AppLanguage.Chinese) {
+            linkedSetOf(
+                Locale.CHINA,
+                Locale.SIMPLIFIED_CHINESE,
+                Locale.CHINESE,
+            )
+        } else {
+            linkedSetOf(
+                Locale.US,
+                Locale.UK,
+                Locale.ENGLISH,
+            )
+        }
+
+    private fun countdownSpokenCueText(text: String): String =
+        if (selectedLanguage == AppLanguage.Chinese) {
+            when (text) {
+                "3" -> "三"
+                "2" -> "二"
+                "1" -> "一"
+                else -> "开始"
+            }
+        } else {
+            when (text) {
+                "3", "2", "1" -> text
+                else -> "Go"
+            }
+        }
+
     private fun selectedSpeechLanguageCode(): String =
         when (selectedLanguage) {
             AppLanguage.Chinese -> Locale.CHINESE.language
             AppLanguage.English -> Locale.ENGLISH.language
+            AppLanguage.Spanish -> "es"
+            AppLanguage.German -> Locale.GERMAN.language
+            AppLanguage.Korean -> Locale.KOREAN.language
             AppLanguage.French -> Locale.FRENCH.language
             AppLanguage.Thai -> "th"
         }
@@ -12112,20 +14524,19 @@ class MainActivity : AppCompatActivity() {
             currentLanguage.equals(Locale.ENGLISH.language, ignoreCase = true)
     }
 
-    private fun updateTtsLanguage() {
+    private fun updateTtsLanguage(localeCandidates: LinkedHashSet<Locale> = preferredTtsLocales()) {
         if (!ttsInitialized) {
             return
         }
         val speaker = tts ?: return
-        val preferredLocale = preferredTtsLocales().first()
+        val preferredLocale = localeCandidates.first()
         val cached = ttsLocaleInUse
         if (cached != null && cached.language == preferredLocale.language) {
             // Already serving the right language family — skip the slow setLanguage round-trip.
             return
         }
-        val candidates = preferredTtsLocales()
         var appliedLocale: Locale? = null
-        candidates.forEach { locale ->
+        localeCandidates.forEach { locale ->
             if (appliedLocale != null) {
                 return@forEach
             }
@@ -12140,13 +14551,18 @@ class MainActivity : AppCompatActivity() {
         ttsReady = appliedLocale != null
     }
 
-    private fun speakCue(text: String, onDone: (() -> Unit)? = null): Boolean {
-        updateTtsLanguage()
+    private fun speakCue(
+        text: String,
+        preferredLocales: LinkedHashSet<Locale>? = null,
+        spokenTextOverride: String? = null,
+        onDone: (() -> Unit)? = null,
+    ): Boolean {
+        updateTtsLanguage(preferredLocales ?: preferredTtsLocales())
         if (!ttsReady) {
             onDone?.invoke()
             return false
         }
-        val cueText = spokenCueText(text)
+        val cueText = spokenTextOverride ?: spokenCueText(text)
         if (cueText.isBlank()) {
             onDone?.invoke()
             return false
@@ -12279,6 +14695,9 @@ class MainActivity : AppCompatActivity() {
             AppLanguage.Chinese -> tr("language_chinese")
             AppLanguage.English -> tr("language_english")
             AppLanguage.French -> tr("language_french")
+            AppLanguage.Spanish -> tr("language_spanish")
+            AppLanguage.German -> tr("language_german")
+            AppLanguage.Korean -> tr("language_korean")
             AppLanguage.Thai -> tr("language_thai")
         }
 
@@ -12296,6 +14715,9 @@ class MainActivity : AppCompatActivity() {
         when (Locale.getDefault().language.lowercase(Locale.US)) {
             "zh" -> AppLanguage.Chinese
             "fr" -> AppLanguage.French
+            "es" -> AppLanguage.Spanish
+            "de" -> AppLanguage.German
+            "ko" -> AppLanguage.Korean
             "th" -> AppLanguage.Thai
             else -> AppLanguage.English
         }
@@ -12304,6 +14726,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "账号状态、语言与训练概览"
             AppLanguage.English -> "Account status, language, and training overview"
+            AppLanguage.Spanish -> "Estado de la cuenta, idioma y descripción general de la capacitación"
+            AppLanguage.German -> "Kontostatus, Sprache und Schulungsübersicht"
+            AppLanguage.Korean -> "계정 상태, 언어 및 교육 개요"
             AppLanguage.French -> "Statut du compte, langue et aperçu d'entraînement"
             AppLanguage.Thai -> "สถานะบัญชี ภาษา และภาพรวมการฝึก"
         }
@@ -12312,6 +14737,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "最近训练结果会自动同步到云端"
             AppLanguage.English -> "Recent sessions are synced to the cloud automatically"
+            AppLanguage.Spanish -> "Las sesiones recientes se sincronizan automáticamente con la nube"
+            AppLanguage.German -> "Letzte Sitzungen werden automatisch mit der Cloud synchronisiert"
+            AppLanguage.Korean -> "최근 세션이 클라우드에 자동으로 동기화됩니다."
             AppLanguage.French -> "Les dernières séances sont synchronisées automatiquement"
             AppLanguage.Thai -> "ผลการฝึกล่าสุดจะซิงก์ขึ้นคลาวด์อัตโนมัติ"
         }
@@ -12320,6 +14748,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "按锻炼时间、拳数、相对力量评分、卡路里与等效燃脂量排名"
             AppLanguage.English -> "Rank by duration, hits, Relative Power Score, calories, and equivalent fat burn"
+            AppLanguage.Spanish -> "Clasifique por duración, aciertos, puntuación de potencia relativa, calorías y quema de grasa equivalente"
+            AppLanguage.German -> "Ordnen Sie nach Dauer, Treffern, relativem Leistungswert, Kalorien und entsprechender Fettverbrennung"
+            AppLanguage.Korean -> "지속 시간, 히트 수, 상대 파워 스코어, 칼로리 및 이에 상응하는 지방 연소 기준으로 순위를 매깁니다."
             AppLanguage.French -> "Classement par durée, coups, score de puissance relative, calories et graisse équivalente"
             AppLanguage.Thai -> "จัดอันดับตามเวลา หมัด คะแนนพลังสัมพัทธ์ แคลอรี และไขมันเทียบเท่า"
         }
@@ -12328,6 +14759,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "选择图片"
             AppLanguage.English -> "Choose Photo"
+            AppLanguage.Spanish -> "Elige foto"
+            AppLanguage.German -> "Wählen Sie Foto"
+            AppLanguage.Korean -> "사진 선택"
             AppLanguage.French -> "Choisir une photo"
             AppLanguage.Thai -> "เลือกรูปภาพ"
         }
@@ -12336,6 +14770,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "移除图片"
             AppLanguage.English -> "Remove Photo"
+            AppLanguage.Spanish -> "Quitar foto"
+            AppLanguage.German -> "Foto entfernen"
+            AppLanguage.Korean -> "사진 삭제"
             AppLanguage.French -> "Supprimer la photo"
             AppLanguage.Thai -> "ลบรูปภาพ"
         }
@@ -12344,6 +14781,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "可从手机相册选择头像图片，未选择时使用颜色头像。"
             AppLanguage.English -> "Choose an avatar photo from this phone, or keep the color avatar."
+            AppLanguage.Spanish -> "Elige una foto de avatar de este teléfono o mantén el avatar en color."
+            AppLanguage.German -> "Wählen Sie ein Avatar-Foto von diesem Telefon aus oder behalten Sie den Farb-Avatar bei."
+            AppLanguage.Korean -> "이 휴대폰에서 아바타 사진을 선택하거나 컬러 아바타를 유지하세요."
             AppLanguage.French -> "Choisissez une photo sur ce téléphone ou gardez l'avatar coloré."
             AppLanguage.Thai -> "เลือกรูปโปรไฟล์จากโทรศัพท์ หรือใช้รูปแบบสีเดิม"
         }
@@ -12352,6 +14792,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "联系我们"
             AppLanguage.English -> "Contact Us"
+            AppLanguage.Spanish -> "Contáctenos"
+            AppLanguage.German -> "Kontaktieren Sie uns"
+            AppLanguage.Korean -> "문의하기"
             AppLanguage.French -> "Nous contacter"
             AppLanguage.Thai -> "ติดต่อเรา"
         }
@@ -12360,6 +14803,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "关于我们"
             AppLanguage.English -> "About Us"
+            AppLanguage.Spanish -> "Sobre nosotros"
+            AppLanguage.German -> "Über uns"
+            AppLanguage.Korean -> "회사 소개"
             AppLanguage.French -> "À propos"
             AppLanguage.Thai -> "เกี่ยวกับเรา"
         }
@@ -12368,6 +14814,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "开发者信息、联系邮箱及平台协议入口"
             AppLanguage.English -> "Developer details, contact email and policy links"
+            AppLanguage.Spanish -> "Detalles del desarrollador, correo electrónico de contacto y enlaces a políticas"
+            AppLanguage.German -> "Entwicklerdetails, Kontakt-E-Mail und Richtlinienlinks"
+            AppLanguage.Korean -> "개발자 세부정보, 연락처 이메일, 정책 링크"
             AppLanguage.French -> "Informations développeur, e-mail et accès aux politiques"
             AppLanguage.Thai -> "ข้อมูลผู้พัฒนา อีเมลติดต่อ และลิงก์นโยบาย"
         }
@@ -12376,6 +14825,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "公司信息"
             AppLanguage.English -> "Company"
+            AppLanguage.Spanish -> "Empresa"
+            AppLanguage.German -> "Unternehmen"
+            AppLanguage.Korean -> "회사"
             AppLanguage.French -> "Entreprise"
             AppLanguage.Thai -> "ข้อมูลบริษัท"
         }
@@ -12384,6 +14836,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "联系方式"
             AppLanguage.English -> "Contact"
+            AppLanguage.Spanish -> "Contacto"
+            AppLanguage.German -> "Kontakt"
+            AppLanguage.Korean -> "연락처"
             AppLanguage.French -> "Contact"
             AppLanguage.Thai -> "ช่องทางติดต่อ"
         }
@@ -12392,6 +14847,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "附加信息"
             AppLanguage.English -> "More Info"
+            AppLanguage.Spanish -> "Más información"
+            AppLanguage.German -> "Weitere Informationen"
+            AppLanguage.Korean -> "추가 정보"
             AppLanguage.French -> "Informations"
             AppLanguage.Thai -> "ข้อมูลเพิ่มเติม"
         }
@@ -12399,7 +14857,11 @@ class MainActivity : AppCompatActivity() {
     private fun developerCompanyName(): String =
         when (selectedLanguage) {
             AppLanguage.Chinese -> DEVELOPER_COMPANY_NAME_ZH
-            AppLanguage.English -> DEVELOPER_COMPANY_NAME_EN
+            AppLanguage.English,
+            AppLanguage.Spanish,
+            AppLanguage.German,
+            AppLanguage.Korean,
+            -> DEVELOPER_COMPANY_NAME_EN
             AppLanguage.French -> DEVELOPER_COMPANY_NAME_FR
             AppLanguage.Thai -> DEVELOPER_COMPANY_NAME_TH
         }
@@ -12408,6 +14870,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "专注于智能拳击产品与运动数据体验"
             AppLanguage.English -> "Focused on HitRise training products and sports data experiences"
+            AppLanguage.Spanish -> "Especializada en productos de entrenamiento HitRise y experiencias de datos deportivos"
+            AppLanguage.German -> "Spezialisiert auf HitRise-Trainingsprodukte und Sportdatenerlebnisse"
+            AppLanguage.Korean -> "HitRise 훈련 제품과 스포츠 데이터 경험에 집중합니다"
             AppLanguage.French -> "Spécialisée dans les produits de balle à capteurs intelligents et l'expérience des données sportives"
             AppLanguage.Thai -> "มุ่งเน้นผลิตภัณฑ์ลูกบอลเซ็นเซอร์อัจฉริยะและประสบการณ์ข้อมูลการกีฬา"
         }
@@ -12416,6 +14881,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "邮箱"
             AppLanguage.English -> "Email"
+            AppLanguage.Spanish -> "Correo electrónico"
+            AppLanguage.German -> "E-Mail"
+            AppLanguage.Korean -> "이메일"
             AppLanguage.French -> "E-mail"
             AppLanguage.Thai -> "อีเมล"
         }
@@ -12424,6 +14892,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "发送邮件"
             AppLanguage.English -> "Send Email"
+            AppLanguage.Spanish -> "Enviar correo electrónico"
+            AppLanguage.German -> "E-Mail senden"
+            AppLanguage.Korean -> "이메일 보내기"
             AppLanguage.French -> "Envoyer un e-mail"
             AppLanguage.Thai -> "ส่งอีเมล"
         }
@@ -12432,6 +14903,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "当前 APP 版本号"
             AppLanguage.English -> "App Version"
+            AppLanguage.Spanish -> "Versión de la aplicación"
+            AppLanguage.German -> "App-Version"
+            AppLanguage.Korean -> "앱 버전"
             AppLanguage.French -> "Version de l'application"
             AppLanguage.Thai -> "เวอร์ชันแอป"
         }
@@ -12440,6 +14914,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "隐私政策"
             AppLanguage.English -> "Privacy Policy"
+            AppLanguage.Spanish -> "Política de privacidad"
+            AppLanguage.German -> "Datenschutzrichtlinie"
+            AppLanguage.Korean -> "개인 정보 보호 정책"
             AppLanguage.French -> "Politique de confidentialité"
             AppLanguage.Thai -> "นโยบายความเป็นส่วนตัว"
         }
@@ -12448,6 +14925,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "用户协议"
             AppLanguage.English -> "User Agreement"
+            AppLanguage.Spanish -> "Acuerdo de usuario"
+            AppLanguage.German -> "Benutzervereinbarung"
+            AppLanguage.Korean -> "사용자 계약"
             AppLanguage.French -> "Accord utilisateur"
             AppLanguage.Thai -> "ข้อตกลงผู้ใช้"
         }
@@ -12456,6 +14936,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "可查看本应用当前版本对应的隐私政策与用户协议。"
             AppLanguage.English -> "Review the privacy policy and user agreement for the current app version."
+            AppLanguage.Spanish -> "Revise la política de privacidad y el acuerdo de usuario para la versión actual de la aplicación."
+            AppLanguage.German -> "Lesen Sie die Datenschutzrichtlinie und Benutzervereinbarung für die aktuelle App-Version."
+            AppLanguage.Korean -> "현재 앱 버전에 대한 개인정보 보호정책과 사용자 계약을 검토하세요."
             AppLanguage.French -> "Consultez la politique de confidentialité et l'accord utilisateur de cette version."
             AppLanguage.Thai -> "ดูนโยบายความเป็นส่วนตัวและข้อตกลงผู้ใช้ของแอปเวอร์ชันนี้"
         }
@@ -12464,6 +14947,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "privacy_policy_zh.txt"
             AppLanguage.English -> "privacy_policy_en.txt"
+            AppLanguage.Spanish -> "privacy_policy_es.txt"
+            AppLanguage.German -> "privacy_policy_de.txt"
+            AppLanguage.Korean -> "privacy_policy_ko.txt"
             AppLanguage.French -> "privacy_policy_fr.txt"
             AppLanguage.Thai -> "privacy_policy_th.txt"
         }
@@ -12472,6 +14958,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "user_agreement_zh.txt"
             AppLanguage.English -> "user_agreement_en.txt"
+            AppLanguage.Spanish -> "user_agreement_es.txt"
+            AppLanguage.German -> "user_agreement_de.txt"
+            AppLanguage.Korean -> "user_agreement_ko.txt"
             AppLanguage.French -> "user_agreement_fr.txt"
             AppLanguage.Thai -> "user_agreement_th.txt"
         }
@@ -12480,6 +14969,9 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "当前文档暂不可用，请稍后重试。"
             AppLanguage.English -> "This document is currently unavailable. Please try again later."
+            AppLanguage.Spanish -> "Este documento no está disponible actualmente. Inténtelo de nuevo más tarde."
+            AppLanguage.German -> "Dieses Dokument ist derzeit nicht verfügbar. Bitte versuchen Sie es später noch einmal."
+            AppLanguage.Korean -> "이 문서는 현재 사용할 수 없습니다. 나중에 다시 시도해 주세요."
             AppLanguage.French -> "Ce document n'est pas disponible pour le moment."
             AppLanguage.Thai -> "เอกสารนี้ยังไม่พร้อมใช้งานในขณะนี้"
         }
@@ -12488,36 +14980,111 @@ class MainActivity : AppCompatActivity() {
         when (selectedLanguage) {
             AppLanguage.Chinese -> "关闭"
             AppLanguage.English -> "Close"
+            AppLanguage.Spanish -> "Cerrar"
+            AppLanguage.German -> "Schließen"
+            AppLanguage.Korean -> "닫기"
             AppLanguage.French -> "Fermer"
             AppLanguage.Thai -> "ปิด"
         }
 
     private fun achievementsTitleText(): String =
-        localText("锻炼成果徽章", "Training Result Badges", "Badges de résultats", "เหรียญผลการฝึก")
+        localText(
+            "锻炼成果徽章",
+            "Training Result Badges",
+            "Badges de résultats",
+            "เหรียญผลการฝึก",
+            "Insignias de resultados",
+            "Trainingsergebnis-Abzeichen",
+            "훈련 성과 배지",
+        )
 
     private fun achievementsSectionHint(): String =
-        localText("按锻炼时间、拳击次数、相对力量评分、卡路里和等效燃脂量记录成果", "Track badges by duration, hits, Relative Power Score, calories, and equivalent fat burn.", "Suivez les badges par durée, coups, score de puissance relative, calories et graisse équivalente.", "ติดตามเหรียญจากเวลา หมัด คะแนนพลังสัมพัทธ์ แคลอรี และไขมันเทียบเท่า")
+        localText(
+            "按锻炼时间、拳击次数、相对力量评分、卡路里和等效燃脂量记录成果",
+            "Track badges by duration, hits, Relative Power Score, calories, and equivalent fat burn.",
+            "Suivez les badges par durée, coups, score de puissance relative, calories et graisse équivalente.",
+            "ติดตามเหรียญจากเวลา หมัด คะแนนพลังสัมพัทธ์ แคลอรี และไขมันเทียบเท่า",
+            "Registra insignias por duración, golpes, Puntuación de Potencia Relativa, calorías y grasa equivalente.",
+            "Abzeichen nach Dauer, Schlägen, Relative Power Score, Kalorien und äquivalenter Fettverbrennung verfolgen.",
+            "시간, 타격 수, 상대 파워 점수, 칼로리 및 환산 지방 소모량별 배지를 확인하세요.",
+        )
 
     private fun profilePageSubtitle(): String =
-        localText("查看你的段位、训练统计与最近获得的徽章", "View your tier, key stats and recently unlocked badges.", "Consultez votre rang, vos statistiques et vos badges récents.", "ดูระดับ สถิติหลัก และเหรียญล่าสุดของคุณ")
+        localText(
+            "查看你的段位、训练统计与最近获得的徽章",
+            "View your tier, key stats and recently unlocked badges.",
+            "Consultez votre rang, vos statistiques et vos badges récents.",
+            "ดูระดับ สถิติหลัก และเหรียญล่าสุดของคุณ",
+            "Consulta tu nivel, estadísticas principales e insignias recientes.",
+            "Stufe, wichtige Statistiken und kürzlich freigeschaltete Abzeichen anzeigen.",
+            "등급, 주요 통계와 최근 획득한 배지를 확인하세요.",
+        )
 
     private fun historySectionSubtitle(): String =
-        localText("最近训练结果会自动同步到云端", "Recent training sessions sync to the cloud automatically.", "Les dernières séances se synchronisent automatiquement dans le cloud.", "ผลการฝึกล่าสุดจะซิงก์ขึ้นคลาวด์อัตโนมัติ")
+        localText(
+            "最近训练结果会自动同步到云端",
+            "Recent training sessions sync to the cloud automatically.",
+            "Les dernières séances se synchronisent automatiquement dans le cloud.",
+            "ผลการฝึกล่าสุดจะซิงก์ขึ้นคลาวด์อัตโนมัติ",
+            "Las sesiones recientes se sincronizan automáticamente con la nube.",
+            "Letzte Trainingseinheiten werden automatisch mit der Cloud synchronisiert.",
+            "최근 훈련 세션은 클라우드에 자동으로 동기화됩니다.",
+        )
 
     private fun achievementsSubtitleText(unlockedCount: Int, totalCount: Int): String =
-        localText("已解锁 $unlockedCount / $totalCount", "Unlocked $unlockedCount / $totalCount", "$unlockedCount / $totalCount débloqués", "ปลดล็อกแล้ว $unlockedCount / $totalCount")
+        localText(
+            "已解锁 $unlockedCount / $totalCount",
+            "Unlocked $unlockedCount / $totalCount",
+            "$unlockedCount / $totalCount débloqués",
+            "ปลดล็อกแล้ว $unlockedCount / $totalCount",
+            "Desbloqueado $unlockedCount / $totalCount",
+            "Entsperrt $unlockedCount / $totalCount",
+            "잠금 해제된 $unlockedCount / $totalCount",
+        )
 
     private fun profileBestScoreLabel(): String =
-        localText("全局最佳", "Overall best", "Meilleur score", "ดีที่สุดรวม")
+        localText(
+            "全局最佳",
+            "Overall best",
+            "Meilleur score",
+            "ดีที่สุดรวม",
+            "Lo mejor en general",
+            "Insgesamt am besten",
+            "전반적으로 최고",
+        )
 
     private fun streakLabel(): String =
-        localText("最长连练", "Best streak", "Meilleure série", "ต่อเนื่องสูงสุด")
+        localText(
+            "最长连练",
+            "Best streak",
+            "Meilleure série",
+            "ต่อเนื่องสูงสุด",
+            "Mejor racha",
+            "Beste Serie",
+            "최고의 연속",
+        )
 
     private fun activeDaysLabel(): String =
-        localText("活跃天数", "Active days", "Jours actifs", "วันที่ใช้งาน")
+        localText(
+            "活跃天数",
+            "Active days",
+            "Jours actifs",
+            "วันที่ใช้งาน",
+            "Días activos",
+            "Aktive Tage",
+            "활동적인 날",
+        )
 
     private fun nextTierLabel(): String =
-        localText("下一段位", "Next tier", "Rang suivant", "ระดับถัดไป")
+        localText(
+            "下一段位",
+            "Next tier",
+            "Rang suivant",
+            "ระดับถัดไป",
+            "Siguiente nivel",
+            "Nächste Stufe",
+            "다음 계층",
+        )
 
     private fun displayAppVersion(): String {
         val parts = BuildConfig.VERSION_NAME.split('.')
@@ -12545,7 +15112,15 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun championLabel(): String =
-        localText("已达最高段位", "Top tier reached", "Rang maximal atteint", "ถึงระดับสูงสุดแล้ว")
+        localText(
+            "已达最高段位",
+            "Top tier reached",
+            "Rang maximal atteint",
+            "ถึงระดับสูงสุดแล้ว",
+            "Nivel superior alcanzado",
+            "Höchste Stufe erreicht",
+            "최상위 등급에 도달함",
+        )
 
     private fun tierLabelForLevel(level: Int): String = tierLabelForKey(tierKeyForLevel(level))
 
@@ -12564,53 +15139,357 @@ class MainActivity : AppCompatActivity() {
 
     private fun tierLabelForKey(key: String?): String =
         when (key) {
-            "beginner" -> localText("拳坛新丁", "New Blood", "Débutant", "มือใหม่")
-            "prospect" -> localText("热血新秀", "Rising Rookie", "Espoir montant", "ดาวรุ่ง")
-            "contender" -> localText("擂台争锋者", "Arena Contender", "Prétendant", "ผู้ท้าชิง")
-            "striker" -> localText("铁拳出击手", "Iron Fist Striker", "Frappeur d'acier", "หมัดเหล็ก")
-            "challenger" -> localText("风暴挑战者", "Storm Challenger", "Challenger tempête", "ผู้ท้าชิงพายุ")
-            "elite" -> localText("荣耀精英", "Glory Elite", "Élite glorieuse", "ยอดฝีมือ")
-            "master" -> localText("宗师", "Grand Master", "Grand maître", "ปรมาจารย์")
-            "legend" -> localText("不朽传奇", "Immortal Legend", "Légende immortelle", "ตำนาน")
-            "champion" -> localText("至尊拳王", "Supreme Champion", "Champion suprême", "แชมป์สูงสุด")
-            else -> localText("拳坛新丁", "New Blood", "Débutant", "มือใหม่")
+            "beginner" -> localText(
+                "拳坛新丁",
+                "New Blood",
+                "Débutant",
+                "มือใหม่",
+                "sangre nueva",
+                "Neues Blut",
+                "새로운 피",
+            )
+            "prospect" -> localText(
+                "热血新秀",
+                "Rising Rookie",
+                "Espoir montant",
+                "ดาวรุ่ง",
+                "Novato en ascenso",
+                "Aufstrebender Neuling",
+                "라이징 루키",
+            )
+            "contender" -> localText(
+                "擂台争锋者",
+                "Arena Contender",
+                "Prétendant",
+                "ผู้ท้าชิง",
+                "Contendiente de arena",
+                "Arena-Anwärter",
+                "아레나 컨텐더",
+            )
+            "striker" -> localText(
+                "铁拳出击手",
+                "Iron Fist Striker",
+                "Frappeur d'acier",
+                "หมัดเหล็ก",
+                "Delantero de puño de hierro",
+                "Eisenfaust-Stürmer",
+                "아이언 피스트 스트라이커",
+            )
+            "challenger" -> localText(
+                "风暴挑战者",
+                "Storm Challenger",
+                "Challenger tempête",
+                "ผู้ท้าชิงพายุ",
+                "Tormenta retadora",
+                "Sturmherausforderer",
+                "스톰 챌린저",
+            )
+            "elite" -> localText(
+                "荣耀精英",
+                "Glory Elite",
+                "Élite glorieuse",
+                "ยอดฝีมือ",
+                "Gloria Élite",
+                "Ruhm Elite",
+                "글로리 엘리트",
+            )
+            "master" -> localText(
+                "宗师",
+                "Grand Master",
+                "Grand maître",
+                "ปรมาจารย์",
+                "Gran Maestro",
+                "Großmeister",
+                "그랜드 마스터",
+            )
+            "legend" -> localText(
+                "不朽传奇",
+                "Immortal Legend",
+                "Légende immortelle",
+                "ตำนาน",
+                "Leyenda inmortal",
+                "Unsterbliche Legende",
+                "불멸의 전설",
+            )
+            "champion" -> localText(
+                "至尊拳王",
+                "Supreme Champion",
+                "Champion suprême",
+                "แชมป์สูงสุด",
+                "Campeón Supremo",
+                "Oberster Champion",
+                "슈프림 챔피언",
+            )
+            else -> localText(
+                "拳坛新丁",
+                "New Blood",
+                "Débutant",
+                "มือใหม่",
+                "sangre nueva",
+                "Neues Blut",
+                "새로운 피",
+            )
         }
 
     private fun achievementDisplayName(key: String): String =
         when (key) {
-            "duration_5m" -> localText("锻炼 60 分钟", "60-Min Training", "60 min d'entraînement", "ฝึก 60 นาที")
-            "duration_15m" -> localText("锻炼 300 分钟", "300-Min Training", "300 min d'entraînement", "ฝึก 300 นาที")
-            "duration_30m" -> localText("锻炼 600 分钟", "600-Min Training", "600 min d'entraînement", "ฝึก 600 นาที")
-            "duration_60m" -> localText("锻炼 2000 分钟", "2000-Min Training", "2000 min d'entraînement", "ฝึก 2000 นาที")
-            "hits_100" -> localText("百拳试锋", "100-Hit Trial", "Essai 100 coups", "ทดสอบ 100 หมัด")
-            "hits_500" -> localText("五百重击", "500 Heavy Hits", "500 frappes", "500 หมัดหนัก")
-            "hits_1000" -> localText("千拳风暴", "1K Punch Storm", "Tempête 1K coups", "พายุ 1K หมัด")
-            "hits_5000" -> localText("万击宗匠", "5K Master", "Maître 5K coups", "ปรมาจารย์ 5K")
-            "peak_force_50" -> localText("最高评分 500", "Peak 500", "Score max 500", "คะแนนสูงสุด 500")
-            "peak_force_100" -> localText("最高评分 1000", "Peak 1000", "Score max 1000", "คะแนนสูงสุด 1000")
-            "peak_force_150" -> localText("最高评分 1300", "Peak 1300", "Score max 1300", "คะแนนสูงสุด 1300")
-            "peak_force_200" -> localText("最高评分 1600", "Peak 1600", "Score max 1600", "คะแนนสูงสุด 1600")
-            "avg_force_30" -> localText("平均评分 500", "Avg 500", "Score moy. 500", "คะแนนเฉลี่ย 500")
-            "avg_force_60" -> localText("平均评分 800", "Avg 800", "Score moy. 800", "คะแนนเฉลี่ย 800")
-            "avg_force_90" -> localText("平均评分 1000", "Avg 1000", "Score moy. 1000", "คะแนนเฉลี่ย 1000")
-            "avg_force_120" -> localText("平均评分 1200", "Avg 1200", "Score moy. 1200", "คะแนนเฉลี่ย 1200")
-            "calories_30" -> localText("消耗 500 kcal", "500 kcal Burned", "500 kcal brûlées", "เผาผลาญ 500 kcal")
-            "calories_100" -> localText("消耗 1000 kcal", "1000 kcal Burned", "1000 kcal brûlées", "เผาผลาญ 1000 kcal")
-            "calories_300" -> localText("消耗 2000 kcal", "2000 kcal Burned", "2000 kcal brûlées", "เผาผลาญ 2000 kcal")
-            "calories_600" -> localText("消耗 4000 kcal", "4000 kcal Burned", "4000 kcal brûlées", "เผาผลาญ 4000 kcal")
-            "fat_5" -> localText("等效燃脂 100g", "100g Equivalent Fat", "100 g graisse équiv.", "ไขมันเทียบเท่า 100g")
-            "fat_15" -> localText("等效燃脂 500g", "500g Equivalent Fat", "500 g graisse équiv.", "ไขมันเทียบเท่า 500g")
-            "fat_40" -> localText("等效燃脂 1000g", "1000g Equivalent Fat", "1000 g graisse équiv.", "ไขมันเทียบเท่า 1000g")
-            "fat_80" -> localText("等效燃脂 2000g", "2000g Equivalent Fat", "2000 g graisse équiv.", "ไขมันเทียบเท่า 2000g")
+            "duration_5m" -> localText(
+                "锻炼 60 分钟",
+                "60-Min Training",
+                "60 min d'entraînement",
+                "ฝึก 60 นาที",
+                "Entrenamiento de 60 minutos",
+                "60-minütiges Training",
+                "60분 훈련",
+            )
+            "duration_15m" -> localText(
+                "锻炼 300 分钟",
+                "300-Min Training",
+                "300 min d'entraînement",
+                "ฝึก 300 นาที",
+                "Entrenamiento de 300 minutos",
+                "300-minütiges Training",
+                "300분 훈련",
+            )
+            "duration_30m" -> localText(
+                "锻炼 600 分钟",
+                "600-Min Training",
+                "600 min d'entraînement",
+                "ฝึก 600 นาที",
+                "Entrenamiento de 600 minutos",
+                "600-minütiges Training",
+                "600분 훈련",
+            )
+            "duration_60m" -> localText(
+                "锻炼 2000 分钟",
+                "2000-Min Training",
+                "2000 min d'entraînement",
+                "ฝึก 2000 นาที",
+                "Entrenamiento de 2000 minutos",
+                "2000-minütiges Training",
+                "2000분 훈련",
+            )
+            "hits_100" -> localText(
+                "百拳试锋",
+                "100-Hit Trial",
+                "Essai 100 coups",
+                "ทดสอบ 100 หมัด",
+                "Prueba de 100 golpes",
+                "100-Treffer-Testversion",
+                "100히트 시험",
+            )
+            "hits_500" -> localText(
+                "五百重击",
+                "500 Heavy Hits",
+                "500 frappes",
+                "500 หมัดหนัก",
+                "500 golpes fuertes",
+                "500 schwere Treffer",
+                "500번의 헤비 히트",
+            )
+            "hits_1000" -> localText(
+                "千拳风暴",
+                "1K Punch Storm",
+                "Tempête 1K coups",
+                "พายุ 1K หมัด",
+                "Tormenta de puñetazos 1K",
+                "1K Punch Storm",
+                "1K 펀치 스톰",
+            )
+            "hits_5000" -> localText(
+                "万击宗匠",
+                "5K Master",
+                "Maître 5K coups",
+                "ปรมาจารย์ 5K",
+                "Maestro 5K",
+                "5K-Meister",
+                "5K 마스터",
+            )
+            "peak_force_50" -> localText(
+                "最高评分 500",
+                "Peak 500",
+                "Score max 500",
+                "คะแนนสูงสุด 500",
+                "Pico 500",
+                "Spitze 500",
+                "피크 500",
+            )
+            "peak_force_100" -> localText(
+                "最高评分 1000",
+                "Peak 1000",
+                "Score max 1000",
+                "คะแนนสูงสุด 1000",
+                "Pico 1000",
+                "Spitze 1000",
+                "피크 1000",
+            )
+            "peak_force_150" -> localText(
+                "最高评分 1300",
+                "Peak 1300",
+                "Score max 1300",
+                "คะแนนสูงสุด 1300",
+                "Pico 1300",
+                "Spitze 1300",
+                "피크 1300",
+            )
+            "peak_force_200" -> localText(
+                "最高评分 1600",
+                "Peak 1600",
+                "Score max 1600",
+                "คะแนนสูงสุด 1600",
+                "Pico 1600",
+                "Spitze 1600",
+                "피크 1600",
+            )
+            "avg_force_30" -> localText(
+                "平均评分 500",
+                "Avg 500",
+                "Score moy. 500",
+                "คะแนนเฉลี่ย 500",
+                "Promedio 500",
+                "Durchschnittlich 500",
+                "평균 500",
+            )
+            "avg_force_60" -> localText(
+                "平均评分 800",
+                "Avg 800",
+                "Score moy. 800",
+                "คะแนนเฉลี่ย 800",
+                "Promedio 800",
+                "Durchschnittlich 800",
+                "평균 800",
+            )
+            "avg_force_90" -> localText(
+                "平均评分 1000",
+                "Avg 1000",
+                "Score moy. 1000",
+                "คะแนนเฉลี่ย 1000",
+                "Promedio 1000",
+                "Durchschnittlich 1000",
+                "평균 1000",
+            )
+            "avg_force_120" -> localText(
+                "平均评分 1200",
+                "Avg 1200",
+                "Score moy. 1200",
+                "คะแนนเฉลี่ย 1200",
+                "Promedio 1200",
+                "Durchschnittlich 1200",
+                "평균 1200",
+            )
+            "calories_30" -> localText(
+                "消耗 500 kcal",
+                "500 kcal Burned",
+                "500 kcal brûlées",
+                "เผาผลาญ 500 kcal",
+                "500 kcal quemadas",
+                "500 kcal verbrannt",
+                "500kcal 소모",
+            )
+            "calories_100" -> localText(
+                "消耗 1000 kcal",
+                "1000 kcal Burned",
+                "1000 kcal brûlées",
+                "เผาผลาญ 1000 kcal",
+                "1000 kcal quemadas",
+                "1000 kcal verbrannt",
+                "1000kcal 연소",
+            )
+            "calories_300" -> localText(
+                "消耗 2000 kcal",
+                "2000 kcal Burned",
+                "2000 kcal brûlées",
+                "เผาผลาญ 2000 kcal",
+                "2000 kcal quemadas",
+                "2000 kcal verbrannt",
+                "2000kcal 연소",
+            )
+            "calories_600" -> localText(
+                "消耗 4000 kcal",
+                "4000 kcal Burned",
+                "4000 kcal brûlées",
+                "เผาผลาญ 4000 kcal",
+                "4000 kcal quemadas",
+                "4000 kcal verbrannt",
+                "4000kcal 연소",
+            )
+            "fat_5" -> localText(
+                "等效燃脂 100g",
+                "100g Equivalent Fat",
+                "100 g graisse équiv.",
+                "ไขมันเทียบเท่า 100g",
+                "100 g de grasa equivalente",
+                "100 g Äquivalent Fett",
+                "100g 상당 지방",
+            )
+            "fat_15" -> localText(
+                "等效燃脂 500g",
+                "500g Equivalent Fat",
+                "500 g graisse équiv.",
+                "ไขมันเทียบเท่า 500g",
+                "500 g de grasa equivalente",
+                "500g Äquivalent Fett",
+                "500g 상당 지방",
+            )
+            "fat_40" -> localText(
+                "等效燃脂 1000g",
+                "1000g Equivalent Fat",
+                "1000 g graisse équiv.",
+                "ไขมันเทียบเท่า 1000g",
+                "1000 g de grasa equivalente",
+                "1000g Äquivalent Fett",
+                "1000g 상당 지방",
+            )
+            "fat_80" -> localText(
+                "等效燃脂 2000g",
+                "2000g Equivalent Fat",
+                "2000 g graisse équiv.",
+                "ไขมันเทียบเท่า 2000g",
+                "2000 g de grasa equivalente",
+                "2000g Äquivalent Fett",
+                "2000g 상당 지방",
+            )
             else -> key
         }
 
     private fun achievementBadgeCompactName(key: String): String =
         when (key) {
-            "duration_5m" -> localText("60 分钟", "60 min", "60 min", "60 นาที")
-            "duration_15m" -> localText("300 分钟", "300 min", "300 min", "300 นาที")
-            "duration_30m" -> localText("600 分钟", "600 min", "600 min", "600 นาที")
-            "duration_60m" -> localText("2000 分钟", "2000 min", "2000 min", "2000 นาที")
+            "duration_5m" -> localText(
+                "60 分钟",
+                "60 min",
+                "60 min",
+                "60 นาที",
+                "60 minutos",
+                "60 Min",
+                "60분",
+            )
+            "duration_15m" -> localText(
+                "300 分钟",
+                "300 min",
+                "300 min",
+                "300 นาที",
+                "300 minutos",
+                "300 Min",
+                "300분",
+            )
+            "duration_30m" -> localText(
+                "600 分钟",
+                "600 min",
+                "600 min",
+                "600 นาที",
+                "600 minutos",
+                "600 Min",
+                "600분",
+            )
+            "duration_60m" -> localText(
+                "2000 分钟",
+                "2000 min",
+                "2000 min",
+                "2000 นาที",
+                "2000 minutos",
+                "2000 Min",
+                "2000분",
+            )
             "peak_force_50" -> "500"
             "peak_force_100" -> "1000"
             "peak_force_150" -> "1300"
@@ -12881,30 +15760,86 @@ class MainActivity : AppCompatActivity() {
             when (outcome.playMode) {
                 TrainingPlayMode.LevelChallenge ->
                     if (outcome.goalMet) {
-                        localText("闯关成功", "Level Cleared", "Niveau réussi", "ผ่านด่าน")
+                        localText(
+                            "闯关成功",
+                            "Level Cleared",
+                            "Niveau réussi",
+                            "ผ่านด่าน",
+                            "Nivel superado",
+                            "Level gelöscht",
+                            "레벨 클리어",
+                        )
                     } else {
-                        localText("闯关继续", "Keep Challenging", "Continuez le défi", "ท้าทายต่อ")
+                        localText(
+                            "闯关继续",
+                            "Keep Challenging",
+                            "Continuez le défi",
+                            "ท้าทายต่อ",
+                            "Sigue desafiando",
+                            "Fordern Sie weiter heraus",
+                            "계속 도전하세요",
+                        )
                     }
 
                 TrainingPlayMode.DailyChallenge ->
                     if (outcome.goalMet) {
-                        localText("挑战成功", "Challenge Complete", "Défi réussi", "ทำภารกิจสำเร็จ")
+                        localText(
+                            "挑战成功",
+                            "Challenge Complete",
+                            "Défi réussi",
+                            "ทำภารกิจสำเร็จ",
+                            "Desafío completado",
+                            "Herausforderung abgeschlossen",
+                            "도전 완료",
+                        )
                     } else {
-                        localText("每日挑战进行中", "Daily Challenge Progress", "Défi du jour en cours", "ภารกิจวันนี้กำลังคืบหน้า")
+                        localText(
+                            "每日挑战进行中",
+                            "Daily Challenge Progress",
+                            "Défi du jour en cours",
+                            "ภารกิจวันนี้กำลังคืบหน้า",
+                            "Progreso del desafío diario",
+                            "Täglicher Herausforderungsfortschritt",
+                            "일일 챌린지 진행",
+                        )
                     }
 
                 TrainingPlayMode.Burst10,
                 TrainingPlayMode.Burst15,
                 ->
                     if (outcome.goalMet) {
-                        localText("爆发达成", "Burst Target Hit", "Objectif explosif atteint", "ถึงเป้าระเบิด")
+                        localText(
+                            "爆发达成",
+                            "Burst Target Hit",
+                            "Objectif explosif atteint",
+                            "ถึงเป้าระเบิด",
+                            "Golpe de objetivo de explosión",
+                            "Burst-Zieltreffer",
+                            "버스트 타겟 히트",
+                        )
                     } else {
-                        localText("爆发训练完成", "Burst Session Complete", "Séance explosive terminée", "จบรอบระเบิด")
+                        localText(
+                            "爆发训练完成",
+                            "Burst Session Complete",
+                            "Séance explosive terminée",
+                            "จบรอบระเบิด",
+                            "Sesión de ráfaga completa",
+                            "Burst-Sitzung abgeschlossen",
+                            "버스트 세션 완료",
+                        )
                     }
 
                 TrainingPlayMode.Classic30,
                 TrainingPlayMode.Classic60,
-                -> localText("训练完成", "Training Complete", "Entraînement terminé", "ฝึกเสร็จแล้ว")
+                -> localText(
+                    "训练完成",
+                    "Training Complete",
+                    "Entraînement terminé",
+                    "ฝึกเสร็จแล้ว",
+                    "Entrenamiento completo",
+                    "Schulung abgeschlossen",
+                    "훈련 완료",
+                )
             }
         val chips =
             buildList {
@@ -12915,11 +15850,22 @@ class MainActivity : AppCompatActivity() {
                         "${outcome.streak}-day streak",
                         "Série ${outcome.streak} j",
                         "ต่อเนื่อง ${outcome.streak} วัน",
+                        "${outcome.streak} racha de días",
+                        "${outcome.streak}-Tagessträhne",
+                        "${outcome.streak}일 연속",
                     ) to "#FFB347",
                 )
                 add(displayModeLabel(report.mode) to "#FF9A30")
                 if (outcome.goalMet) {
-                    add(localText("任务完成", "Task done", "Tâche terminée", "ภารกิจสำเร็จ") to "#E07010")
+                    add(localText(
+                        "任务完成",
+                        "Task done",
+                        "Tâche terminée",
+                        "ภารกิจสำเร็จ",
+                        "Tarea realizada",
+                        "Aufgabe erledigt",
+                        "작업 완료",
+                    ) to "#E07010")
                 }
             }
         showCelebrationDialog(
@@ -12982,6 +15928,9 @@ class MainActivity : AppCompatActivity() {
                 "Rank Up! ${tierLabelForKey(tier.key)} Lv.${tier.level}",
                 "Rang supérieur ! ${tierLabelForKey(tier.key)} Lv.${tier.level}",
                 "เลื่อนระดับ! ${tierLabelForKey(tier.key)} Lv.${tier.level}",
+                "¡Sube de rango! ${tierLabelForKey(tier.key)} Nivel.${tier.level}",
+                "Steigen Sie im Rang auf! ${tierLabelForKey(tier.key)} Lv.${tier.level}",
+                "순위를 높이세요! ${tierLabelForKey(tier.key)} Lv.${tier.level}",
             )
         promotionBannerView.text = message
         promotionBannerView.visibility = View.VISIBLE
@@ -13012,13 +15961,24 @@ class MainActivity : AppCompatActivity() {
         val chips =
             items.take(3).map { achievementDisplayName(it.key) to achievementAccentColor(it.key) }
         val title =
-            localText("新徽章解锁", "New badges unlocked", "Nouveaux badges débloqués", "ปลดล็อกเหรียญใหม่")
+            localText(
+                "新徽章解锁",
+                "New badges unlocked",
+                "Nouveaux badges débloqués",
+                "ปลดล็อกเหรียญใหม่",
+                "Nuevas insignias desbloqueadas",
+                "Neue Abzeichen freigeschaltet",
+                "새로운 배지 잠금 해제",
+            )
         val body =
             localText(
                 "本次训练解锁 ${items.size} 枚徽章，继续保持节奏，冲击更高段位。",
                 "You unlocked ${items.size} new badges in this session. Keep pushing for the next tier.",
                 "Vous avez débloqué ${items.size} badge(s). Gardez le rythme vers le rang suivant.",
                 "คุณปลดล็อกเหรียญใหม่ ${items.size} เหรียญ รักษาจังหวะเพื่อระดับถัดไป",
+                "Desbloqueaste nuevas insignias ${items.size} en esta sesión. Sigue presionando para pasar al siguiente nivel.",
+                "Sie haben in dieser Sitzung neue ${items.size}-Abzeichen freigeschaltet. Drängen Sie weiter auf die nächste Stufe.",
+                "이 세션에서 ${items.size} 새 배지를 잠금 해제했습니다. 다음 단계를 위해 계속 노력하세요.",
             )
         showCelebrationDialog(
             accentColor = "#FFB347",
@@ -13036,6 +15996,9 @@ class MainActivity : AppCompatActivity() {
                 "Rank Up: ${tierLabelForKey(tier.key)}",
                 "Rang supérieur : ${tierLabelForKey(tier.key)}",
                 "เลื่อนระดับ: ${tierLabelForKey(tier.key)}",
+                "Subir de rango: ${tierLabelForKey(tier.key)}",
+                "Rangaufstieg: ${tierLabelForKey(tier.key)}",
+                "등급 향상: ${tierLabelForKey(tier.key)}",
             )
         val body =
             localText(
@@ -13043,6 +16006,9 @@ class MainActivity : AppCompatActivity() {
                 "Your best round score is now ${tier.bestHits}. You have been promoted to ${tierLabelForKey(tier.key)}.",
                 "Votre meilleur score par round atteint ${tier.bestHits}. Promotion en ${tierLabelForKey(tier.key)}.",
                 "สถิติรอบดีที่สุดเป็น ${tier.bestHits} เลื่อนเป็น ${tierLabelForKey(tier.key)} แล้ว",
+                "Tu mejor puntuación de ronda ahora es ${tier.bestHits}. Ha sido ascendido a ${tierLabelForKey(tier.key)}.",
+                "Ihr bestes Rundenergebnis ist jetzt ${tier.bestHits}. Sie wurden zum ${tierLabelForKey(tier.key)} befördert.",
+                "귀하의 최고 라운드 점수는 이제 ${tier.bestHits}입니다. 귀하는 ${tierLabelForKey(tier.key)}로 승격되었습니다.",
             )
         showCelebrationDialog(
             accentColor = "#FFD060",
@@ -13123,7 +16089,15 @@ class MainActivity : AppCompatActivity() {
             card.addView(chipRow)
         }
         card.addView(
-            bodyText(localText("点击任意位置继续，或 10 秒后自动关闭", "Tap anywhere to continue, or it closes in 10 seconds", "Touchez n'importe où pour continuer, ou fermeture dans 10 secondes", "แตะที่ใดก็ได้เพื่อดำเนินการต่อ หรือปิดอัตโนมัติใน 10 วินาที")).apply {
+            bodyText(localText(
+                "点击任意位置继续，或 10 秒后自动关闭",
+                "Tap anywhere to continue, or it closes in 10 seconds",
+                "Touchez n'importe où pour continuer, ou fermeture dans 10 secondes",
+                "แตะที่ใดก็ได้เพื่อดำเนินการต่อ หรือปิดอัตโนมัติใน 10 วินาที",
+                "Toca en cualquier lugar para continuar o se cerrará en 10 segundos.",
+                "Tippen Sie auf eine beliebige Stelle, um fortzufahren, oder es wird in 10 Sekunden geschlossen",
+                "계속하려면 아무 곳이나 탭하세요. 그렇지 않으면 10초 안에 닫힙니다.",
+            )).apply {
                 setTextColor(Color.parseColor("#7F97AA"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setPadding(0, dp(18), 0, 0)
@@ -13171,6 +16145,9 @@ class MainActivity : AppCompatActivity() {
             when (selectedLanguage) {
                 AppLanguage.Chinese -> "太棒了！$title！继续保持，向更强进发！"
                 AppLanguage.English -> "Amazing! $title! Keep going strong!"
+                AppLanguage.Spanish -> "¡Increíble! $title! ¡Sigue fuerte!"
+                AppLanguage.German -> "Erstaunlich! $title! Mach weiter so!"
+                AppLanguage.Korean -> "놀랍습니다! ${title}! 계속 힘내세요!"
                 AppLanguage.French -> "Magnifique ! $title ! Continuez comme ça !"
                 AppLanguage.Thai -> "ยอดเยี่ยม! $title! ลุยต่อไป!"
             }
@@ -13388,7 +16365,31 @@ class MainActivity : AppCompatActivity() {
         metricsRow.addView(burstChip)
         val detailLine =
             bodyText(
-                "${localText("锻炼时间", "Duration", "Durée", "เวลา")}: ${formatTrainingDuration(item.durationSeconds)}  |  ${localText("最高评分", "Peak", "Max", "สูงสุด")}: ${forceDisplay(item.peakForceN)}  |  ${localText("平均评分", "Avg", "Moy.", "เฉลี่ย")}: ${forceDisplay(item.avgForceN)}\n${tr("calories_burned")}: ${formatCalories(item.caloriesBurned)}  |  ${tr("fat_burned")}: ${formatFatGrams(item.fatBurnedGrams)}",
+                "${localText(
+                    "锻炼时间",
+                    "Duration",
+                    "Durée",
+                    "เวลา",
+                    "Duración",
+                    "Dauer",
+                    "기간",
+                )}: ${formatTrainingDuration(item.durationSeconds)}  |  ${localText(
+                    "最高评分",
+                    "Peak",
+                    "Max",
+                    "สูงสุด",
+                    "pico",
+                    "Höhepunkt",
+                    "피크",
+                )}: ${forceDisplay(item.peakForceN)}  |  ${localText(
+                    "平均评分",
+                    "Avg",
+                    "Moy.",
+                    "เฉลี่ย",
+                    "promedio",
+                    "Durchschn",
+                    "평균",
+                )}: ${forceDisplay(item.avgForceN)}\n${tr("calories_burned")}: ${formatCalories(item.caloriesBurned)}  |  ${tr("fat_burned")}: ${formatFatGrams(item.fatBurnedGrams)}",
             ).apply {
                 setTextColor(Color.parseColor("#557A7D"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -13400,7 +16401,15 @@ class MainActivity : AppCompatActivity() {
         card.addView(detailLine)
         if (item.roundReports.isNotEmpty()) {
             card.addView(
-                bodyText(localText("云端回合明细", "Cloud round details", "Détails des rounds", "รายละเอียดรอบบนคลาวด์")).apply {
+                bodyText(localText(
+                    "云端回合明细",
+                    "Cloud round details",
+                    "Détails des rounds",
+                    "รายละเอียดรอบบนคลาวด์",
+                    "Detalles redondos de nubes",
+                    "Wolkenrunde Details",
+                    "클라우드 라운드 세부정보",
+                )).apply {
                     setTextColor(Color.parseColor("#17343B"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -13415,6 +16424,9 @@ class MainActivity : AppCompatActivity() {
                             "Round ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} hits | ${round.cumulativeHits} total | ${formatCalories(round.cumulativeCaloriesBurned)} | ${formatFatGrams(round.cumulativeFatBurnedGrams)} equivalent fat",
                             "Round ${round.roundIndex}/${round.totalRounds} : ${round.roundHits} coups | ${round.cumulativeHits} total | ${formatCalories(round.cumulativeCaloriesBurned)} | ${formatFatGrams(round.cumulativeFatBurnedGrams)} graisse équiv.",
                             "รอบ ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} หมัด | รวม ${round.cumulativeHits} | ${formatCalories(round.cumulativeCaloriesBurned)} | ไขมันเทียบเท่า ${formatFatGrams(round.cumulativeFatBurnedGrams)}",
+                            "Ronda ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} golpes | ${round.cumulativeHits} total | ${formatCalories(round.cumulativeCaloriesBurned)} | ${formatFatGrams(round.cumulativeFatBurnedGrams)} grasa equivalente",
+                            "Runde ${round.roundIndex}/${round.totalRounds}: ${round.roundHits} trifft | ${round.cumulativeHits} Gesamt | ${formatCalories(round.cumulativeCaloriesBurned)} | ${formatFatGrams(round.cumulativeFatBurnedGrams)} äquivalentes Fett",
+                            "라운드 ${round.roundIndex}/${round.totalRounds}: 타격 ${round.roundHits}회 | 누적 ${round.cumulativeHits}회 | ${formatCalories(round.cumulativeCaloriesBurned)} | 환산 지방 ${formatFatGrams(round.cumulativeFatBurnedGrams)}",
                         ),
                     ).apply {
                         setTextColor(Color.parseColor("#557A7D"))
@@ -13601,7 +16613,15 @@ class MainActivity : AppCompatActivity() {
             background = roundedBackground("#EFFFFA", "#BFEFE5", 24)
             addView(
                 TextView(this@MainActivity).apply {
-                    text = localText("荣誉段位", "Honor Tier", "Rang d'honneur", "ระดับเกียรติยศ")
+                    text = localText(
+                        "荣誉段位",
+                        "Honor Tier",
+                        "Rang d'honneur",
+                        "ระดับเกียรติยศ",
+                        "Nivel de honor",
+                        "Ehrenstufe",
+                        "명예 등급",
+                    )
                     setTextColor(Color.parseColor("#096D65"))
                     setTypeface(Typeface.DEFAULT_BOLD)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
@@ -13713,9 +16733,25 @@ class MainActivity : AppCompatActivity() {
             addView(
                 bodyText(
                     if (unlocked) {
-                        localText("已解锁", "Unlocked", "Débloqué", "ปลดล็อกแล้ว")
+                        localText(
+                            "已解锁",
+                            "Unlocked",
+                            "Débloqué",
+                            "ปลดล็อกแล้ว",
+                            "desbloqueado",
+                            "Entsperrt",
+                            "잠금 해제됨",
+                        )
                     } else {
-                        localText("成长中", "In Progress", "En progression", "กำลังพัฒนา")
+                        localText(
+                            "成长中",
+                            "In Progress",
+                            "En progression",
+                            "กำลังพัฒนา",
+                            "En progreso",
+                            "In Bearbeitung",
+                            "진행 중",
+                        )
                     },
                 ).apply {
                     gravity = Gravity.CENTER
@@ -13809,6 +16845,7 @@ class MainActivity : AppCompatActivity() {
                         )
                     minimumHeight = if (elevated) dp(186) else dp(156)
                     gravity = Gravity.CENTER_HORIZONTAL
+                    setPadding(dp(6), dp(12), dp(6), dp(10))
                     addView(
                         TextView(this@MainActivity).apply {
                             text = "TOP ${entry.rank}"
@@ -13833,6 +16870,14 @@ class MainActivity : AppCompatActivity() {
                             gravity = Gravity.CENTER
                             setPadding(0, dp(8), 0, 0)
                             setTextColor(Color.parseColor("#17343B"))
+                            setSingleLine(true)
+                            TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                                this,
+                                9,
+                                if (elevated) 15 else 13,
+                                1,
+                                TypedValue.COMPLEX_UNIT_SP,
+                            )
                         },
                     )
                     addView(
@@ -13841,15 +16886,33 @@ class MainActivity : AppCompatActivity() {
                             textColor = "#096D65",
                             fillColor = "#DFFFF7",
                         ).apply {
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                            setPadding(dp(10), dp(5), dp(10), dp(5))
+                            gravity = Gravity.CENTER
+                            setPadding(dp(3), dp(5), dp(3), dp(5))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                            maxLines = 2
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                breakStrategy = android.graphics.text.LineBreaker.BREAK_STRATEGY_BALANCED
+                                hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
+                            }
+                            layoutParams =
+                                LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                )
                         },
                     )
                     addView(
                         bodyText(leaderboardPrimaryValueText(entry)).apply {
                             gravity = Gravity.CENTER
                             setTypeface(Typeface.DEFAULT_BOLD)
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, if (elevated) 21f else 18f)
+                            setSingleLine(true)
+                            TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                                this,
+                                11,
+                                if (elevated) 21 else 18,
+                                1,
+                                TypedValue.COMPLEX_UNIT_SP,
+                            )
                             setTextColor(Color.parseColor(accentColor))
                             setPadding(0, dp(12), 0, 0)
                         },
@@ -13858,7 +16921,12 @@ class MainActivity : AppCompatActivity() {
                         bodyText(leaderboardSecondaryValueText(entry)).apply {
                             gravity = Gravity.CENTER
                             setTextColor(Color.parseColor("#557A7D"))
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                            maxLines = 2
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                breakStrategy = android.graphics.text.LineBreaker.BREAK_STRATEGY_SIMPLE
+                                hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
+                            }
                             setPadding(0, dp(8), 0, 0)
                         },
                     )
@@ -13962,6 +17030,9 @@ class MainActivity : AppCompatActivity() {
             AppLanguage.Chinese -> Locale.SIMPLIFIED_CHINESE
             AppLanguage.English -> Locale.US
             AppLanguage.French -> Locale.FRANCE
+            AppLanguage.Spanish -> Locale("es", "ES")
+            AppLanguage.German -> Locale.GERMANY
+            AppLanguage.Korean -> Locale.KOREA
             AppLanguage.Thai -> Locale("th", "TH")
         }
 
@@ -14020,21 +17091,6 @@ class MainActivity : AppCompatActivity() {
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor("#17343B"))
             setPadding(0, 0, 0, dp(6))
-        }
-
-    private fun activationInput(hint: String): EditText =
-        EditText(this).apply {
-            this.hint = hint
-            inputType = InputType.TYPE_CLASS_NUMBER
-            setTextColor(Color.parseColor(selectedPalette.textPrimary))
-            setHintTextColor(Color.parseColor(selectedPalette.textMuted))
-            background = roundedBackground(selectedPalette.surfaceBottom, selectedPalette.stroke, 12)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            layoutParams =
-                LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
         }
 
     private fun bodyText(text: String): TextView =
@@ -14117,6 +17173,18 @@ class MainActivity : AppCompatActivity() {
             applyRippleOverlay()
         }
 
+    private fun configureSingleLineCompactButton(button: Button) {
+        button.setSingleLine(true)
+        button.setPadding(dp(6), dp(11), dp(6), dp(11))
+        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+            button,
+            8,
+            13,
+            1,
+            TypedValue.COMPLEX_UNIT_SP,
+        )
+    }
+
     private fun horizontalSpace(width: Int): View =
         View(this).apply {
             layoutParams = LinearLayout.LayoutParams(width, 1)
@@ -14139,6 +17207,8 @@ class MainActivity : AppCompatActivity() {
         ).toInt()
 
     private companion object {
+        const val MIN_TRAINING_BPM = 100
+        const val MAX_TRAINING_BPM = 300
         const val PREFS_NAME = "reflex_ball_settings"
         const val KEY_LANGUAGE = "language"
         const val KEY_COLOR_PALETTE = "app_color_palette"

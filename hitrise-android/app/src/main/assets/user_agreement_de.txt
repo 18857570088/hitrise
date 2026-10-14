@@ -1,0 +1,51 @@
+HitRise-Nutzungsvereinbarung
+Version: V1.2
+Gültig ab: 17.09.2026
+
+1. Geltungsbereich
+Diese Vereinbarung gilt für HitRise, die Bluetooth-Verbindung zum intelligenten Box-Speedball, Cloud-Trainingsdaten, Erfolge, Ranglisten, Profile, Sounds und Musik von Shaoxing Weimai Technology Co., Ltd. Mit Installation oder Nutzung bestätigen Sie, dass Sie die Vereinbarung gelesen und akzeptiert haben.
+
+2. Produkt und Dienste
+HitRise kann SENBALL#-Geräte suchen und verbinden, Schläge, Akku, Ladestatus und Relative Power Score lesen, Live-, Runden- und Rhythmustraining anbieten, Berichte und Schätzwerte erzeugen sowie Erfolge, Stufen, Ranglisten, Profile, Audio und teilbare Poster bereitstellen.
+
+Das physische Gerät stellt keine Produktseriennummer oder Aktivierungsinformationen bereit. Seriennummer oder Aktivierungscode müssen nicht eingegeben werden. Lokal erzeugte Synchronisierungs-IDs sind keine Hardware-Seriennummern.
+
+Einige Funktionen hängen von Hardware, Bluetooth, Systemberechtigungen, Netzwerk und Cloud-Diensten ab. Leistung kann je nach Telefon, System und Bluetooth-Umgebung variieren.
+
+3. Sichere Nutzung
+Verwenden Sie HitRise in einer sicheren, freien Umgebung. Prüfen Sie die sichere Montage und passen Sie die Intensität Ihrer körperlichen Verfassung an. Beenden Sie das Training bei Schmerzen, Schwindel, ungewöhnlicher Erschöpfung oder Beschwerden. Minderjährige benötigen Aufsicht.
+
+4. Bluetooth und Trainingsdaten
+Daten können durch Sensorzustand, Toleranzen, Signal, Haltung und Umgebung abweichen. Die Relative Power Score nutzt den unveränderten Rohwert ohne Faktor 0,6, ist nicht kalibriert, hat keine physikalische Einheit und steht nicht für kg, kgf oder N. Sie dient nur relativen Vergleichen unter ähnlichen Bedingungen.
+
+HitRise-Daten sind Trainingsfeedback und keine medizinische Diagnose, Rehabilitationsbewertung, Ernährungsberatung oder offizielle Wettkampfwertung.
+
+5. Profil, Ranglisten und Teilen
+Sie können Spitzname, Avatar, Region und Sprache festlegen. Bei Ranglisten, Erfolgen oder Teilen können Spitzname, Avatar, Stufe, Ergebnisse und Trainingsübersicht anderen angezeigt oder an andere Apps übergeben werden. Verwenden Sie keine rechtswidrigen, verletzenden, täuschenden oder unangemessenen Inhalte.
+
+6. Verbotenes Verhalten
+Untersagt sind Datenfälschung, Manipulation von Ranglisten, Störung anderer Nutzer, Angriffe oder Scraping, Reverse Engineering, unerlaubte Vervielfältigung oder kommerzielle Nutzung sowie rechtswidrige oder sicherheitsgefährdende Verwendung.
+
+Bei ungewöhnlicher Nutzung, Risiken oder Beschwerden können wir Funktionen, Daten oder Ranglisten korrigieren, verbergen, einschränken oder sperren.
+
+7. Audio und Inhalte
+Sounds, Musik, Grafiken, Texte, Abzeichen, Oberfläche und Trainingsinhalte sind nur für HitRise bestimmt. Unerlaubtes Extrahieren, Verteilen oder kommerzielles Nutzen ist untersagt.
+
+8. Änderungen und Unterbrechungen
+Updates, Wartung, Netzwerk, Kompatibilität, Systembeschränkungen, höhere Gewalt oder Sicherheit können zu Änderungen, Verzögerungen oder Ausfällen führen.
+
+9. Geistiges Eigentum
+App, Code, Oberfläche, Algorithmen, Marke und Inhalte gehören Shaoxing Weimai Technology Co., Ltd. oder berechtigten Rechteinhabern. Kopieren, Verkaufen, Vermieten, Ändern oder kommerzielle Nutzung ohne Erlaubnis ist untersagt.
+
+10. Haftung
+Soweit gesetzlich zulässig, haften wir nicht über gesetzliche Pflichten hinaus für Schäden durch Fehlgebrauch, unsichere Umgebung, falsche Montage, ungeeigneten Gesundheitszustand, fremde Geräte oder Netze, Bluetooth-Störungen, höhere Gewalt oder vom Nutzer geteilte Informationen.
+
+11. Aktualisierungen
+Die Vereinbarung kann wegen Produkt-, Rechts- oder Betriebsänderungen aktualisiert werden. Fortgesetzte Nutzung nach Mitteilung gilt als Zustimmung zur aktualisierten Vereinbarung.
+
+12. Recht und Streitigkeiten
+Es gilt das Recht der Volksrepublik China. Streitigkeiten sollen zunächst verhandelt und andernfalls vor einem zuständigen Volksgericht geklärt werden.
+
+13. Kontakt
+Betreiber: Shaoxing Weimai Technology Co., Ltd.
+E-Mail: zclei@vip.sina.com

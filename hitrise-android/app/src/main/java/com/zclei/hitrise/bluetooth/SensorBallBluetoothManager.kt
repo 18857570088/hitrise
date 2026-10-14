@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothSocket
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
@@ -379,7 +380,7 @@ class SensorBallBluetoothManager(
         }
         val result =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                targetGatt.writeCharacteristic(characteristic, payload, characteristic.writeType) == BluetoothGatt.GATT_SUCCESS
+                targetGatt.writeCharacteristic(characteristic, payload, characteristic.writeType) == BluetoothStatusCodes.SUCCESS
             } else {
                 characteristic.value = payload
                 targetGatt.writeCharacteristic(characteristic)

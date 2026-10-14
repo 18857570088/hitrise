@@ -1,0 +1,48 @@
+HitRise-Datenschutzrichtlinie
+Version: V1.2
+Gültig ab: 17.09.2026
+
+1. Einleitung
+HitRise ist eine App für das Training mit einem intelligenten Box-Speedball von Shaoxing Weimai Technology Co., Ltd. Sie verbindet SENBALL#-Bluetooth-Geräte, zeichnet Trainingsdaten auf und bietet Berichte, Erfolge, Ranglisten, Profilfunktionen, Soundeffekte und Hintergrundmusik.
+
+2. Verarbeitete Informationen
+Die App kann eine lokale Benutzer-ID, einen Synchronisierungscode und eine Geräteübersicht für Synchronisierung, Profil, Erfolge und Ranglisten erzeugen. Sie können Spitzname, Avatar, Region und Sprache festlegen. Das physische Gerät liefert keine Produktseriennummer oder Aktivierungsinformationen; Seriennummer und Aktivierungscode sind nicht erforderlich.
+
+Für Bluetooth verarbeiten wir Gerätename und -adresse, Verbindungs-, Akku- und Ladestatus, Schlagzahl, Relative Power Score und Statusmeldungen. Der Scan filtert SENBALL#-Geräte.
+
+Beim Training verarbeiten wir Runden, Dauer, Schläge, maximale und durchschnittliche Relative Power Score, BPM, geschätzte Kalorien und äquivalente Fettverbrennung, Kombinationen, Modus, Rhythmus sowie ausgewählte Sounds und Musik. Für Erfolge, Ranglisten und Profile können Zusammenfassungen, Bestwerte, Gesamtsummen, aktive Tage und Ranglistenwerte verarbeitet werden.
+
+Für Stabilität und Fehlerdiagnose können App- und Systemversion, Telefonmodell, Netzwerkstatus, API-Antworten, Fehlerprotokolle und absturzbezogene Informationen verarbeitet werden.
+
+3. Berechtigungen
+Bluetooth dient der Suche, Verbindung und Datenübertragung mit SENBALL#. Manche Android-Versionen verlangen für Bluetooth-Scans eine Standortberechtigung; HitRise erstellt daraus kein Bewegungsprofil. Internet dient Synchronisierung und Ressourcen. Foto- oder Dateizugriff erfolgt nur bei Avatarwahl oder beim Speichern und Teilen. Vibration und Audio liefern Trainingsfeedback.
+
+4. Zwecke
+Wir verwenden Informationen für Geräteverbindung, Schlagzählung, Akku- und Punkteanzeige, Berichte und Schätzwerte, Erfolge, Ranglisten, Verlaufssynchronisierung, Einstellungen sowie Stabilität und Sicherheit.
+
+5. Weitergabe
+Wir verkaufen keine personenbezogenen Daten an unabhängige Dritte. Erforderliche Daten können in unseren Systemen für Synchronisierung, Ranglisten, Erfolge, Downloads und Betrieb verarbeitet werden. Spitzname, Avatar, Stufe und Ergebnisse können im Rahmen gewählter Ranglisten- oder Teilen-Funktionen sichtbar sein.
+
+6. Speicherung
+Sprache, Einstellungen, letztes Bluetooth-Gerät, Audioauswahl und Cache können lokal gespeichert werden. Trainingsdaten, Erfolge, Ranglisten und Profilübersichten können so lange wie für Dienst oder Gesetz erforderlich in der Cloud gespeichert werden. Eine Deinstallation löscht möglicherweise lokale, aber nicht automatisch bereits synchronisierte Daten.
+
+7. Sicherheit
+Wir setzen angemessene Maßnahmen wie Zugriffskontrolle, Berechtigungsverwaltung, Datenminimierung, Dienstisolierung und Protokollverwaltung ein. Absolute Sicherheit von Internet, Mobilgeräten und Bluetooth kann nicht garantiert werden.
+
+8. Ihre Rechte
+Sie können Daten in der App ansehen und Spitzname, Avatar, Region und Sprache ändern. Für Auskunft, Berichtigung oder Löschung kontaktieren Sie uns. Anfragen werden nach Recht, Identitätsprüfung und Sicherheitsanforderungen bearbeitet.
+
+9. Minderjährige
+Minderjährige sollen HitRise nur unter Aufsicht eines Elternteils oder Erziehungsberechtigten verwenden.
+
+10. Trainings- und Gesundheitshinweis
+Die Relative Power Score verwendet den unveränderten Hardware-Rohwert ohne Multiplikation mit 0,6. Sie ist nicht mit einem Standardmessgerät kalibriert, hat keine physikalische Einheit und steht nicht für kg, kgf oder N. Sie dient nur relativen Trends unter vergleichbaren Bedingungen.
+
+Schlagzahl, Punkte, Kalorien und Fettverbrennung sind Trainingsfeedback und Schätzwerte, keine medizinische, Ernährungs-, Rehabilitations- oder Wettkampfentscheidung. Bei Erkrankung, Verletzung oder Beschwerden wenden Sie sich an Fachpersonal.
+
+11. Aktualisierungen
+Diese Richtlinie kann aufgrund von Produkt-, Rechts- oder Betriebsänderungen aktualisiert werden. Wichtige Änderungen können in der App, in Versionshinweisen oder auf andere angemessene Weise mitgeteilt werden.
+
+12. Kontakt
+Betreiber: Shaoxing Weimai Technology Co., Ltd.
+E-Mail: zclei@vip.sina.com

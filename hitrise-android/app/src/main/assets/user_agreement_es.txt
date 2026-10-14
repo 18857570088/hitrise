@@ -1,0 +1,51 @@
+Acuerdo de usuario de HitRise
+Versión: V1.2
+Fecha de entrada en vigor: 2026-09-17
+
+1. Ámbito
+Este Acuerdo se aplica a HitRise, la conexión Bluetooth con la pera de boxeo inteligente, los registros en la nube, logros, clasificaciones, perfil, sonidos y música proporcionados por Shaoxing Weimai Technology Co., Ltd. Al instalar o usar HitRise confirmas que has leído y aceptado este Acuerdo.
+
+2. Producto y servicios
+HitRise puede buscar y conectar dispositivos SENBALL#, leer golpes, batería, carga y Puntuación de Potencia Relativa, ofrecer entrenamiento en directo, por rondas y con ritmo, generar informes y estimaciones, y proporcionar logros, niveles, clasificaciones, perfil, audio y pósteres compartibles.
+
+El dispositivo físico no proporciona número de serie ni información de activación. No es necesario introducir un número de serie ni código de activación. Los identificadores locales generados para sincronización no son números de serie del hardware.
+
+Algunas funciones dependen del hardware, Bluetooth, permisos del sistema, red y servicios en la nube. El rendimiento puede variar según el teléfono, sistema y entorno Bluetooth.
+
+3. Uso seguro
+Utiliza HitRise en un espacio seguro y despejado. Comprueba que el equipo y la cuerda estén bien instalados y adapta la intensidad a tu condición física. Si sientes dolor, mareo, fatiga anormal o molestias, detente y busca asesoramiento profesional. Los menores requieren supervisión.
+
+4. Bluetooth y datos de entrenamiento
+Los datos pueden variar por el estado del sensor, tolerancias, señal Bluetooth, postura y entorno. La Puntuación de Potencia Relativa usa el valor bruto del hardware sin multiplicarlo por 0,6. No está calibrada, no tiene unidad física y no representa kg, kgf ni N. Solo permite comparar tendencias en condiciones equivalentes.
+
+Los datos de HitRise son información deportiva y no deben utilizarse como diagnóstico médico, evaluación de rehabilitación, consejo nutricional ni arbitraje oficial.
+
+5. Perfil, clasificaciones y uso compartido
+Puedes configurar apodo, avatar, región e idioma. Si utilizas clasificaciones, logros o funciones de compartir, tu apodo, avatar, nivel, puntuaciones y resumen pueden mostrarse a otros o enviarse a otra aplicación. No utilices contenido ilícito, infractor, suplantador o inapropiado.
+
+6. Conductas prohibidas
+No debes falsificar datos, alterar clasificaciones, interferir con otros usuarios, atacar o extraer servicios, realizar ingeniería inversa, copiar o explotar comercialmente la aplicación sin autorización, ni utilizarla con fines ilícitos o que amenacen la seguridad.
+
+Podemos corregir, ocultar, limitar o suspender funciones, datos o clasificaciones ante uso anormal, riesgos o reclamaciones.
+
+7. Sonidos, música y contenido
+Los sonidos, música, gráficos, textos, insignias, interfaces y contenido de entrenamiento se facilitan únicamente para HitRise. No puedes extraerlos, distribuirlos ni explotarlos comercialmente sin autorización.
+
+8. Cambios e interrupciones
+Puede haber cambios, retrasos o interrupciones por actualizaciones, mantenimiento, red, compatibilidad, restricciones del sistema, fuerza mayor o seguridad.
+
+9. Propiedad intelectual
+La aplicación, código, interfaz, algoritmos, marca y contenido pertenecen a Shaoxing Weimai Technology Co., Ltd. o a sus titulares legítimos. No puedes copiarlos, venderlos, alquilarlos, modificarlos ni explotarlos sin permiso.
+
+10. Responsabilidad
+En la medida permitida por la ley, no respondemos más allá de las obligaciones legales por pérdidas causadas por uso indebido, entorno inseguro, instalación incorrecta, condición física inadecuada, dispositivos o redes de terceros, interferencia Bluetooth, fuerza mayor o información compartida por el usuario.
+
+11. Actualizaciones
+Podemos actualizar este Acuerdo por cambios del producto, requisitos legales u operación. El uso continuado después de la notificación implica aceptación del Acuerdo actualizado.
+
+12. Ley y disputas
+Este Acuerdo se rige por las leyes de la República Popular China. Las disputas se resolverán primero mediante negociación y, si no hay acuerdo, ante un tribunal popular competente.
+
+13. Contacto
+Operador: Shaoxing Weimai Technology Co., Ltd.
+Correo electrónico: zclei@vip.sina.com

@@ -1,0 +1,50 @@
+Política de privacidad de HitRise
+Versión: V1.2
+Fecha de entrada en vigor: 2026-09-17
+
+1. Introducción
+HitRise es una aplicación de entrenamiento con pera de boxeo inteligente proporcionada por Shaoxing Weimai Technology Co., Ltd. Se conecta a dispositivos Bluetooth SENBALL#, registra entrenamientos y ofrece informes, logros, clasificaciones, perfil, efectos de sonido y música de fondo.
+
+2. Información que tratamos
+La aplicación puede generar un identificador de usuario local, un código de sincronización y un resumen del dispositivo para la sincronización, el perfil, los logros y las clasificaciones. Puedes configurar apodo, avatar, región e idioma. El dispositivo físico no proporciona número de serie ni información de activación; no se necesita número de serie ni código de activación.
+
+Para la conexión Bluetooth tratamos el nombre y la dirección del dispositivo, estado de conexión, batería, carga, recuento de golpes, Puntuación de Potencia Relativa y mensajes de estado. El escaneo filtra dispositivos SENBALL#.
+
+Durante el entrenamiento tratamos rondas, duración, golpes, Puntuación de Potencia Relativa máxima y media, BPM, estimaciones de calorías y grasa equivalente, combos, modo, ritmo, sonido y música seleccionados. También podemos tratar resúmenes, mejores resultados, totales, días activos y métricas de clasificación.
+
+Para estabilidad y diagnóstico podemos tratar la versión de la aplicación y del sistema, modelo del teléfono, estado de red, respuestas de API, registros de errores y datos relacionados con fallos.
+
+3. Permisos
+Bluetooth se utiliza para buscar, conectar y recibir datos de SENBALL#. Algunas versiones de Android exigen permiso de ubicación para el escaneo Bluetooth; HitRise no lo utiliza para registrar tu recorrido. Internet se usa para sincronización y recursos. El acceso a fotos o archivos solo se usa cuando eliges un avatar o guardas o compartes un póster. La vibración y el audio proporcionan ritmo y respuesta de entrenamiento.
+
+4. Finalidades
+Usamos la información para conectar el dispositivo, contar golpes, mostrar batería y Puntuación de Potencia Relativa, generar informes y estimaciones, ofrecer logros y clasificaciones, sincronizar historial, guardar preferencias y mejorar la estabilidad y seguridad.
+
+5. Comunicación y divulgación
+No vendemos información personal a terceros no relacionados. Los datos necesarios pueden tratarse en nuestros sistemas para sincronización, clasificaciones, logros, descargas y operación. El apodo, avatar, nivel y puntuaciones pueden mostrarse en clasificaciones o pósteres compartidos como parte de las funciones elegidas.
+
+6. Conservación
+Idioma, ajustes, último dispositivo Bluetooth, sonidos, música y caché pueden guardarse localmente. Registros, logros, clasificaciones y perfil pueden almacenarse en la nube durante el tiempo necesario para prestar el servicio o cumplir la ley. Desinstalar la aplicación puede borrar datos locales, pero no elimina automáticamente datos ya sincronizados.
+
+7. Seguridad
+Aplicamos medidas razonables como control de acceso, gestión de permisos, minimización, aislamiento del servicio y gestión de registros. Ninguna red, sistema móvil o comunicación Bluetooth puede garantizar seguridad absoluta.
+
+8. Tus derechos
+Puedes consultar información en la aplicación y cambiar apodo, avatar, región e idioma. Para solicitar consulta, corrección o eliminación, utiliza los datos de contacto. La solicitud se tramitará conforme a la ley, la verificación de identidad y la seguridad del servicio.
+
+9. Menores
+Los menores deben utilizar HitRise con la supervisión de su padre, madre o tutor.
+
+10. Aviso de ejercicio y salud
+La Puntuación de Potencia Relativa usa el valor bruto del hardware sin multiplicarlo por 0,6. No está calibrada con un equipo estándar, no tiene unidad física y no representa kg, kgf ni N. Solo sirve para observar tendencias relativas en condiciones comparables.
+
+El recuento, la puntuación, las calorías y la grasa equivalente son información y estimaciones deportivas; no constituyen diagnóstico médico, nutricional, de rehabilitación ni arbitraje profesional. Si tienes una lesión, enfermedad o molestias, consulta a un profesional.
+
+11. Actualizaciones
+Podemos actualizar esta Política por cambios del producto, requisitos legales u operación. Los cambios importantes podrán notificarse en la aplicación, en las notas de versión o por otros medios razonables.
+
+12. Contacto
+Operador: Shaoxing Weimai Technology Co., Ltd.
+Correo electrónico: zclei@vip.sina.com
+
+Para preguntas, comentarios o reclamaciones sobre privacidad, ponte en contacto con nosotros.

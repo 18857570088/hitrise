@@ -16,7 +16,7 @@ android {
         buildConfigField(
             "String",
             "HITRISE_API_BASE_URL",
-            "\"https://hitrise.86086.cn/hitrise\"",
+            "\"https://hitrise.wavemill.cn/hitrise\"",
         )
     }
 

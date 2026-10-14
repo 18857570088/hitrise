@@ -40,7 +40,52 @@ data class AppPalette(
             AppLanguage.Chinese -> nameZh
             AppLanguage.English -> nameEn
             AppLanguage.French -> nameFr
+            AppLanguage.Spanish -> spanishName()
+            AppLanguage.German -> germanName()
+            AppLanguage.Korean -> koreanName()
             AppLanguage.Thai -> nameTh
+        }
+
+    private fun spanishName(): String =
+        when (id) {
+            "current" -> "HitRise actual"
+            "p01" -> "Azul profundo y rosa"
+            "p02" -> "Cielo, naranja y crema"
+            "p03" -> "Lino, verde y amarillo"
+            "p04" -> "Pergamino, oro y rojo"
+            "p05" -> "Púrpura olímpico y naranja"
+            "p06" -> "Púrpura y oro de medalla"
+            "p07" -> "Púrpura profundo y azul"
+            "p08" -> "Azul, púrpura y lila"
+            else -> nameEn
+        }
+
+    private fun germanName(): String =
+        when (id) {
+            "current" -> "Aktuelles HitRise"
+            "p01" -> "Tiefblau und Rosa"
+            "p02" -> "Himmelblau, Orange und Creme"
+            "p03" -> "Leinen, Grün und Gelb"
+            "p04" -> "Pergament, Gold und Rot"
+            "p05" -> "Olympisches Violett und Orange"
+            "p06" -> "Medaillen-Violett und Gold"
+            "p07" -> "Tiefviolett und Blau"
+            "p08" -> "Blau, Violett und Flieder"
+            else -> nameEn
+        }
+
+    private fun koreanName(): String =
+        when (id) {
+            "current" -> "현재 HitRise"
+            "p01" -> "딥 블루와 핑크"
+            "p02" -> "스카이, 오렌지와 크림"
+            "p03" -> "리넨, 그린과 옐로"
+            "p04" -> "파치먼트, 골드와 레드"
+            "p05" -> "올림픽 퍼플과 오렌지"
+            "p06" -> "메달 퍼플과 골드"
+            "p07" -> "딥 퍼플과 블루"
+            "p08" -> "블루, 퍼플과 라일락"
+            else -> nameEn
         }
 
     fun color(hex: String): Int = Color.parseColor(hex)
